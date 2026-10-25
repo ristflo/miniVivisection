@@ -24,19 +24,20 @@
 + docs/manual/*
 + docs/screenshots/*
 
-# The web pages, with the packages they offer; the package's parts
+# The web pages, with the packages they offer, and their artwork (generated with ChatGPT; the
+# rights are the author's); the package's parts
 + web/pages/*
++ web/sources/*
 + packaging/*
 
 # The tools that build things
 + tools/*.py
 + tools/public_files.txt
 
-# Private: notes, the agents' rules, artwork sources, uploading and its account
+# Private: notes, the agents' rules, uploading and its account
 - AGENTS.md
 - docs/notes/*
 - docs/naming/*
-- web/sources/*
 - tools/publish_webpages.py
 - tools/publish.local.json
 - build-number.txt

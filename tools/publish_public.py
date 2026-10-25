@@ -4,6 +4,7 @@ tree, never this repository's history.
 
     python tools/publish_public.py --check [ref]   # only check what would go out (default ref: HEAD)
     python tools/publish_public.py v0.2.0-beta.365 # commit it in the public clone, tag it, ask, push
+    python tools/publish_public.py --update "the pages link the source"   # HEAD, for the last release: no new tag
 
 The public clone is C:\\Dev\\miniVivisection-public (--clone to name another), a clone of
 https://github.com/ristflo/miniVivisection: its files are replaced by the release's (files the
@@ -117,18 +118,29 @@ def check(ref):
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith('--')]
     clone = CLONE
-    if '--clone' in sys.argv:
-        clone = sys.argv[sys.argv.index('--clone') + 1]
-        args = [a for a in args if a != clone]
+    note = None
+    for option in ('--clone', '--update'):
+        if option in sys.argv:
+            value = sys.argv[sys.argv.index(option) + 1]
+            args = [a for a in args if a != value]
+            if option == '--clone':
+                clone = value
+            else:
+                note = value
     ref = args[0] if args else 'HEAD'
     contents, found = check(ref)
     if found:
         raise SystemExit('Not published: %d problem(s) above.' % len(found))
     if '--check' in sys.argv:
         return
-    if not ref.startswith('v'):
-        raise SystemExit('Publish a release tag (v0.2.0-beta.N), not %s.' % ref)
-    version = ref[1:]
+    if note is not None:
+        # An update of the last release (its pages, what is public): no new tag -- a published tag doesn't move
+        release = git('describe', '--tags', '--abbrev=0', '--match', 'v*', ref).strip()
+        version = release[1:]
+    elif ref.startswith('v'):
+        version = ref[1:]
+    else:
+        raise SystemExit('Publish a release tag (v0.2.0-beta.N), or --update "what changed" for the last release; not %s.' % ref)
     if not os.path.isdir(os.path.join(clone, '.git')):
         raise SystemExit('No public clone at %s: git clone https://github.com/ristflo/miniVivisection.git "%s"' % (clone, clone))
     # The clone's files become the release's: the old ones out, the release's in
@@ -144,12 +156,18 @@ def main():
         print('The public repository has this release already.')
         return
     env = dict(os.environ, GIT_AUTHOR_NAME=NAME, GIT_AUTHOR_EMAIL=EMAIL, GIT_COMMITTER_NAME=NAME, GIT_COMMITTER_EMAIL=EMAIL)
-    message = 'miniVivisection %s\n\nThe release %s: %s\n' % (version, version, 'https://restweiss.de/miniVivisection')
-    subprocess.run(['git', 'commit', '-q', '-m', message], cwd=clone, env=env, check=True)
-    subprocess.run(['git', 'tag', '-a', ref, '-m', 'miniVivisection ' + version], cwd=clone, env=env, check=True)
     commit = git('rev-parse', ref + '^{commit}').strip()
-    subprocess.run(['git', 'tag', '-f', 'public/' + version, commit], cwd=HERE, check=True, capture_output=True)
-    print('Committed in %s: miniVivisection %s (from %s, tagged public/%s here).' % (clone, version, commit[:7], version))
+    if note is None:
+        message = 'miniVivisection %s\n\nThe release %s: %s\n' % (version, version, 'https://restweiss.de/miniVivisection')
+        subprocess.run(['git', 'commit', '-q', '-m', message], cwd=clone, env=env, check=True)
+        subprocess.run(['git', 'tag', '-a', ref, '-m', 'miniVivisection ' + version], cwd=clone, env=env, check=True)
+        subprocess.run(['git', 'tag', '-f', 'public/' + version, commit], cwd=HERE, check=True, capture_output=True)
+        print('Committed in %s: miniVivisection %s (from %s, tagged public/%s here).' % (clone, version, commit[:7], version))
+    else:
+        message = 'miniVivisection %s, updated: %s\n' % (version, note)
+        subprocess.run(['git', 'commit', '-q', '-m', message], cwd=clone, env=env, check=True)
+        subprocess.run(['git', 'tag', '-f', 'public/%s-update' % version, commit], cwd=HERE, check=True, capture_output=True)
+        print('Committed in %s: miniVivisection %s, updated (from %s, tagged public/%s-update here).' % (clone, version, commit[:7], version))
     if '--no-push' in sys.argv:
         print('Not pushed. Look: git -C "%s" show --stat; push: git -C "%s" push --follow-tags' % (clone, clone))
         return
