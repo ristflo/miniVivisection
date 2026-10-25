@@ -1,4 +1,4 @@
-/* miniVivisection default Markdown style for Grasshopper -- checksum 1ff2e543131ac67b -- read-only: Save as makes your own */
+/* miniVivisection default Markdown style for Grasshopper -- checksum 98667810e8ee65d2 -- read-only: Save as makes your own */
 
 /*
   How Markdown is drawn in Grasshopper's Panels shown as Markdown (V Text draws Rhino
@@ -63,7 +63,7 @@ pre {                            /* a code block */
 code { font-family: Consolas; background: shade; }   /* `code` in a line */
 
 a {                              /* links (V Settings, "Markdown links in color" off: in the text's color) */
-  color: #0066CC;                /* their words and the line under them */
+  color: rgb(26, 77, 143);       /* their words and the line under them */
   text-decoration: underline;    /* the line under their words: underline or none */
   text-decoration-thickness: 10%;  /* its thickness, of the capitals' height */
   text-underline-offset: 15%;    /* its top under the baseline, of the capitals' height */

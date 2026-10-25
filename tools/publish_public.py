@@ -161,13 +161,16 @@ def main():
         message = 'miniVivisection %s\n\nThe release %s: %s\n' % (version, version, 'https://restweiss.de/miniVivisection')
         subprocess.run(['git', 'commit', '-q', '-m', message], cwd=clone, env=env, check=True)
         subprocess.run(['git', 'tag', '-a', ref, '-m', 'miniVivisection ' + version], cwd=clone, env=env, check=True)
-        subprocess.run(['git', 'tag', '-f', 'public/' + version, commit], cwd=HERE, check=True, capture_output=True)
-        print('Committed in %s: miniVivisection %s (from %s, tagged public/%s here).' % (clone, version, commit[:7], version))
+        marker = 'public/' + version
     else:
         message = 'miniVivisection %s, updated: %s\n' % (version, note)
         subprocess.run(['git', 'commit', '-q', '-m', message], cwd=clone, env=env, check=True)
-        subprocess.run(['git', 'tag', '-f', 'public/%s-update' % version, commit], cwd=HERE, check=True, capture_output=True)
-        print('Committed in %s: miniVivisection %s, updated (from %s, tagged public/%s-update here).' % (clone, version, commit[:7], version))
+        # Each update its own tag (tags here are never moved: they may be pushed already)
+        existing = set(git('tag', '--list', 'public/%s-update-*' % version).split())
+        marker = next('public/%s-update-%d' % (version, n) for n in range(1, 1000) if 'public/%s-update-%d' % (version, n) not in existing)
+    subprocess.run(['git', 'tag', marker, commit], cwd=HERE, check=True, capture_output=True)
+    print('Committed in %s: miniVivisection %s%s (from %s, tagged %s here; push it: git push origin %s).'
+          % (clone, version, ', updated' if note else '', commit[:7], marker, marker))
     if '--no-push' in sys.argv:
         print('Not pushed. Look: git -C "%s" show --stat; push: git -C "%s" push --follow-tags' % (clone, clone))
         return

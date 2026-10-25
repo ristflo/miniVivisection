@@ -396,7 +396,7 @@ namespace MiniVivisection
             }
         }
 
-        public static readonly Color DefaultLinkColor = Color.FromArgb(0, 102, 204);
+        public static readonly Color DefaultLinkColor = Color.FromArgb(26, 77, 143);
 
         // --- parsing values -----------------------------------------------------------------------
 

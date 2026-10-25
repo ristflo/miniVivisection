@@ -51,12 +51,13 @@ namespace MiniVivisection
         {
             try
             {
-                var (path, text, panel, from) = Prepare(component);
+                var (path, text, panel, from) = Locate(component);
                 if (path == null)
                 {
                     UserLog.Warning("'{0}': its script input has no script to open ({1}).", GrasshopperRuns.NickName(component), from);
                     return;
                 }
+                var rewritten = text != null && WriteWorkingCopy(path, text, "'" + GrasshopperRuns.NickName(component) + "'");
                 if (from != null)
                     Follow(path, component, panel, text);
                 // Stopped: a Panel's script edited right there, at the line (miniVivisection.GH's
@@ -71,6 +72,9 @@ namespace MiniVivisection
                 WhenOpen(path, (window, code) =>
                 {
                     PatchRun(window); // Run and Debug there: in Grasshopper
+                    WatchWindow(window); // closed (hidden): what it has open, saved
+                    if (rewritten)
+                        ShowText(code, text); // the Panel's text now, not an older tab's
                     GiveParams(component, code); // the component's inputs and outputs: the editor knows them
                     if (record != null)
                         StoppedRuns.ShowOverlay(window, code, record);
@@ -78,7 +82,7 @@ namespace MiniVivisection
                 });
                 UserLog.Info(from == null
                     ? "'{0}': its script input is text from another component -- a copy is open in the Script Editor; edits there can't go back ({1})."
-                    : "'{0}': its script input is open in the Script Editor ({1}) -- saving it {2}, and the component recomputes.",
+                    : "'{0}': its script input is open in the Script Editor ({1}) -- saving it, or closing the Script Editor, {2}, and the component recomputes.",
                     GrasshopperRuns.NickName(component), path, panel != null ? "writes it back into the Panel '" + NickName(panel) + "'" : "saves the file");
             }
             catch (Exception ex)
@@ -124,13 +128,18 @@ namespace MiniVivisection
                 var text = panel.GetType().GetProperty("UserText")?.GetValue(panel) as string ?? "";
                 var id = (panel.GetType().GetProperty("InstanceGuid")?.GetValue(panel) as Guid?)?.ToString("N").Substring(0, 8) ?? "panel";
                 var path = Path.Combine(Folder, Safe(NickName(panel)) + "-" + id + (extension == ".cs" || extension == ".md" ? extension : ".py"));
-                Directory.CreateDirectory(Folder);
-                File.WriteAllText(path, text);
+                var rewritten = WriteWorkingCopy(path, text, "Panel '" + NickName(panel) + "'");
                 Follow(path, panel, panel, text); // a Panel on its own: it is its own "component"
                 RhinoApp.RunScript("_-ScriptEditor _Open \"" + path + "\"", false);
+                WhenOpen(path, (window, code) =>
+                {
+                    WatchWindow(window);
+                    if (rewritten)
+                        ShowText(code, text);
+                });
                 if (extension == ".md")
                     ShowMarkdownSource(path);
-                UserLog.Info("Panel '{0}': its {1} is open in the Script Editor ({2}) -- saving it writes it back into the Panel.", NickName(panel),
+                UserLog.Info("Panel '{0}': its {1} is open in the Script Editor ({2}) -- saving it, or closing the Script Editor, writes it back into the Panel.", NickName(panel),
                     extension == ".md" ? "Markdown" : "script", path);
             }
             catch (Exception ex)
@@ -304,15 +313,141 @@ namespace MiniVivisection
             return (Path.Combine(Folder, Safe(NickName(owner)) + "-" + id + extension), text, panel, panel != null ? "the Panel" : null);
         }
 
-        private static (string Path, string Text, object Panel, string From) Prepare(object component)
+        /// <summary>The working copy of a Panel's text: written only when it differs from what the
+        /// file holds -- a file written anew makes the Script Editor read it again, dropping changes
+        /// not saved in its tab. When the editor has such changes and the text is a new one (the
+        /// Panel changed meanwhile), they are kept in a file of their own first, and the user told.
+        /// Whether the file was written. <paramref name="whose"/> names it in the message.</summary>
+        private static bool WriteWorkingCopy(string path, string text, string whose)
         {
-            var (path, text, panel, from) = Locate(component);
-            if (path != null && text != null)
+            Directory.CreateDirectory(Folder);
+            var onDisk = File.Exists(path) ? File.ReadAllText(path) : null;
+            if (onDisk != null && Normalize(onDisk) == Normalize(text))
+                return false; // as it is: an editor showing it keeps its tab, with what isn't saved yet
+            if (onDisk != null)
             {
-                Directory.CreateDirectory(Folder);
-                File.WriteAllText(path, text); // the working copy: the Panel's text now
+                foreach (var (_, code) in OpenCodes().Where(c => Shows(c.Code, path)).ToList())
+                {
+                    var shown = (string)code.Text ?? "";
+                    if (Normalize(shown) == Normalize(onDisk) || Normalize(shown) == Normalize(text))
+                        continue;
+                    var kept = Path.Combine(Folder, Path.GetFileNameWithoutExtension(path) + UnsavedMark + DateTime.Now.ToString("yyyyMMdd-HHmmss") + Path.GetExtension(path));
+                    File.WriteAllText(kept, shown);
+                    UserLog.Warning("{0} changed while the Script Editor had changes to its script that weren't saved: the editor shows its text now; your changes are kept in {1}.", whose, kept);
+                }
             }
-            return (path, text, panel, from);
+            File.WriteAllText(path, text);
+            return true;
+        }
+
+        // The name part of a file keeping an editor's changes that weren't saved (WriteWorkingCopy); kept at Shutdown
+        private const string UnsavedMark = ".unsaved-";
+
+        /// <summary>The editor's tab shows <paramref name="text"/> (the editor reads a file written
+        /// anew by itself; this makes sure of it, as for a tab it kept from before).</summary>
+        private static void ShowText(Rhino.Runtime.Code.Code code, string text)
+        {
+            try
+            {
+                if (code != null && !code.Text.IsReadOnly && Normalize((string)code.Text) != Normalize(text))
+                {
+                    code.Text.Set(text);
+                    Log.Info(LogArea.Breakpoints, "Grasshopper script input: the editor's tab showed older text; it shows {0} now", code.Uri?.LocalPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(LogArea.Breakpoints, "Grasshopper script input, the editor's text: {0}", Log.Describe(ex));
+            }
+        }
+
+        // --- the Script Editor closed: its scripts saved --------------------------------------------
+
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<object, object> s_watchedWindows =
+            new System.Runtime.CompilerServices.ConditionalWeakTable<object, object>();
+
+        /// <summary>Every script open in a Script Editor window (each tab, not only the active one).</summary>
+        private static List<(Window Window, Rhino.Runtime.Code.Code Code)> OpenCodes()
+        {
+            var found = new List<(Window, Rhino.Runtime.Code.Code)>();
+            foreach (var window in Application.Instance.Windows.Where(w => w.GetType().FullName == "RhinoCodeEditor.Editor.RCE"))
+                found.AddRange(CodesOf(window).Select(code => (window, code)));
+            return found;
+        }
+
+        private static List<Rhino.Runtime.Code.Code> CodesOf(object window)
+        {
+            try
+            {
+                var state = window.GetType().GetProperty("ActiveState", Any)?.GetValue(window);
+                var codes = state?.GetType().GetProperty("Codes", Any)?.GetValue(state) as IEnumerable;
+                return codes?.Cast<object>().Select(c => c?.GetType().GetProperty("Code", Any)?.GetValue(c) as Rhino.Runtime.Code.Code)
+                    .Where(c => c != null).ToList() ?? new List<Rhino.Runtime.Code.Code>();
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(LogArea.Breakpoints, "the Script Editor's open scripts: {0}", Log.Describe(ex));
+                return new List<Rhino.Runtime.Code.Code>();
+            }
+        }
+
+        private static bool Shows(Rhino.Runtime.Code.Code code, string path) =>
+            code?.Uri != null && code.Uri.IsFile && string.Equals(code.Uri.LocalPath, path, StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>A Script Editor window showing a script input or a Panel's script: when it is
+        /// closed -- Grasshopper's editors only hide then (HideOnClose), keeping their tabs and what
+        /// isn't saved -- its followed scripts are saved, as Ctrl+S would: back into the Panel, or
+        /// the file, and the component recomputes (Follow's watcher). Once per window.</summary>
+        private static void WatchWindow(Window window)
+        {
+            if (window == null || s_watchedWindows.TryGetValue(window, out _))
+                return;
+            s_watchedWindows.Add(window, null);
+            try
+            {
+                window.Closing += (s, e) => SaveFollowed(window);
+                var hidden = window.GetType().GetEvent("HideOnClosed", Any);
+                if (hidden != null)
+                {
+                    var handler = typeof(GrasshopperInputScripts).GetMethod(nameof(OnHidden), BindingFlags.NonPublic | BindingFlags.Static);
+                    hidden.AddEventHandler(window, Delegate.CreateDelegate(hidden.EventHandlerType, handler));
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(LogArea.Breakpoints, "Grasshopper script inputs: the Script Editor's closing not followed: {0}", Log.Describe(ex));
+            }
+        }
+
+        private static void OnHidden(object sender, EventArgs e) => SaveFollowed(sender as Window);
+
+        /// <summary>The window's scripts that are followed (a script input's file, a Panel's working
+        /// copy) and differ from their file: written to it. UI thread.</summary>
+        private static void SaveFollowed(Window window)
+        {
+            if (window == null)
+                return;
+            foreach (var code in CodesOf(window))
+            {
+                try
+                {
+                    var path = code.Uri?.IsFile == true ? code.Uri.LocalPath : null;
+                    lock (s_followed)
+                    {
+                        if (path == null || !s_followed.ContainsKey(path))
+                            continue;
+                    }
+                    var shown = (string)code.Text;
+                    if (shown == null || (File.Exists(path) && Normalize(File.ReadAllText(path)) == Normalize(shown)))
+                        continue;
+                    File.WriteAllText(path, shown); // Follow's watcher takes it: the Panel, or the component recomputed
+                    Log.Info(LogArea.Breakpoints, "the Script Editor closed with changes not saved to {0}: saved", path);
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(LogArea.Breakpoints, "the Script Editor closed: {0} not saved: {1}", code.Uri, Log.Describe(ex));
+                }
+            }
         }
 
         // --- debugging the input script ---------------------------------------------------------
@@ -895,8 +1030,12 @@ namespace MiniVivisection
             }
             try
             {
-                if (Directory.Exists(Folder))
-                    Directory.Delete(Folder, true);
+                // The working copies go; files keeping changes that weren't saved (WriteWorkingCopy) stay
+                foreach (var file in Directory.Exists(Folder) ? Directory.GetFiles(Folder) : Array.Empty<string>())
+                {
+                    if (Path.GetFileName(file).IndexOf(UnsavedMark, StringComparison.OrdinalIgnoreCase) < 0)
+                        File.Delete(file);
+                }
             }
             catch (Exception ex)
             {

@@ -1,4 +1,4 @@
-/* miniVivisection default Markdown style for Rhino -- checksum 66fce6de6b64d858 -- read-only: Save as makes your own */
+/* miniVivisection default Markdown style for Rhino -- checksum 9ceb66b9c62801ac -- read-only: Save as makes your own */
 
 /*
   How Markdown is drawn as Rhino text: the MarkdownText command, and Grasshopper's V Text
@@ -64,7 +64,7 @@ pre {                            /* a code block */
 code { font-family: Consolas; }  /* `code` in a line */
 
 a {                              /* links (V Settings, "Markdown links in color" off: in the text's color) */
-  color: #0066CC;                /* their words and the line under them */
+  color: rgb(26, 77, 143);       /* their words and the line under them */
   text-decoration: underline;    /* the line under their words: underline or none */
   text-decoration-thickness: 10%;  /* its thickness, of the text height */
   text-underline-offset: 15%;    /* its top under the baseline, of the text height (about 30%: under g, p and y) */

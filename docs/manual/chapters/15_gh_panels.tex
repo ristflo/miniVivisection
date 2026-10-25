@@ -60,14 +60,16 @@ A script component's \emph{script} input can be fed by a Panel's text or by a fi
 component no editor of its own. miniVivisection opens the script in the Script Editor instead, as a file:
 
 \begin{description}
-  \item[A file's path] opens that file. Saving it recomputes the component.
-  \item[A Panel's text] opens as a working file. Saving writes the text back into the Panel, as an undo step, and the
-        component recomputes. If the Panel changed meanwhile, the save is refused: open it again.
+  \item[A file's path] opens that file. Saving it, or closing the Script Editor, recomputes the component.
+  \item[A Panel's text] opens as a working file. Saving, or closing the Script Editor, writes the text back into the Panel,
+        as an undo step, and the component recomputes. If the Panel changed meanwhile, the save is refused: open it again.
   \item[Text from anywhere else] opens as a copy to read.
 \end{description}
 
 Open it with \menu{right-click the component\>V° Edit the script input in the Script Editor}, or by double-clicking the
-component. After \keys{Ctrl+Alt+B} stopped such a component, its script opens by itself at the line where it stopped.
+component. It always shows the Panel's text as it is now; when the Panel changed while the editor had changes that weren't
+saved, those are kept in a file next to the working copy (\vn{Log} names it). After \keys{Ctrl+Alt+B} stopped such a
+component, its script opens by itself at the line where it stopped.
 
 \paragraph{Debugging it.} \ui{V° Debug the script input} in the component's menu runs it once in the debugger, pausing at
 its breakpoints, or at its first line when it has none. Under \emph{Always debug} every run does, as long as the

@@ -626,7 +626,7 @@ GH9_TEXT = """# GH 9 -- A script from a Panel: edit it in the Script Editor
 1. *Right-click Twist > V° Edit the script input in the Script Editor*. The Panel's script opens in the Script Editor as a file of its own: colors, line numbers, completion.
 2. Line 8: `Rotate` wants its angle in radians -- `i * angle` is in degrees.
 3. Fix it: `square.Rotate(math.radians(i * angle), rg.Vector3d.ZAxis, rg.Point3d.Origin)`, and `import math` at the top.
-4. Save (Ctrl+S): the text goes back into the Panel, and Twist recomputes -- a smooth twist. Move the [angle](gh:angle) slider.
+4. Save (Ctrl+S), or close the Script Editor: the text goes back into the Panel, and Twist recomputes -- a smooth twist. Move the [angle](gh:angle) slider.
 5. The Panel shows the script as code too: double-click it to edit it right there.
 6. A Panel's script that hangs: Ctrl+Alt+B (*Stop and record*, the V° button's default) stops it, and the Panel opens for editing right there, at the line where it stopped.
 
@@ -677,7 +677,7 @@ GH10_TEXT = """# GH 10 -- A script from a file: Ctrl+Alt+B opens the file where 
 1. Keep the V° button on Grasshopper's toolbar on *Stop and record* (the default: V° with a green Run). Set [Run](gh:Run) to True: Rhino hangs.
 2. Press **Ctrl+Alt+B**: Spiral stops, and `gh10_spiral.py` itself opens in the Script Editor at the line where it was, with the values then: `i` is far past `n` -- in the hundreds or thousands.
 3. Line 10: `range(n * n)` -- 3600 steps, not 60. Fix it: `range(n)`.
-4. Save (Ctrl+S): Grasshopper reads the file again and Spiral recomputes -- 60 points in about a second.
+4. Save (Ctrl+S), or close the Script Editor: Grasshopper reads the file again and Spiral recomputes -- 60 points in about a second.
 5. To open the file another time: *Right-click Spiral > V° Edit the script input in the Script Editor*.
 6. Set [Run](gh:Run) to False before you save the definition, so it doesn't hang when it opens.
 
