@@ -1,0 +1,197 @@
+\chapter{Prompts: V°Python, V°PowerShell, V°Claude}\label{ch:prompts}
+
+Three prompt tabs work on the open, and often paused, script. A fourth page, \vn{Log}, tells what happened
+in plain words.
+
+\section{Working in a prompt}\label{sec:console}
+
+The three tabs work like a terminal: the prompt (\code{>>> }, \code{PS C:\bs path> }, \code{> }) is printed
+after the output, and you type right after it. There is no separate input box.
+
+\begin{xltabular}{\linewidth}{@{}P{0.28\linewidth}L@{}}
+\toprule
+\key{Enter}             & runs the input \\
+\keys{Shift+Enter}      & a new line (several lines run together, like a notebook cell) \\
+\key{↑} \key{↓}         & earlier inputs \\
+\key{Esc}               & clears the input \\
+\key{Home}              & the input's start \\
+\keys{Ctrl+C}           & copies a selection; with nothing selected it interrupts: stops Claude's answer or the PowerShell command, or drops the Python input \\
+\keys{Ctrl+mouse wheel} & font size, for all three tabs (\setting{Prompt font size}) \\
+\key{Tab}               & \vn{Python}: four spaces; \vn{Claude}: completes the \code{/} commands \\
+\bottomrule
+\end{xltabular}
+
+Typing with the caret in the output adds to the input. The output can be selected and copied but not
+changed; the right-click menu has \ui{Copy}, \ui{Paste}, \ui{Select all} and \ui{Clear}. What you type in \vn{Python}
+and \vn{PowerShell}, and code blocks in Claude's answers, are shown in the Script Editor's syntax colors, light or
+dark theme. Each tab can switch that off (\setting{Syntax colors: …}).
+
+\section{V°Python}\label{sec:vpython}
+
+The Script Editor's Terminal only shows output. \vn{Python} is a Python prompt.
+
+\begin{description}
+  \item[While the debugger is paused,] input runs in the paused frame, with its variables, modules and
+        functions. Assignments change the script's variables, which it continues with, and the watch drawing
+        updates right away. A line says where code runs now whenever the script pauses or continues.
+  \item[When not paused,] input runs in the tab's own namespace, kept between inputs.
+\end{description}
+
+\shot{03_python_in_the_paused_frame}{\vn{Python} in lesson 01's paused frame: the swapped corners printed, a
+  fixed rectangle made from them and drawn with \code{show(fixed)}, its area computed. The fix is tried on the
+  live data before the code is changed.}{fig:vpython}
+
+It works like Python's own prompt: expression results are printed, as are \code{print} output and errors;
+\code{for}, \code{if} and \code{def} blocks continue with \code{...}, and an empty line runs them; several lines at once
+run together and a final expression's value is printed.
+
+\paragraph{Commands.} Placed in Python's \code{builtins} only while an input runs, so they never end up in the
+script's variables; a script variable of the same name takes precedence. \code{help(show)} explains each.
+
+\begin{xltabular}{\linewidth}{@{}P{0.36\linewidth}L@{}}
+\toprule
+\code{show(crv, curves[0])}  & Draws values in Rhino until \code{clear()}, labeled with what was typed. In a loop, repeated calls count up: \code{c}, \code{c \#2}, … \code{name=} sets the label. \\
+\code{show(pts, as_="polyline")} & Draws raw data with a chosen interpretation. \\
+\code{hide("crv")}, \code{clear()} & Removes shown values. \\
+\code{bake(crv)}             & Copies values into the document. \\
+\code{watch("crv.PointAtStart")} & Adds an expression to \vn{Watch} (while paused). \\
+\code{edit("crv")}           & Edit in Rhino, with write-back (while paused). \\
+\code{visualizers()}, \code{reload_visualizers()} & Lists the registered visualizers; runs the visualizer scripts again. \\
+\code{breakpoints()}         & Lists the breakpoints' conditions and this run's hits. \\
+\bottomrule
+\end{xltabular}
+
+\paragraph{Good to know.}
+\begin{itemize}
+  \item New variables created in a paused \emph{function} don't survive into the function. That is a Python
+        limit; changes to existing ones do.
+  \item When the script runs on its own thread, the tab needs FreePause to reach the paused script.
+  \item The editor's Variables and Watch tabs keep the values from the pause until the next step, and are
+        refreshed after a command changed something.
+  \item While an IronPython~2 script is debugged, an amber notice says that this Python~3 can't reach its
+        variables; input runs in the tab's own namespace.
+\end{itemize}
+
+\begin{lesson}{lesson 08}\lessonfile{08_python_terminal.py}: V°Python.\end{lesson}
+
+\section{V°PowerShell}\label{sec:vpowershell}
+
+A PowerShell prompt: \code{pwsh} (PowerShell~7) if installed, else Windows PowerShell (\setting{PowerShell executable}).
+
+\begin{itemize}
+  \item One process per tab, started when the tab is first shown, in the open script's folder (else your user
+        folder). Variables, functions and the current location persist between inputs.
+  \item Output, errors, warnings and \code{Write-Host} are shown as PowerShell formats them. \code{cls} clears the tab.
+  \item It is no real console: a program that waits for keyboard input (a REPL, a password prompt) blocks the
+        prompt. \keys{Ctrl+C} ends the process, and the next input starts a new one.
+  \item No profile is loaded unless \setting{Load the PowerShell profile} is on.
+\end{itemize}
+
+\begin{lesson}{lesson 12}\lessonfile{12_powershell_terminal.py}: V°PowerShell.\end{lesson}
+
+\section{V°Claude}\label{sec:claude}
+
+\vn{Claude} is a chat with Claude Code, Anthropic's command line agent, about the open script. Claude Code must
+be installed and signed in (the \code{claude} program); the \vn{AI} switch shows or hides the tab.
+
+\subsection{What Claude can do}
+
+Claude gets the Script Editor's own tools from the plug-in, and, when RhinoAI is installed, RhinoAI's tools
+for the Rhino model.
+
+\begin{xltabular}{\linewidth}{@{}P{0.25\linewidth}L@{}}
+\toprule
+\ui{Read}      & the open script with line numbers, the cursor and selection, the Terminal output, the Problems tab, the errors recent runs left behind (exceptions with type, message, line and traceback), the debugger's state and the paused variables, and the plug-in's own log. \\
+\ui{Evaluate}  & a read-only look at an expression in the paused frame: type, value, and for geometry its key data (point coordinates, curve ends and length, bounding boxes); lists item by item. \\
+\ui{Debug}     & set and clear breakpoints (with conditions, hit counts, log messages), start debugging, continue, step over, into and out, stop. Each step waits for the next pause and answers where it stopped and which variables changed; it shows in the tab as \code{[debugger] …}. (\setting{Claude may control the debugger}.) \\
+\ui{Draw}      & add watches, set Interpret as, register visualizers. \\
+\ui{Run Python} & in the paused frame, or in a scratch namespace: only after your \code{/run} (below). \\
+\ui{Edit}      & the script, by exact replacement or by replacing the selection. \\
+\ui{In Rhino}  & with RhinoAI: the document, objects, the view as an image, Grasshopper's canvas and components. \\
+\bottomrule
+\end{xltabular}
+
+Each message carries a one-line summary of the editor (script, cursor, selection, debugger), and the selected
+code when it is short.
+
+\subsection{Commands}
+
+\begin{xltabular}{\linewidth}{@{}P{0.24\linewidth}L@{}}
+\toprule
+\code{/explain [question]} & the selection, or the whole script when nothing is selected \\
+\code{/fix [note]}         & reads what the last run left behind and the script, and fixes the script \\
+\code{/why [question]}     & (while paused) why the script stopped here: the exception, or how it got to this line \\
+\code{/debug [question]}   & (while paused) Claude inspects the paused frame \\
+\code{/replace <instruction>} & an instruction for the selected code; the answer, one code block, replaces the selection, undoable with \keys{Ctrl+Z} \\
+\code{/run}, \code{/deny}  & answer a request to run code \\
+\code{/pending}, \code{/apply}, \code{/reject} & edits waiting: show, apply, drop them \\
+\code{/undo [force]}       & the script as it was before Claude's last changes; only while it is as Claude left it, \code{force} also after you changed it \\
+\code{/history}            & this chat's messages \\
+\code{/allow on|off}       & RhinoAI's destructive tools for this chat (off by default) \\
+\code{/new}, \code{/clear}, \code{/help} & a new chat; clear the tab; the commands \\
+\bottomrule
+\end{xltabular}
+
+\key{Tab} completes them: \code{/ex} and \key{Tab} gives \code{/explain} and a space. When several fit (\code{/re}),
+\key{Tab} completes as far as they agree and lists them with their help lines. It completes the arguments too
+(\code{/allow o} lists \code{on|off}, \code{/undo f} gives \code{/undo force}), and on an empty prompt it lists every command.
+
+\subsection{You stay in control}
+
+\begin{description}
+  \item[Running code asks first.] Code Claude wants to run in Rhino can change the script, the model or files.
+        With \setting{Claude may run Python} on \emph{Ask} (the default), the code is shown in the tab, with
+        \ui{Run} and \ui{Deny} buttons above the chat and a \code{> } prompt, while Claude's answer goes on: click a
+        button, or type \code{/run} or \code{/deny}. No answer within two minutes denies it. Plain expressions, a name,
+        an attribute, an index, are read without asking. \emph{Off}: never; \emph{On}: without asking.
+  \item[A running script isn't changed.] While a run holds the script -- running or paused in the debugger, or
+        stopped at a runtime error until \ui{Stop} -- the run keeps the code it started with. Claude's edits are queued
+        and shown as a change (\code{- old} / \code{+ new}); when the run has ended and the editor is back to editing, they are applied
+        (\setting{Claude's edits to the script}: \emph{Automatic}), or wait for \code{/apply} (\emph{Ask}).
+  \item[Edits stay with their script.] An edit is for the script the message was about. With another tab
+        active meanwhile, it waits; \code{/apply} after switching back.
+  \item[RhinoAI's destructive tools are off] (\code{run_command}, its own \code{run_python}, opening and saving documents,
+        materials, clearing canvases) until \code{/allow on} or \setting{Allow RhinoAI's commands and scripts}.
+        Read-only and modify tools, such as listing objects, the view image and placing Grasshopper components,
+        are allowed.
+  \item[Claude's reach is limited.] Claude Code runs with only the Script Editor's tools, RhinoAI's allowed ones,
+        and read-only file tools (Read, Glob, Grep). Bash, file edits, web fetches and searches are always refused,
+        whatever your own Claude settings allow. It reads only your user settings, and runs in a folder of the
+        plug-in's own, so a \file{.claude} folder or \file{CLAUDE.md} that came with a downloaded script isn't loaded.
+\end{description}
+
+\subsection{RhinoAI}\label{sec:rhinoai}
+
+RhinoAI (McNeel's Rhino MCP Platform) gives Claude the Rhino model and Grasshopper. When it isn't installed,
+miniVivisection offers to install it once Rhino has started (\ui{Install}, \ui{Not now}, \ui{Don't ask again};
+\setting{Offer to install RhinoAI}). It loads at Rhino's next start.
+
+RhinoAI's server must run in this Rhino for Claude to reach the model. Start it with RhinoAI's \code{MCPStart}
+command, or let the tab start it before each message (\setting{Start RhinoAI's server for Claude}; off by
+default, because the server listens on localhost without a token, so any program on this computer could use
+it). Otherwise the chat says once that Claude can't work in the model until you start it.
+
+\subsection{Sessions}
+
+Each script keeps its own Claude Code conversation, also between Rhino sessions; \code{/new} starts it over.
+The MCP servers' connection state is printed when Claude Code starts, and each answer's time and cost go to
+\vn{Log}. Settings in \menu{V°Settings\>Claude}: Claude Code's path, RhinoAI's router, the model, and the
+options above.
+
+\begin{lesson}{lesson 13}\lessonfile{13_claude.py}: V°Claude.\end{lesson}
+
+\section{V°Log}\label{sec:vlog}
+
+A page in the left panel with what matters while working, in plain words: runs started and ended, where the
+debugger paused, exceptions, values written back from Rhino, objects baked, Claude's answers with their time
+and cost, PowerShell started or ended, warnings and problems. Colored by kind; right-click for \ui{Copy},
+\ui{Copy all}, \ui{Clear} and \ui{Open log folder}. Warnings and errors also go to Rhino's command line
+(\setting{User log on the command line}). The files are listed in \see{sec:logs}.
+
+\section{V°Settings}\label{sec:vsettings}
+
+A page in the left panel (the gear) with every setting, on three tabs: \emph{General} (what the Script Editor and Grasshopper's script components share, and
+\emph{Markdown}), \emph{Rhino} (watches drawn in Rhino, selection, the \code{RunPythonScript} command, FreePause) and
+\emph{Grasshopper} (script components, Panels, the prompts window),
+applied at once: tabs and pages appear or go, inline values and markers are redrawn, Auto edit starts or stops.
+The same settings are in \menu{Tools\>Options\>miniVivisection}. All of them are listed in \cref{ch:settings}.

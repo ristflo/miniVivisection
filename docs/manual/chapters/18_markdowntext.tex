@@ -1,0 +1,161 @@
+\chapter{Markdown as Rhino text}\label{ch:markdowntext}
+
+The command \code{MarkdownText} makes Markdown into Rhino objects: headings, paragraphs, lists, tables and links laid
+out as real text, lines and hatches in the model. Double-click any part of it later, and its Markdown opens again for
+editing; the same objects are updated in place.
+
+\section{Making Markdown text}\label{sec:mdcreate}
+
+Run \code{MarkdownText}, type or paste Markdown in its dialog, and click where its top left goes, in the active
+construction plane. The dialog has:
+
+\begin{xltabular}{\linewidth}{@{}P{0.16\linewidth}L@{}}
+\toprule
+\ui{Width} & the width text wraps in, in mm; 0: no wrapping \\
+\ui{Size}  & the base size in pt: a paragraph's text height; headings are larger \\
+\ui{Font}  & the base font \\
+\bottomrule
+\end{xltabular}
+
+\code{-MarkdownText} takes the Markdown from a file, with the options \emph{Height} and \emph{Width} in model units.
+\setting{Markdown parser} chooses what reads the Markdown: Rhino's Markdig, or the plug-in's, as for Panels
+(\see{sec:panelmarkdown}).
+
+\section{What the Markdown becomes}
+
+\begin{xltabular}{\linewidth}{@{}P{0.28\linewidth}L@{}}
+\toprule
+\textsf{\textbf{Markdown}} & \textsf{\textbf{In Rhino}} \\ \midrule
+\code{\# Heading}           & larger bold text; the first two levels with a line under them \\
+paragraphs                  & wrapped rich text: \textbf{bold}, \emph{italic}, \code{code} in Consolas \\
+\code{[text](target)}       & a link: its words in the link color, a line under them (\cref{ch:links}) \\
+\code{- item}, \code{1. item} & bullets, numbers \\
+\code{- [ ] task}, \code{- [x] done} & task boxes: drawn squares, a check mark in the done ones -- click one to check it \\
+\code{> quote}              & a bar along it: a \code{|} on each of its lines \\
+code blocks                 & a frame around them \\
+tables                      & a grid of cells, the header row bold \\
+\code{---}                  & a line \\
+\bottomrule
+\end{xltabular}
+
+The whole text is one group. How each element looks -- its size, font, color and spacing, the bullets, the task
+boxes, the quote's bar, the links -- comes from the file's Markdown style (\see{sec:mdstyle}).
+
+\section{Editing it}\label{sec:mdedit}
+
+\textbf{Double-click} any part of it -- a link too --, or select it and run \code{MarkdownText}, or run the command and
+click a part. Its Markdown opens in the dialog:
+
+\begin{itemize}
+  \item A part double-clicked or clicked, or selected alone with \keys{Ctrl+Shift+click}, puts the caret at the start
+        of its section and shows the other parts' Markdown in gray, editable too. The whole text selected opens it all.
+  \item The whole text is selected in Rhino meanwhile.
+  \item \ui{OK} updates the \textbf{same objects} in place: their ids, layers and colors stay. Only when the text needs
+        more parts than it has are new ones added, and parts it doesn't need any more are removed.
+\end{itemize}
+
+\paragraph{Undo and Redo.} In the dialog, \keys{Ctrl+Z} undoes a word at a time (a step ends at a space, a line break,
+a tab, a punctuation mark or a pause in the typing), back to the Markdown as it opened; \keys{Ctrl+Y} or
+\keys{Ctrl+Shift+Z} redoes. After \ui{OK}, Rhino's \code{Undo} takes the whole edit back -- the objects and their
+Markdown as they were -- and \code{Redo} brings it again; a new text is one Undo too.
+
+\shot{14_markdown_text_dialog}{A double-click on the nested list opens the Markdown: that part in black at the caret,
+  the other parts in gray. Width, size and font at the bottom.}{fig:mddialog}
+
+\section{The parts belong together}
+
+The parts of a text are tied together by the text's id, stored as user text on each object, not only by the group:
+ungroup it, and any part still edits the whole text. A copy (Copy, \keys{Ctrl+C} and \keys{Ctrl+V}) has its own parts:
+edited, it parts ways with the original.
+
+\section{Changes made in Rhino are taken in}
+
+Before the dialog opens, what was done to the parts with Rhino's own tools goes into the Markdown:
+
+\begin{description}
+  \item[A text's words edited] (Rhino's text editor, or Properties): They are put where they came from, the formatting
+        around them kept.
+  \item[The whole text moved, turned or scaled:] It stays there.
+  \item[All of a block's parts deleted:] Its Markdown is taken out.
+\end{description}
+
+A line on top of the dialog, and the command line, say what was taken in.
+
+\section{Task boxes}
+
+\textbf{Click} a task box -- as you click a link (\setting{Markdown links: follow with}) -- and the task is checked or
+unchecked: \code{- [ ]} becomes \code{- [x]} in its Markdown, the text is drawn again in place, and Rhino's \code{Undo}
+takes it back. A hint by the mouse says what a click does. What was changed on the parts in Rhino is taken in first, as
+for an edit. The boxes are drawn -- a square with sharp corners, a check mark in it -- so every box looks the same,
+whatever the font; the style can make them characters instead (\see{sec:mdstyle}), and those are clicked alike.
+
+\section{The Markdown style}\label{sec:mdstyle}
+
+How Markdown looks is a \textbf{Markdown style}: a small part of CSS. A rule names elements -- \code{h1} to \code{h6},
+\code{p}, \code{li}, \code{task}, \code{blockquote}, \code{pre}, \code{code}, \code{a}, \code{table}, \code{th},
+\code{hr}, \code{body} -- and says, for each, its size in em (one base text height: Rhino's text height of a
+paragraph), its font, weight, style and color, the space before and after it, the bullet of each list level
+(\code{list-style-type}, one character a level), the task boxes (\code{checked: drawn} or a character, their
+\code{size}), the quote's bar (\code{bar: "|"}, \code{line} or \code{none}), the code blocks' frame, the tables' grid,
+and the links' color and line (\code{text-decoration-thickness}, \code{text-underline-offset}). \code{body}'s font and
+color go for everything. No classes, no nesting; what isn't understood is left out and said in \vn{Log}. The default,
+\file{styles\textbackslash markdown_rhino.css} next to the plug-in, lists all it can say, with a comment on each line.
+
+\paragraph{One style per Rhino file.} A Rhino file keeps a copy of its style, for all its Markdown texts. A file starts
+with \setting{Markdown style for Rhino} (empty: the default) and keeps a copy with its first Markdown text. In
+\code{MarkdownText}'s dialog, the line above \ui{Width} says which style the file has:
+
+\begin{xltabular}{\linewidth}{@{}P{0.2\linewidth}L@{}}
+\toprule
+\ui{Edit style...} & the style in a small editor; what it doesn't understand is shown as you type \\
+\ui{Load...}       & a style file's text \\
+\ui{Save as...}    & the style as a file of your own, for other Rhino files or the setting \\
+\ui{Default}       & miniVivisection's default style \\
+\bottomrule
+\end{xltabular}
+
+\ui{OK} draws \textbf{all} of the file's Markdown texts with the new style. A file whose style is an untouched copy of a
+default -- of any version -- gets the current default when it is opened, its texts drawn again; a style of your own
+never changes by itself. V°Text draws with the active Rhino file's style.
+
+\paragraph{The settings.} \setting{Markdown style for Rhino} and \setting{Markdown style for Grasshopper} point to style
+files (empty: the defaults); \ui{Edit} beside each opens the file in the same small editor. The defaults are read-only:
+\ui{Save as...} makes your own, and the setting then points to it.
+
+\section{Protecting the file: ProtectModel}\label{sec:protectmodel}
+
+The command \code{ProtectModel} is V°Protect (\see{sec:vprotect}) for Rhino files: is the model still the original?
+It says the state on the command line, then offers what can be done.
+
+\begin{description}
+  \item[In setup,] the files kept -- none set: the Rhino file itself; \emph{AddFiles}, \emph{ClearFiles} -- and where
+        their originals go: \emph{OriginalsIn=Archive}, by default \file{(the file's name).protect.zip} next to it
+        (\emph{Archive} chooses another), or \emph{OriginalsIn=File}, in the file itself. \emph{Store} stores the
+        files' originals now. Everything is kept in the file's document strings.
+  \item[Protect] saves the file and keeps it as the original. From then on it is \emph{original} while the file on
+        disk is the original and the open model has no changes, \emph{modified} when either isn't so.
+  \item[Revert] (asked first) closes the model, its changes dropped, writes the original over the file when that
+        changed, and opens it again. \emph{BackToSetup}: not protected any more; the originals stay.
+\end{description}
+
+\paragraph{In itself.} A file can't hold its own bytes. So \emph{Protect} saves it once without its original -- those
+bytes are the original -- and once more with them. The file on disk is the original when, read, every object, table,
+named view and document string but this original is the same: a fingerprint kept with it.
+
+\paragraph{In Markdown text} \code{\{\{protected\}\}} shows \emph{protected} or \emph{not protected}, \code{\{\{modified\}\}}
+\emph{modified}, \emph{not modified} or \emph{not tracked}. The texts with these fields are laid out again when the state
+changes -- looked at every 1.5\,s while Rhino is idle; that doesn't mark the model changed. A link
+\code{[Revert](protect:revert)} reverts.
+
+\section{Links}
+
+Click a link to follow it (\setting{Markdown links: follow with}: or \keys{Ctrl+click}, or off); a
+double-click on it edits. Over a link, a hint by the mouse says where it goes and how to follow it (\cref{ch:links}).
+
+\begin{lesson}{the overview}
+\lessonfile{00_overview.3dm}: the overview of all examples, and right of it Markdown made into Rhino text. Double-click
+any of it to edit; click its links: a named view, a viewport, the V° logo (objects named \emph{Logo}), GH~11's \emph{Ring} component and canvas
+view (Grasshopper opens it), lesson 01 (the Script Editor opens it), web pages; click a task box to check it. The file is protected in itself: its
+line says \emph{protected} and \emph{not modified}; move the V° logo, and it says \emph{modified}; its link
+\emph{Revert to the original} puts the file back.
+\end{lesson}

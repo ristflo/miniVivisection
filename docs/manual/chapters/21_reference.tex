@@ -1,0 +1,102 @@
+\chapter{Commands, keys and files}\label{ch:reference}
+
+\section{Commands}\label{sec:commands}
+
+\paragraph{miniVivisection.} Without options it shows how many editors are followed and how many items are drawn and
+edited. Its options:
+
+\begin{xltabular}{\linewidth}{@{}P{0.3\linewidth}L@{}}
+\toprule
+\code{Draw=On|Off}             & draw watches in Rhino \\
+\code{FreePause=On|Off}        & Rhino usable while paused, from the next pause (\see{sec:freepause}) \\
+\code{HoverPreview=On|Off}     & the hover preview (\see{sec:hoverpreview}) \\
+\code{WatchExpressions=On|Off} & expressions in the editor's Watch tab (\see{sec:watchtab}) \\
+\code{BreakNow}                & as the hotkey: pause a debug run at its next line (\see{sec:breaknow}) \\
+\code{WhereIsEveryone}         & print every thread of a running script and where it is (\see{sec:vthreads}) \\
+\code{StopPaused}              & stop every paused script, a way out when its editor can't be reached (only while one is paused, \see{sec:stoppaused}) \\
+\code{BakeAll}                 & bake everything drawn right now (\see{sec:bake}) \\
+\code{StopEditing}             & remove the objects being edited in Rhino (only while there are some) \\
+\code{GrasshopperPrompts}      & open the prompts window for Grasshopper (\cref{ch:ghprompts}) \\
+\code{Settings}                & the Options dialog's miniVivisection page \\
+\code{LogFolder}               & open the log folder \\
+\bottomrule
+\end{xltabular}
+
+\paragraph{MarkdownText} makes Markdown into Rhino text, or edits a Markdown text: run it with one selected, or run it and
+click a part. \code{-MarkdownText} takes the Markdown from a file (options \emph{Height}, \emph{Width}; the parser is \setting{Markdown parser}'s).
+See \cref{ch:markdowntext}.
+
+\paragraph{miniVivisectionManual, miniVivisectionExamples, miniVivisectionGrasshopperExamples, miniVivisectionLessons,
+miniVivisectionSettings} are the buttons of the miniVivisection toolbar (\see{sec:findexamples}). They open the
+manual (the PDF; \code{-miniVivisectionManual Markdown}: the Markdown in the Script Editor), the examples' overview in Rhino,
+Grasshopper's (Grasshopper started for it), the lessons folder, and the settings (Rhino's Options, at the miniVivisection page).
+
+\paragraph{ProtectModel} is \vn{Protect} for the Rhino file: \emph{Protect}, \emph{Store}, \emph{OriginalsIn=Archive|File},
+\emph{AddFiles}, \emph{ClearFiles}, \emph{Archive}; protected: \emph{Revert}, \emph{BackToSetup} (\see{sec:protectmodel}).
+
+\paragraph{ScriptEditor Run} gets a \emph{Debug} option: \code{_-ScriptEditor _Run _Debug=_On "file"} (\see{sec:scripteditorrun}).
+
+\paragraph{RunPythonScript} follows \setting{RunPythonScript command} (\see{sec:runpythonscript}).
+
+\section{Keys}\label{sec:keys}
+
+\begin{xltabular}{\linewidth}{@{}P{0.3\linewidth}L@{}}
+\toprule
+\multicolumn{2}{@{}l}{\textsf{\textbf{Script Editor}}} \\ \midrule
+\key{F5}                 & Debug (with a breakpoint) or Run; Continue while paused \\
+\key{F10}, \key{F11}, \keys{Shift+F11} & Step over, Step into, Step out \\
+\keys{Shift+F5}          & Stop \\
+\keys{Ctrl+Alt+B}        & Break now: pause a debug run, stop a plain one (a setting, \see{sec:breaknow}) \\
+\key{F2}                 & edit a \vn{Watch} expression in place \\
+\key{Del}                & remove the selected watch \\
+\key{Esc}                & close the Tree window \\
+\keys{Ctrl+mouse wheel}  & prompt font size in \vn{Python}, \vn{PowerShell}, \vn{Claude} \\
+\key{Tab}                & complete a \code{/} command in \vn{Claude} \\
+\keys{Ctrl+C}            & with nothing selected in a prompt: interrupt \\ \midrule
+\multicolumn{2}{@{}l}{\textsf{\textbf{Grasshopper}}} \\ \midrule
+double-click a script Panel & edit it in place (\see{sec:paneledit}) \\
+double-click a Markdown Panel & edit its source at that word \\
+click a link in a Panel  & follow it (or \keys{Ctrl+click}, \setting{Markdown links: follow with}) \\
+click a task box in a Panel & check or uncheck it \\
+\keys{Shift+double-click}, \keys{Ctrl+double-click} & Grasshopper's own text box, its dialog \\
+\keys{Ctrl+Z}            & also takes back a whole \vn{Claude} answer \\ \midrule
+\multicolumn{2}{@{}l}{\textsf{\textbf{Rhino}}} \\ \midrule
+double-click Markdown text & edit its Markdown at that part, on a link too \\
+click a link in Markdown text & follow it (or \keys{Ctrl+click}, as for Panels) \\
+click a task box in Markdown text & check or uncheck it \\
+\keys{Ctrl+Shift+click}  & pick one part of a Markdown text \\
+\keys{Alt+click} on a drawing & select its watch, when \setting{Select a watch by clicking its drawing} says so \\
+\bottomrule
+\end{xltabular}
+
+\section{Logs and files}\label{sec:logs}
+
+\begin{xltabular}{\linewidth}{@{}P{0.42\linewidth}L@{}}
+\toprule
+\file{\%TEMP\%\bs rhinovivisection\bs minivivisection} & the log folder (\code{miniVivisection LogFolder}) \\
+\quad\file{user.log}             & \vn{Log}'s lines \\
+\quad\file{minivivisection.log}         & the detailed log, by area and level, for diagnosis; new each session \\
+\quad\file{*.previous.log}       & the last session's logs \\
+\quad\file{minivivisection.crashed-(time).log} & the detailed log of a session that ended without Rhino shutting down (the last five); \vn{Claude}'s steps in Grasshopper are written at once, so the last thing before a crash is in it \\
+\quad\file{last_stop.json}       & where Stop and record last stopped \\
+\file{\%LOCALAPPDATA\%\bs miniVivisection\bs lessons} & your copies of the lessons \\
+\file{(definition).protect.zip}  & \vn{Protect}'s archive, next to the definition \\
+\file{(model).protect.zip}       & \code{ProtectModel}'s archive, next to the Rhino file \\
+\file{rhino_tools.json}          & next to the \file{.rhp}: RhinoAI's tools \vn{Claude} may use, by group; edit it when RhinoAI's tools change, no rebuild needed \\
+\bottomrule
+\end{xltabular}
+
+The detailed log's level is a setting (\setting{Detailed log}: Off to Trace), with levels per area
+(\setting{Detailed log: levels per area}, for example \code{Pause=Trace; Claude=Debug}). \ui{Copy detailed log} in
+\menu{Tools\>Options\>miniVivisection} copies its last 2000 lines.
+
+\section{Environment variables}\label{sec:envvars}
+
+\begin{xltabular}{\linewidth}{@{}P{0.42\linewidth}L@{}}
+\toprule
+\code{MINIVIVISECTION_CLAUDE}     & the path to \file{claude.exe} \\
+\code{MINIVIVISECTION_RHINO_MCP}  & the path to RhinoAI's MCP router \\
+\bottomrule
+\end{xltabular}
+
+The old names, \code{SCRIPTEDITORWATCHVIZ_…}, are still read.

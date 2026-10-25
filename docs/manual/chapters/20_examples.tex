@@ -1,0 +1,109 @@
+\chapter{The lessons}\label{ch:examples}
+
+miniVivisection comes with 17 short script lessons, 12 Grasshopper lessons, the Markdown text example and an overview of all of
+them. Each lesson has a bug in it that one feature finds or fixes, with instructions at the top of the file: \emph{The bug},
+\emph{Try this}, \emph{Without miniVivisection}. New to debugging? Start with \file{00_Examples_Guide.pdf} in the
+\file{examples} folder; it explains debugging for beginners and lists the lessons.
+
+\section{Where they are}
+
+\begin{description}
+  \item[In the Script Editor:] The left panel's \menu{Examples\>miniVivisection} (\setting{Lessons in the Examples tab}).
+  \item[On disk:] The \file{examples} folder next to the \file{.rhp}, the Grasshopper lessons in \file{examples\bs grasshopper}.
+\end{description}
+
+\paragraph{Your own copies.} The Examples tab opens your own copies, in \file{\%LOCALAPPDATA\%\bs miniVivisection\bs lessons},
+and the Grasshopper lessons and their script files are there in \file{grasshopper}: save your fixes there, the shipped
+lessons stay as they are. A copy you haven't changed follows a new version of the lesson. When a new miniVivisection
+brings a new version of a lesson you changed, it is put beside your copy as \file{(name) (new)}, for example
+\file{gh3_stop_a_hang (new).gh}. To start a lesson over, delete your copy; it is copied again when the editor next opens.
+Open the Grasshopper copies with Grasshopper's \menu{File\>Open}.
+
+\paragraph{How to do a lesson.}
+\begin{enumerate}[label=\arabic*.]
+  \item Open it, and read the text at the top (and a \emph{Needs:} line under the title when it needs something first).
+  \item Set a breakpoint on the line marked \code{\# <-- BREAKPOINT}, and press \key{F5}, unless \emph{Try this} says
+        otherwise: lessons 15 to 17 start with \ui{Debug} and no breakpoint; lesson 04 has two breakpoints.
+  \item Follow the steps. When you have found the bug, stop, fix the code, and run again to check.
+\end{enumerate}
+
+\section{Where to find them}\label{sec:findexamples}
+
+\begin{description}
+  \item[The miniVivisection toolbar] in Rhino, shown when the plug-in is installed (\setting{Help, examples and settings toolbar}):
+        \ui{Manual} -- the PDF; right-click: the Markdown in the Script Editor --, \ui{Examples} -- the overview of all
+        examples, your copy of \file{00_overview.3dm} --, \ui{Examples in Grasshopper} -- Grasshopper started, its overview
+        \file{gh0_overview.gh} opened --, \ui{Lessons folder} -- your copies, in Explorer --,
+        \ui{Settings} -- Rhino's Options, at the miniVivisection page --, \ui{MarkdownText} and \ui{ProtectModel}.
+  \item[The commands] \code{miniVivisectionManual} (\code{-miniVivisectionManual Markdown}: the Markdown),
+        \code{miniVivisectionExamples}, \code{miniVivisectionGrasshopperExamples}, \code{miniVivisectionLessons},
+        \code{miniVivisectionSettings} -- the toolbar's buttons, without it.
+  \item[V°Examples, V°Manual, V°Settings] in Grasshopper, tab \menu{miniVivisection\>Help}, each a button (or a
+        double-click): V°Examples opens \file{gh0_overview.gh} (your copy; shown when it is open), its menu the lessons
+        folder; V°Manual the manual, its menu the Markdown in the Script Editor; V°Settings the settings
+        (\setting{Help, examples and settings components} shows or hides all three; from Grasshopper's next start).
+  \item[The Script Editor:] Its \ui{Examples} tab, folder \ui{miniVivisection}: the script lessons.
+\end{description}
+
+\section{The overview}
+
+\file{00_overview.3dm} (Markdown text in Rhino) and \file{grasshopper\bs gh0_overview.gh} (a Panel) -- click a
+link -- link to every lesson: the 17 script lessons open in the Script Editor, the Grasshopper lessons in Grasshopper, the
+Markdown text example in Rhino. Each links to the other. Both are protected and say so in their text: \file{00_overview.3dm}
+by \code{ProtectModel} -- move its V° logo, and its line says \emph{modified}; its link reverts --, \file{gh0_overview.gh} by a
+V°Protect, with a slider to change.
+
+\section{Script lessons}
+
+\begin{xltabular}{\linewidth}{@{}P{0.37\linewidth}L>{\raggedleft\arraybackslash}p{0.07\linewidth}@{}}
+\toprule
+\textsf{\textbf{File}} & \textsf{\textbf{Feature}} & \\ \midrule
+\lessonfile{01_watch_geometry}          & V°Watch: variables drawn in Rhino & \see{ch:watch} \\
+\lessonfile{02_values_in_the_code}      & tooltips, line-end values, “was”, Tree; stepping & \see{ch:code} \\
+\lessonfile{03_bake_before_a_crash}     & Bake & \see{sec:bake} \\
+\lessonfile{04_edit_in_rhino}           & Edit in Rhino, Auto edit & \see{sec:editinrhino} \\
+\lessonfile{05_conditional_breakpoints} & conditions, hit counts, log messages & \see{ch:breakpoints} \\
+\lessonfile{06_watch_expressions}       & expressions in watches & \see{sec:addwatch} \\
+\lessonfile{07_raw_data_interpret_as}   & Interpret as & \see{sec:interpretas} \\
+\lessonfile{08_python_terminal}         & V°Python & \see{sec:vpython} \\
+\lessonfile{09_step_over_other_files}   & stepping across files & \see{sec:debugging} \\
+\lessonfile{10_visualizers}             & visualizers & \see{ch:visualizers} \\
+\lessonfile{11_rhino_usable_while_paused} & FreePause & \see{sec:freepause} \\
+\lessonfile{12_powershell_terminal}     & V°PowerShell & \see{sec:vpowershell} \\
+\lessonfile{13_claude}                  & V°Claude & \see{sec:claude} \\
+\lessonfile{14_threads_async}           & V°Threads, thread conditions, watches in every thread & \see{ch:threads} \\
+\lessonfile{15_deadlock}                & Where is everyone?, Break now & \see{sec:vthreads} \\
+\lessonfile{16_long_running_watch}      & Break now in a running script, fix it while paused, run on & \see{sec:breaknow} \\
+\lessonfile{17_runtime_error}           & the debugger stops at a runtime error; values and call stack; Stop and record & \see{sec:runpythonscript} \\
+\bottomrule
+\end{xltabular}
+
+\section{Grasshopper lessons}
+
+Twelve definitions in \file{examples\bs grasshopper}, each with its lesson in a Panel on the canvas, ending with links to
+the lesson before and after and to the overview, and under it a V°Protect: changed something? \ui{Revert} puts the lesson
+back as it was shipped. GH~10's script file, \file{gh10_spiral.py}, is next to them.
+
+\begin{xltabular}{\linewidth}{@{}P{0.37\linewidth}L>{\raggedleft\arraybackslash}p{0.07\linewidth}@{}}
+\toprule
+\textsf{\textbf{File}} & \textsf{\textbf{Feature}} & \\ \midrule
+\lessonfile{gh1_which_branch_failed}    & failing runs, Copy failing branches, Debug failing run N & \see{sec:failingruns} \\
+\lessonfile{gh2_the_one_wrong_item}     & Always debug, a breakpoint condition, the run badge, a slider moved while paused & \see{sec:runbadge} \\
+\lessonfile{gh3_stop_a_hang}            & \keys{Ctrl+Alt+B} with the component's editor closed & \see{sec:ghbreak} \\
+\lessonfile{gh4_v_edit}                 & V°Edit & \see{sec:vedit} \\
+\lessonfile{gh5_runtime_error}          & the debugger stops at a runtime error in a script component (Always debug) & \see{sec:rewiring} \\
+\lessonfile{gh6_threads_in_a_component} & threads in a component: results in finishing order, V°Threads, the freeze guard & \see{sec:ghasync} \\
+\lessonfile{gh7_parallel_run}           & \code{ghpythonlib.parallel}: \code{parallel.run} that doesn't flatten, the pause at the error, a breakpoint inside the worker function & \see{sec:ghasync} \\
+\lessonfile{gh8_long_running}           & a long-running component: \keys{Ctrl+Alt+B} pauses it (Always debug), a fix in V°Python, it runs on & \see{sec:ghbreak} \\
+\lessonfile{gh9_script_from_a_panel}    & a script from a Panel: edited in the Script Editor, saved back into the Panel & \see{sec:scriptinput} \\
+\lessonfile{gh10_script_from_a_file}    & a script file named in a Panel: \keys{Ctrl+Alt+B} stops the hang and opens the file at its line & \see{sec:scriptinput} \\
+\lessonfile{gh11_markdown_notes}        & notes in Markdown, rendered in a Panel; editing the source where you double-click; a script Panel edited in place; links to components, a canvas view and the Rhino example & \see{sec:panelmarkdown} \\
+\lessonfile{gh12_markdown_parser}       & Markdown with Rhino's parser: task boxes, nested lists and quotes, a footnote; a task and a table that need fixing & \see{sec:panelmarkdown} \\
+\bottomrule
+\end{xltabular}
+
+\section{The Markdown text example}
+
+In \lessonfile{00_overview.3dm}, right of the overview: Markdown made into Rhino text by \code{MarkdownText}. Double-click any of it to edit its
+Markdown, and click its links: a named view, a viewport, the V° logo, GH~11's \emph{Ring} component and canvas
+view, lesson 01, the overview, a web page (\cref{ch:markdowntext,ch:links}).

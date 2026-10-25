@@ -1,0 +1,68 @@
+% miniVivisection -- Manual (LaTeX)
+%
+% Created:   2026-10-19T19:04:20+03:00
+% Generator: Claude Code (Model: Claude Opus 5.5, claude-opus-5-5)
+%
+% Original prompt:
+%   use latex to create a nicer looking and more extensive minivivisection manual include short
+%   introduction and list of festure and explain the cocepts and tehn deteails for all all freatues
+%
+% Context:
+% - A typeset, longer companion to miniVivisection_Manual.md (the V°Help page): introduction,
+%   features at a glance, the concepts behind them, then every feature in detail, with the
+%   screenshots of docs/screenshots and a settings reference generated from MiniVivisectionSettings.cs.
+% - Build: python tools/make_manual_latex.py (LuaLaTeX) -> docs/manual/miniVivisection_Manual.pdf.
+
+\documentclass[a4paper, 10.5pt, oneside, open=any, parskip=false, numbers=noenddot, toc=flat]{scrbook}
+\input{style}
+\input{generated/version}
+
+\hypersetup{
+  pdftitle={miniVivisection -- Manual},
+  pdfauthor={miniVivisection},
+  pdfsubject={A plug-in for Rhino 8's Script Editor and Grasshopper: see your script's data in Rhino while you debug},
+  pdfkeywords={Rhino, Grasshopper, Python, debugging, Script Editor},
+}
+
+\begin{document}
+\frontmatter
+\input{chapters/00_title}
+\tableofcontents
+
+\mainmatter
+\part{Getting to know miniVivisection}
+\input{chapters/01_introduction}
+\input{chapters/02_features}
+\input{chapters/03_concepts}
+\input{chapters/04_start}
+
+\part{In the Script Editor}
+\input{chapters/05_watch}
+\input{chapters/06_code}
+\input{chapters/07_edit}
+\input{chapters/08_visualizers}
+\input{chapters/09_breakpoints}
+\input{chapters/10_running}
+\input{chapters/11_threads}
+\input{chapters/12_prompts}
+
+\part{In Grasshopper}
+\input{chapters/13_gh_debug}
+\input{chapters/14_gh_paused}
+\input{chapters/15_gh_panels}
+\input{chapters/16_gh_components}
+\input{chapters/17_gh_prompts}
+
+\part{In Rhino}
+\input{chapters/18_markdowntext}
+\input{chapters/19_links}
+
+\part{Reference}
+\input{chapters/20_examples}
+\input{chapters/21_reference}
+\chapter{Settings}\label{ch:settings}
+\input{chapters/22_settings_intro}
+\input{generated/settings}
+\input{chapters/23_limits}
+
+\end{document}

@@ -1,0 +1,65 @@
+{
+  "about": "RhinoAI's MCP tools as the Claude tab sees them through RhinoAI's router (mcp__rhino__<name>), grouped by behavior. From rhino_mcp_tools_reference.md for RhinoAI 0.3.0-wip (C:\\Dev\\RhinoAI at 0276594, 2026-09-28) plus the router's own slot tools. Update this file when RhinoAI's tools change; it is read when a Claude tab starts its first message. Tools not listed here are not allowed.",
+  "readOnly": [
+    "get_context",
+    "get_selection",
+    "list_objects",
+    "get_commands",
+    "g1_describe_component",
+    "g2_describe_component",
+    "g1_get_canvas_graph",
+    "g2_get_canvas_graph",
+    "g1_search_components",
+    "g2_search_components",
+    "list_slots"
+  ],
+  "modify": [
+    "get_viewport_image",
+    "set_camera",
+    "set_selection",
+    "zoom_to_layer",
+    "zoom_to_object",
+    "g1_start",
+    "g2_start",
+    "g1_apply_graph",
+    "g2_apply_graph",
+    "g1_place_component",
+    "g2_place_component",
+    "g1_place_slider",
+    "g2_place_slider",
+    "g1_connect",
+    "g2_connect",
+    "g1_connect_many",
+    "g2_connect_many",
+    "g1_delete_component",
+    "g2_delete_component",
+    "g1_solve_graph",
+    "g2_solve_canvas"
+  ],
+  "destructive": [
+    "run_command",
+    "run_python",
+    "run_csharp",
+    "open_doc",
+    "save_doc",
+    "close_doc",
+    "set_layer_material",
+    "g1_clear_canvas",
+    "g2_clear_canvas",
+    "manage_plugin_commands",
+    "spawn_slot",
+    "close_slot"
+  ],
+  "excluded": {
+    "ask_user": "its questions and answers go to RhinoAI's own panel, not to the Claude tab -- ask in your reply instead"
+  },
+  "guidance": [
+    "Start with get_context: selection, active viewport, document summary, Grasshopper canvases in one call.",
+    "Find objects with list_objects (filter by name, layer, type) or get_selection; select with set_selection, frame them with zoom_to_object or zoom_to_layer.",
+    "Look at the result with get_viewport_image: an image plus camera metadata.",
+    "Omit the slot argument: it uses this Rhino.",
+    "Grasshopper: g1_* tools for Grasshopper 1, g2_* for GH2; search_components / describe_component before placing, apply_graph to place and wire several at once.",
+    "Two run_python tools: script-editor's runs inside the user's paused script (its variables); rhino's (when allowed) runs a separate new script against the document -- use its injected __rhino_doc__, not scriptcontext.doc or rhinoscriptsyntax.",
+    "run_command (when allowed) runs any Rhino command string, e.g. _Box 0,0,0 10,10,10 _Enter, and returns the command line output."
+  ]
+}

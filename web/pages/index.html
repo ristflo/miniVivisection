@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>miniVivisection — see your Rhino script's data while you debug</title>
+<meta name="description" content="miniVivisection: see inside your running scripts. A debugger extension for Rhino 8's Script Editor and Grasshopper. One page in six looks: pick one.">
+<link rel="canonical" href="https://restweiss.de/miniVivisection/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="miniVivisection — see your Rhino script's data while you debug">
+<meta property="og:description" content="A debugger extension for Rhino 8's Script Editor and Grasshopper. One page in six looks: pick one.">
+<meta property="og:image" content="https://restweiss.de/miniVivisection/clinical-imaging/hero.jpg?b=365">
+<meta property="og:url" content="https://restweiss.de/miniVivisection/">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231b1f24'/%3E%3Ctext x='6' y='24' font-family='Georgia,serif' font-size='20' font-weight='700' fill='%23ffffff'%3EV%3C/text%3E%3Ccircle cx='24.5' cy='10.5' r='2.6' fill='none' stroke='%23e8585e' stroke-width='1.8'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #f4f3f0;
+    --card: #ffffff;
+    --ink: #1b1f24;
+    --ink-soft: #545b64;
+    --ink-faint: #6a7079;
+    --rule: #d9d6cf;
+    --shadow: 0 1px 2px rgba(20, 20, 30, .08), 0 14px 32px -18px rgba(20, 20, 30, .35);
+    --mark: #c1272d;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --mono: "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #101216;
+      --card: #181b21;
+      --ink: #e9e7e1;
+      --ink-soft: #b3b0a8;
+      --ink-faint: #8f8d86;
+      --rule: #2b2f36;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 16px 36px -18px rgba(0, 0, 0, .8);
+      --mark: #e8585e;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #101216;
+    --card: #181b21;
+    --ink: #e9e7e1;
+    --ink-soft: #b3b0a8;
+    --ink-faint: #8f8d86;
+    --rule: #2b2f36;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 16px 36px -18px rgba(0, 0, 0, .8);
+    --mark: #e8585e;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.6 var(--sans);
+  }
+  a { color: inherit; }
+  a:focus-visible, button:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
+
+  header { padding: clamp(40px, 8vw, 88px) 0 clamp(28px, 5vw, 48px); }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; letter-spacing: .01em; margin-bottom: clamp(28px, 5vw, 56px); }
+  .brand .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--mark); flex: none; }
+  .eyebrow { font: 600 .74rem/1.4 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--mark); margin-bottom: 14px; }
+  h1 { font: 700 clamp(2rem, 5.2vw, 3.4rem)/1.08 var(--serif); letter-spacing: -.01em; margin: 0 0 18px; }
+  h1 em { font-style: italic; color: var(--mark); }
+  .lead { font-size: 1.12rem; color: var(--ink-soft); margin: 0 0 22px; }
+  .meta { font: .86rem/1.5 var(--mono); color: var(--ink-faint); }
+  .meta a { color: var(--ink-soft); text-decoration-color: var(--rule); }
+
+  .choose { padding: 0 0 clamp(40px, 7vw, 80px); }
+  .choose h2 { font: 700 1.1rem/1.3 var(--sans); letter-spacing: .01em; margin: 0 0 6px; }
+  .choose .sub { margin: 0 0 22px; color: var(--ink-soft); }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
+    grid-auto-rows: 1fr;           /* every row, and so every card, the same height */
+    gap: 22px;
+    list-style: none; margin: 0; padding: 0;
+  }
+  .grid > li { display: flex; }   /* the card fills its cell: the text block grows, Open sits at the foot */
+  .card {
+    display: flex; flex-direction: column; flex: 1;
+    background: var(--card);
+    border-radius: 12px;
+    border-top: 4px solid var(--accent);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+    transition: transform .18s ease, box-shadow .18s ease;
+  }
+  .card:hover, .card:focus-visible { transform: translateY(-3px); box-shadow: 0 2px 4px rgba(20, 20, 30, .08), 0 24px 44px -20px rgba(20, 20, 30, .45); }
+  @media (prefers-reduced-motion: reduce) { .card { transition: none; } .card:hover { transform: none; } }
+  .card img { display: block; width: 100%; height: auto; aspect-ratio: 3 / 2; object-fit: cover; background: var(--rule); }
+  .card .text { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+  .card .name { font: 700 1.15rem/1.25 var(--serif); }
+  .card .look { color: var(--ink-soft); font-size: .95rem; margin: 0; }
+  .card .type { font: .76rem/1.5 var(--mono); color: var(--ink-faint); margin-top: auto; padding-top: 10px; }
+  .card .go { color: var(--accent); font-weight: 600; font-size: .95rem; }
+  .card .go::after { content: " \2192"; }
+  .clinical { --accent: #c1272d; }
+  .luminous { --accent: #b98f55; }
+  .orbital { --accent: #2d6ccf; }
+  .porcelain { --accent: #5c5c64; }
+  .victorian { --accent: #9a2f1f; }
+  .rain { --accent: #1f7a3a; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .rain { --accent: #39ff6e; } }
+  :root[data-theme="dark"] .rain { --accent: #39ff6e; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .porcelain { --accent: #9a9aa3; } }
+  :root[data-theme="dark"] .porcelain { --accent: #9a9aa3; }
+
+  footer { border-top: 1px solid var(--rule); padding: 22px 0 40px; color: var(--ink-faint); font-size: .9rem; }
+  footer p { margin: 6px 0; }
+  footer a { color: var(--ink-soft); }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="brand"><span class="dot" aria-hidden="true"></span>miniVivisection</div>
+    <div class="eyebrow">Rhino 8 &middot; Script Editor &middot; Grasshopper</div>
+    <h1>See inside your <em>running</em> scripts.</h1>
+    <p class="lead">
+      miniVivisection extends the debugger of Rhino 8's Script Editor. When a script stops, the geometry in its
+      variables appears in Rhino's viewports; you can edit it with Rhino's own tools and send it back into the
+      running script. Values show up right in the code, breakpoints get conditions, and Rhino stays usable the whole time.
+    </p>
+    <div class="meta">miniVivisection 0.2.0 &middot; build 365 &middot; built 2026-10-25 18:26 UTC+3 &middot; 7.1 MB, 62 files &middot; Windows &middot; Rhino 8 &middot; experimental &middot;
+      <a href="clinical-imaging/minivivisection-0.2.0-beta.365-rh8_36-win.yak">download</a> &middot; <a href="clinical-imaging/miniVivisection_Manual.pdf">manual (PDF)</a></div>
+  </div>
+</header>
+
+<main class="choose">
+  <div class="wrap">
+    <h2>One page, six looks</h2>
+    <p class="sub">Every page below says the same, from the same build: the features, the Grasshopper side, the screenshots, the download and the install steps. Only the look differs -- six of them, because a machine will happily dress one page six ways before lunch, and that is now the most annoying thing a machine can do. Pick the one that annoys you least.</p>
+    <ul class="grid">
+      <li><a class="card clinical" href="clinical-imaging/">
+        <img src="clinical-imaging/hero.jpg?b=365" width="1536" height="1024" alt="A ceramic rhinoceros under examination in an imaging lab" loading="lazy" decoding="async">
+        <span class="text">
+          <span class="name">Clinical imaging</span>
+          <p class="look">A quiet examination room: pale steel, white panels, a red marker for what matters. Numbered feature cards, a viewer frame around the picture.</p>
+          <span class="type">sans-serif &middot; light and dark</span>
+          <span class="go">Open</span>
+        </span>
+      </a></li>
+      <li><a class="card luminous" href="luminous-gallery/">
+        <img src="luminous-gallery/hero.jpg?b=365" width="1672" height="941" alt="A glass rhinoceros lit in a dark gallery" loading="lazy" decoding="async">
+        <span class="text">
+          <span class="name">Luminous gallery</span>
+          <p class="look">A dark room and a lit glass figure: gold on night, a serif face, the title set over a full-width picture.</p>
+          <span class="type">serif &middot; dark by default</span>
+          <span class="go">Open</span>
+        </span>
+      </a></li>
+      <li><a class="card orbital" href="orbital-theatre/">
+        <img src="orbital-theatre/hero.jpg?b=365" width="1536" height="1024" alt="A rhinoceros opened up in an orbital operating theatre" loading="lazy" decoding="async">
+        <span class="text">
+          <span class="name">Orbital theatre</span>
+          <p class="look">An operating theatre in orbit: hull grey, chrome and a status panel with LED bars; the facts of the build read like instruments.</p>
+          <span class="type">display sans-serif &middot; light and dark</span>
+          <span class="go">Open</span>
+        </span>
+      </a></li>
+      <li><a class="card porcelain" href="porcelain-futurism/">
+        <img src="porcelain-futurism/hero.jpg?b=365" width="1536" height="1024" alt="A porcelain rhinoceros dissected into clean parts" loading="lazy" decoding="async">
+        <span class="text">
+          <span class="name">Porcelain futurism</span>
+          <p class="look">White porcelain and soft chrome: the lightest of the six, rounded cards, the picture below the words.</p>
+          <span class="type">sans-serif &middot; light and dark</span>
+          <span class="go">Open</span>
+        </span>
+      </a></li>
+      <li><a class="card victorian" href="victorian-engraving/">
+        <img src="victorian-engraving/hero.jpg?b=365" width="1600" height="1067" alt="A Victorian engraving of a rhinoceros anatomy study" loading="lazy" decoding="async">
+        <span class="text">
+          <span class="name">Victorian engraving</span>
+          <p class="look">An old anatomy plate: paper, ink and a brass rule, plain headings in a serif face, the same text as the others without the chrome. For readers who would rather the machine had stayed in 1870.</p>
+          <span class="type">serif &middot; paper and ink</span>
+          <span class="go">Open</span>
+        </span>
+      </a></li>
+      <li><a class="card rain" href="code-rain/">
+        <img src="code-rain/hero.jpg?b=365" width="1672" height="941" alt="A rhinoceros made of falling green code in a hacker's den, a hooded figure at the terminals" loading="lazy" decoding="async">
+        <span class="text">
+          <span class="name">Code rain</span>
+          <p class="look">Green phosphor, falling characters, a hooded figure who is definitely not debugging anything legal. The only one of the six that looks like where the plug-in actually lives.</p>
+          <span class="type">monospace &middot; dark by default</span>
+          <span class="go">Open</span>
+        </span>
+      </a></li>
+    </ul>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>miniVivisection 0.2.0 &middot; an experimental plug-in for Rhino 8 &middot; <a href="clinical-imaging/miniVivisection_Manual.pdf">the manual</a></p>
+    <p>The rhinoceroses were imagined by a machine: no animal was examined, no painter was asked, and the groan that goes with that is understood. The plug-in underneath was debugged by a person, slowly, with the help of exactly the kind of machine everyone is cross with. It works anyway.</p>
+  </div>
+</footer>
+</body>
+</html>

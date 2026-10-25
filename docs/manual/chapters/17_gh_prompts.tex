@@ -1,0 +1,85 @@
+\chapter{Prompts in Grasshopper}\label{ch:ghprompts}
+
+The speech-bubble button on Grasshopper's toolbar (right, next to the V° button), or the command
+\code{miniVivisection GrasshopperPrompts}, opens a window with three tabs for the definition on the canvas:
+\vn{Claude}, \vn{Python} and \vn{PowerShell}. The window stays above Grasshopper's and is minimized with it.
+Closing it only hides it, so the chat, Python's namespace and PowerShell keep going.
+
+\shot{16_grasshopper_prompts}{One message in an empty definition: two sliders, a rectangle per floor, each turned by
+  Twist, lofted, and a note. Claude placed the sliders, wrote the \emph{Floor Rects} script component, added Loft,
+  wired them and wrote the note; its answer says what it checked, and that \keys{Ctrl+Z} takes it all back.}{fig:ghprompts}
+
+\section{V°Claude in a definition}\label{sec:ghclaude}
+
+Each message names the definition, whether the solver is on, and \textbf{the components selected on the canvas}.
+Select what you mean, then ask: “explain these”, “add a loft between these curves and a slider for the count”.
+
+\subsection{What Claude uses}
+
+\begin{description}
+  \item[RhinoAI's Grasshopper tools] (RhinoAI installed and its server running, \see{sec:rhinoai}): the whole canvas
+        with every object's wires and messages, the component library, placing components and sliders, wiring,
+        deleting, solving; the Rhino view as an image.
+  \item[miniVivisection's own tools,] for what RhinoAI doesn't do: the selection in detail; a parameter's data in full,
+        each item with its facts (a point's coordinates, a curve's length and whether it is closed, a Brep's area, volume
+        and whether it is solid, the bounding box); a script component's code; setting sliders (value, range), Panels
+        (text, Show as), toggles, value lists, a parameter's stored values and the Rhino objects it references; writing
+        a script component's code with its inputs and outputs; nicknames, enabled, preview, moving, groups; removing
+        wires; \textbf{Markdown notes} next to what it built; an image of the canvas.
+\end{description}
+
+Claude checks its work, the components' messages, the data, the canvas image, before it answers. Without RhinoAI,
+Claude can read and set values and write scripts and notes, but not place, wire or delete components: it says what to
+do instead.
+
+\subsection{One undo step per answer}
+
+Whatever one answer changed, components added, deleted, set, rewired, is one step in Grasshopper's undo list, named
+\emph{V°Claude: (your message)}. \keys{Ctrl+Z} takes it all back and \keys{Ctrl+Y} brings it again; \code{/undo} in the chat does
+the same when the last step is Claude's. The chat says what changed (\emph{2 changed, 1 added}).
+Setting: \setting{One undo step per answer}.
+
+\subsection{An answer stays with its definition}
+
+Claude's tools work on the definition the canvas shows. Showing another one while Claude answers stops the answer, and
+the chat says so, so that nothing changes the wrong definition. What it did until then is still one undo step in its own
+definition. There is one conversation per definition, continued when you come back to it.
+
+\subsection{Commands}
+
+\code{/explain} (the selected components, or the whole definition), \code{/fix} (the components with errors or warnings),
+\code{/undo}, \code{/history}, \code{/allow on|off} (RhinoAI's commands and scripts), \code{/new}, \code{/clear}, \code{/help}.
+\key{Tab} completes them.
+
+\paragraph{Read only.} With \setting{Claude may change the definition} on \emph{Read only}, Claude reads and explains, and proposes
+changes in words.
+
+\section{V°Python in Grasshopper}
+
+While a Grasshopper Python component is paused, input runs in its paused frame, as \vn{Python} does in the Script
+Editor. Otherwise it runs in the tab's own namespace, which has these helpers
+(\setting{V°Python: Grasshopper helpers}):
+
+\begin{xltabular}{\linewidth}{@{}P{0.28\linewidth}L@{}}
+\toprule
+\code{ghdoc()}          & the definition, a \code{GH_Document} \\
+\code{ghselected()}     & the selected objects \\
+\code{ghcanvas()}       & the canvas \\
+\code{ghfind('Name')}   & objects by nickname \\
+\code{show()}, \code{hide()}, \code{clear()}, \code{bake()} & as in the Script Editor (\see{sec:vpython}) \\
+\bottomrule
+\end{xltabular}
+
+\section{V°PowerShell in Grasshopper}
+
+A PowerShell prompt, started in the definition's folder (Documents for an unsaved one;
+\setting{V°PowerShell: start in the definition's folder}).
+
+\section{Settings}
+
+On the tab \emph{Grasshopper}, in \vn{Settings} and \menu{Tools\>Options\>miniVivisection}: the prompts
+button, each tab on or off (\vn{Claude} also needs the \vn{AI} switch, the others \vn{Debug}), whether the window stays
+with Grasshopper, what Claude may change, undo, the selection, RhinoAI's tools, how many items Claude reads per
+parameter, whether it may look at the canvas, \vn{Python}'s helpers and \vn{PowerShell}'s folder (\see{set:grasshopper}).
+Claude Code's path, the model, starting RhinoAI's server and \code{/allow}'s default are \vn{Claude}'s settings on the
+\emph{General} tab.

@@ -1,0 +1,137 @@
+\chapter{Running, pausing, stopping}\label{ch:running}
+
+This chapter is about control: how a script is started, how to pause it when it doesn't stop by itself,
+and how to get out of a hang without losing Rhino. The idea behind it is in \see{sec:runkinds}: a
+debug run can be paused, a plain run can only be stopped.
+
+\section{Run and Debug buttons}\label{sec:runbuttons}
+
+The Script Editor's own Run button switches: \key{F5} debugs when the script has a breakpoint, and
+otherwise runs it plainly, so \ui{Break now} can't pause it. miniVivisection puts two fixed buttons in
+its place:
+
+\begin{description}
+  \item[Run] always runs normally, also when there are breakpoints.
+  \item[Debug] always runs in the debugger, also without a breakpoint, so \keys{Ctrl+Alt+B} can pause it.
+        For an \code{async:true} script it is \ui{Debug (Async)}.
+\end{description}
+
+While debugging, the editor's own button shows as \ui{Continue}. \key{F5} is unchanged. Both buttons look
+like the editor's and gray out while a script runs. The same goes for a Grasshopper component's script
+editor (\see{sec:ghrunbuttons}). Setting: \setting{Run and Debug buttons}.
+
+\section{Break now: \texorpdfstring{\keys{Ctrl+Alt+B}}{Ctrl+Alt+B}}\label{sec:breaknow}
+
+\keys{Ctrl+Alt+B} pauses a script running in the debugger at its next line. This works even for a script
+without \code{async:true}, which holds Rhino's UI thread so that Rhino handles no other keys: the hotkey is
+taken by Windows, on a thread of its own, and only while a script runs.
+
+\begin{itemize}
+  \item \textbf{It answers with a sound at once}, since nothing on screen can change while a script holds the
+        UI thread: a soft \emph{asterisk} sound when it pauses or stops something, an error sound when there
+        is nothing it can do. \vn{Log} says why.
+  \item \textbf{It stops in your script.} While the script is inside a module it imported, it runs on until it
+        is back in the script (\setting{Break now stops in the script only}).
+  \item \textbf{It works again after Continue}, also without breakpoints.
+  \item \textbf{On a plain run} it stops the script instead, as \emph{Stop and record} says
+        (\see{sec:runpythonscript}).
+  \item The key is a setting: \setting{Break now hotkey}: \keys{Ctrl+Alt+B} (the default), \keys{Ctrl+Shift+B},
+        \key{Pause}, \keys{Ctrl+Break}, or Off.
+\end{itemize}
+
+\paragraph{Break now in V°Threads.} \vn{Threads} has a \ui{Break now} button that pauses at the next line in any
+thread, \ui{Break in thread} for the selected one, and a \ui{Debug} button (the editor's \menu{Run\>Debug}) that starts the script in the
+debugger without a breakpoint. From the command line: \code{miniVivisection BreakNow}.
+
+\begin{lesson}{lessons 15, 16}
+\lessonfile{15_deadlock.py}: Where is everyone?, Break now. \lessonfile{16_long_running_watch.py}: Break now in a
+running script, fix it while paused, run on.
+\end{lesson}
+
+\section{FreePause: Rhino usable while paused}\label{sec:freepause}
+
+With FreePause (on by default), Rhino stays at its normal \code{Command:} prompt while the script is paused,
+instead of the debugger's \ui{Select Action} prompt (\see{sec:uithread}). You can select objects, run commands
+and use the Gumball. You continue and step with the editor's buttons or keys: \key{F5}, \key{F10},
+\key{F11}, \keys{Shift+F11}, \keys{Shift+F5}.
+
+\begin{caution}[Commands while paused]
+Commands run while paused are nested inside the paused script. They can change or delete objects the
+script holds, and they become part of whatever undo record the run has open.
+\end{caution}
+
+\code{miniVivisection FreePause=Off} brings back the original prompt from the next pause.
+
+\begin{lesson}{lesson 11}
+\lessonfile{11_rhino_usable_while_paused.py}: FreePause.
+\end{lesson}
+
+\section{The editor stays open while debugging}\label{sec:keepeditor}
+
+The Script Editor minimizes itself when a script runs and comes back at a pause. While debugging, and for
+\code{\# async:true} scripts, it now stays open, so \vn{Threads} (Where is everyone?, Break now) can be used
+while the script runs. A plain run of other scripts still minimizes. Setting:
+\setting{Keep the Script Editor open while debugging}.
+
+\section{No freeze from another script's pause}\label{sec:nofreeze}
+
+Rhino's debugger has one lock for every script it debugs. While a script is paused on a thread of its own
+(\code{\# async:true}), a debug run starting on Rhino's UI thread, in another editor or a Grasshopper component, would wait
+for that lock and freeze Rhino. With miniVivisection it waits with Rhino usable, and goes on once you continue the paused
+script.
+
+\section{Scripts started from Rhino's command line}\label{sec:runpythonscript}
+
+\code{RunPythonScript} runs a script without the debugger: breakpoints never pause, and a script that hangs
+used to mean killing Rhino. The setting \setting{RunPythonScript command} chooses what happens:
+
+\begin{description}
+  \item[Normal:] It runs plainly, as before. \keys{Ctrl+Alt+B} can't stop it.
+  \item[Stop and record:] The default. It still runs plainly, at full speed and without the editor, but
+        \textbf{\keys{Ctrl+Alt+B} stops it}, and where it stopped is recorded: the file, the line, the
+        function, its values. An error that ends the script is recorded too. The command line says so.
+        \textbf{Open the Script Editor} afterwards (within two hours): it opens the script, goes to the line,
+        and an overlay explains what happened and why, with the call stack and the values of that moment
+        (\cref{fig:stoprecord}). No breakpoint is set. Run it again with \ui{Debug}, and \keys{Ctrl+Alt+B}
+        pauses it; or click the line's margin to stop there.
+  \item[Debug:] A Python~3 script (first line \code{\#! python 3}) opens in the Script Editor and runs in its
+        debugger, also without a breakpoint. The editor stays out of sight while the script runs. When a
+        breakpoint or \keys{Ctrl+Alt+B} pauses it, the editor comes up at that line and you debug on as
+        usual. A run without a pause leaves it minimized.
+\end{description}
+
+\shot{04_stop_and_record}{Stop and record: a script with an endless loop, run by \code{RunPythonScript} and
+  stopped with \keys{Ctrl+Alt+B}. The Script Editor opens it at line 12; the overlay shows the values of
+  that moment (\code{points}, over a thousand by then, and \code{turn}), the call stack, and how to debug it
+  instead.}{fig:stoprecord}
+
+Each run starts with a line on the command line: Python~2 or 3, and whether \keys{Ctrl+Alt+B} can pause it,
+with a hint to switch the setting. Scripts without \code{\#! python 3} run in RunPythonScript's own IronPython
+engine, as before; it has no debugger to stop.
+
+\begin{note}[The invisible editor]
+In \emph{Debug}, the Script Editor that runs the script is made invisible while it runs, unless you had it
+open yourself; an editor left open by the last run's pause is hidden again. It draws, loads and runs
+normally and keeps its place and size, but shows nothing. It comes up only when the script pauses.
+\end{note}
+
+\section{ScriptEditor Run, with Debug=On}\label{sec:scripteditorrun}
+
+Rhino's \code{ScriptEditor} command with \ui{Run} (also used by toolbar buttons) gets a \ui{Debug} option:
+
+\begin{lstlisting}[style=plain]
+_-ScriptEditor _Run _Debug=_On "C:\path\script.py"
+\end{lstlisting}
+
+\emph{Off} runs it plainly, as Rhino does. \emph{On} opens it in the Script Editor and runs it in the debugger,
+the editor invisible until a breakpoint or \keys{Ctrl+Alt+B} pauses it, as RunPythonScript's \emph{Debug}. The
+default follows \setting{RunPythonScript command}.
+
+\section{When an editor can't be reached}\label{sec:stoppaused}
+
+\code{miniVivisection StopPaused} stops every paused script: a way out when its editor is gone or hidden. A paused
+script whose editor window is closed for good is stopped too.
+
+\begin{lesson}{lesson 17}
+\lessonfile{17_runtime_error.py}: the debugger stops at a runtime error; values and call stack; Stop and record.
+\end{lesson}

@@ -1,0 +1,84 @@
+\chapter{Threads}\label{ch:threads}
+
+Python scripts that start threads (\code{threading.Thread}) are debugged thread by thread: a breakpoint
+pauses the thread that reaches it, and the others stop at their next line until you continue. Add
+\code{\# async:true} after \code{\#! python 3} so the script runs on a thread of its own and Rhino stays
+free (\see{sec:uithread}).
+
+\begin{lstlisting}
+#! python 3
+# async:true
+import threading, time
+
+def measure(n):
+    time.sleep(0.1 * n)
+    print("done", n)              # a breakpoint here pauses in each worker
+
+workers = [threading.Thread(target=measure, args=(i,), name="Worker-%d" % i) for i in range(4)]
+for w in workers: w.start()
+for w in workers: w.join()
+\end{lstlisting}
+
+\section{V°Threads}\label{sec:vthreads}
+
+\vn{Threads}, a tab at the bottom and a page on the left, has one row per thread at each pause, with where it is:
+
+\begin{xltabular}{\linewidth}{@{}P{0.32\linewidth}L@{}}
+\toprule
+\emph{paused here}              & the thread that hit the breakpoint \\
+\emph{stopped by the debugger}  & a thread held at its next line while another is paused \\
+\emph{waiting in join()}, \emph{wait()}, \emph{with} & waiting for another thread, an event, or a lock \\
+\emph{in library code}          & outside the script's files \\
+\emph{running}                  & not stopped \\
+\bottomrule
+\end{xltabular}
+
+Expand a row for its stack; double-click it to show its line in the open script.
+
+\paragraph{Where is everyone?} The same snapshot while the script runs, for hangs. When every thread waits,
+it says \emph{deadlock?}, with their lines. From the command line: \code{miniVivisection WhereIsEveryone}
+(any run: it prints each thread and where it is).
+
+\paragraph{Break now and Debug} are on \vn{Threads} too (\see{sec:breaknow}).
+
+\section{Watches in every thread}\label{sec:everythread}
+
+While the script runs more than one thread, each watch is also evaluated in the other threads, read only,
+and drawn once per thread: \code{pt @Worker-1}, each in a color of its own. A thread that hasn't got the
+name yet is listed as \emph{not (yet) in}.
+
+\begin{itemize}
+  \item Expand the watch: one row per thread, \emph{(paused thread)} first, then \code{@Worker-1}, … with each
+        value; expand a row for its members.
+  \item Each thread's row has its own eye: hide or show that thread's value. Hidden threads are kept by name
+        with the watch, so a thread stays hidden at the next pauses and runs.
+  \item The paused thread's value is labeled \code{pt @Worker-3 (paused)}.
+  \item Selecting a row highlights that thread's drawing; clicking a drawing selects its row. Bake works per
+        row; Edit in Rhino only for the paused thread.
+  \item \menu{V°Watch\>right-click\>In every thread} turns it off or on for a watch.
+\end{itemize}
+
+\begin{note}
+A paused thread holds Python's lock: threads not started yet can't start until you continue. A breakpoint
+without a condition in the first worker pauses before the others exist.
+\end{note}
+
+\section{The freeze guard}\label{sec:freezeguard}
+
+A script without \code{\# async:true} runs on Rhino's UI thread. A breakpoint in one of its worker threads
+would freeze Rhino: the UI thread waits for the worker, the worker waits at the breakpoint, and the editor's
+\ui{Continue} can't be clicked (\see{sec:threadsconcept}). Such a pause is skipped, and the Terminal and
+\vn{Log} say why and how to debug threads instead. Setting: \setting{Freeze guard for threads}.
+
+Grasshopper components always run on Rhino's UI thread, inside the solution. Their workers' breakpoints are
+skipped unless the component's script has \code{\# async:true} (\see{sec:ghasync}).
+
+\section{What isn't traced}
+
+Python code run by .NET threads, a \code{Task.Run} of a Python function for example, isn't traced: there are no
+breakpoints there. Such threads still show in \vn{Threads}.
+
+\begin{lesson}{lessons 14, 15}
+\lessonfile{14_threads_async.py}: V°Threads, thread conditions, watches in every thread.
+\lessonfile{15_deadlock.py}: Where is everyone?, Break now.
+\end{lesson}

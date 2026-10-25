@@ -1,0 +1,7 @@
+# LaTeX's own files (tools/make_manual_latex.py --keep), and what the script writes from the source
+*.aux
+*.log
+*.toc
+*.out
+*.lof
+generated/

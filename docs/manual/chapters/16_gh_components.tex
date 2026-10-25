@@ -1,0 +1,172 @@
+\chapter{The components: V°Edit, V°Text, V°Protect}\label{ch:ghcomponents}
+
+miniVivisection's Grasshopper part, \file{miniVivisection.GH.gha}, adds three components on the tab
+\ui{miniVivisection} -- \ui{V°} when Grasshopper's tabs don't fit: Grasshopper shortens tabs from the right
+until they do (with the mark chosen for the V names, \see{sec:vnames}). At \menu{miniVivisection\>Help} it
+adds V°Examples, V°Manual and V°Settings too (\see{sec:findexamples}).
+
+\section{V°Edit: Grasshopper geometry edited in Rhino}\label{sec:vedit}
+
+Tab \menu{miniVivisection\>Debug}. Some geometry is easier to fix by hand than with numbers. V°Edit sits in a
+definition between two components, puts chosen items of its input into Rhino as ordinary objects, and feeds your
+edits back into the definition. They are saved with the \file{.gh}.
+
+\shot{11_v_edit}{Lesson GH~4: V°Edit between \emph{Profiles} and \emph{Loft} puts profile [1] into Rhino as an edit object
+  (\emph{1 in Rhino}), with the name dot \emph{V°Edit [1]}. \ui{Reset sel.} and \ui{Reset all} drop edits.}{fig:vedit}
+
+\subsection{Inputs and outputs}
+
+\begin{description}
+  \item[Geometry] an item, a list or a tree.
+  \item[Index] which items to edit, any mix of:
+    \begin{itemize}
+      \item \textbf{Indices}: positions in every branch; negative counts from the end. Or per branch, with an index
+            \emph{tree} matched by path;
+      \item \textbf{Paths}: \code{\{0;2\}} as text, or a Path parameter: only those branches, all their items, or with
+            indices the items at them;
+      \item \textbf{Path with index}: \code{\{0;2\}[3]}, that one item.
+    \end{itemize}
+    Nothing connected: item 0.
+  \item[Outputs,] in the input's exact tree: \emph{Geometry}, with your edits in place, and \emph{Edited}, True or False
+        for every single item.
+\end{description}
+
+\subsection{Editing}
+
+\begin{enumerate}[label=\arabic*.]
+  \item The items at \emph{Index} show in Rhino as ordinary objects, \textbf{blue}, each with a name dot and tail showing
+        the component's nickname. Rename the component, and the dots follow at once.
+  \item Edit them with anything: Gumball, control points, Move, Scale, Rebuild.
+  \item When you finish, the edited geometry \textbf{replaces} its item, and the definition recomputes from the component on.
+  \item The object turns \textbf{red-orange}, its dot says \emph{edited}, the component counts the edits, and a balloon
+        on it explains.
+\end{enumerate}
+
+Every later solution uses your edits instead of the incoming items, also when the input changes. When the input
+changes so that another kind of item is at an edited place, the edit isn't used there: a warning names it, and
+\ui{Reset all} drops it.
+
+\subsection{Undo, reset, save}
+
+\begin{itemize}
+  \item \ui{Reset sel.} drops the edits of the edit objects selected in Rhino (orange while one is selected);
+        \ui{Reset all} drops every edit (orange while there are any). The menu's \ui{Reset selected edits} and
+        \ui{Reset all edits (n)} do the same.
+  \item Undo in Rhino back to the input's geometry drops an edit; Grasshopper's Undo takes back an edit made in
+        Rhino. Grasshopper's save prompt includes the edits.
+  \item The menu has \ui{Select edit objects in Rhino}, \ui{Edit objects in Rhino} (show or hide them), \ui{Name dots in Rhino},
+        and \ui{About V°Edit…}, with its version, build and build time, and the plug-in's.
+  \item \emph{Preview}: Grasshopper's own preview of the Geometry output, as for other components.
+\end{itemize}
+
+\begin{note}[The edit objects belong to the component]
+They are not part of the model: they go away while Grasshopper is minimized or hidden, another definition is on
+the canvas, or the component is disabled; when it is deleted or the definition closed. They are never saved into
+the \file{.3dm}, hidden or locked ones neither, and don't mark the model as changed. (Export Selected exports them
+when they are selected.)
+\end{note}
+
+\section{V°Text: a Panel's text as Rhino text}\label{sec:vtext}
+
+Tab \menu{miniVivisection\>Text}. V°Text makes Rhino text of a Panel's text, the way the Panel shows it: Markdown laid
+out, a script as code, plain text with its lines kept. Notes and scripts become drawing annotation in the model, in
+the format they have on the canvas.
+
+\shot{12_v_text}{A Markdown \emph{Notes} Panel and a Python \emph{Ring script} Panel, each feeding a V°Text. Rhino shows the
+  Markdown laid out and the script as code. The red frames are the \emph{Bounds} outputs, the crosses the anchors.}{fig:vtext}
+
+\subsection{What it makes}
+
+\begin{description}
+  \item[Markdown] as \code{MarkdownText} lays it out (\cref{ch:markdowntext}): headings, bold, italic, code, lists, task
+        boxes, quotes, code blocks, tables, rules, links with their bars.
+  \item[A Python or C\# script] as code: Consolas, line numbers in a gutter, a frame, each token in its syntax color (one
+        text object per color, lined up).
+  \item[Anything else] as plain text, its lines kept.
+\end{description}
+
+\ui{Show as} in its menu: \ui{Autodetect (code or Markdown)} follows the Panel the text comes from, its own
+\ui{V° Show as}, else what it is; or \ui{Markdown (rendered)}, \ui{Python code}, \ui{C\# code}, \ui{Plain text}.
+
+\subsection{Inputs}
+
+\begin{xltabular}{\linewidth}{@{}P{0.16\linewidth}L@{}}
+\toprule
+\ui{Text}   & connect a Panel; a list is taken as its lines \\
+\ui{Height} & a paragraph's or a line's text height (Rhino's text height: capital letters). \textbf{10~pt} by default: points made the model's units (10~pt = 3.53~mm), or model units (menu: \emph{Sizes in points / in model units}) \\
+\ui{Anchor} & a point; the menu chooses the text's corner at it: \emph{top left} (the default), \emph{top right}, \emph{bottom left}, \emph{bottom right} \\
+\ui{Angle}  & turned about the anchor in the world's XY plane (radians; \emph{Degrees} in the input's menu) \\
+\ui{Width}  & the width Markdown and plain text wrap in, in the Height's unit; 0: no wrapping. Without a Width it wraps about as wide as the Panel (plain text only when the Panel wraps); making the Panel wider or narrower, or changing its Show as, updates it \\
+\ui{Font}   & the base font of Markdown and plain text (code stays in Consolas); nothing: the dimension style's. Right-click \ui{Set one Text} lists the installed fonts, each shown in itself: type to filter, double-click or OK to take one \\
+\bottomrule
+\end{xltabular}
+
+\subsection{Outputs}
+
+\begin{description}
+  \item[Text] the Rhino text objects as the component draws them, a token or a part each.
+  \item[Decorators] everything else it is drawn with: the lines of code frames, rules, quotes' bars, tables' grids, and
+        the links' bars (hatches). Both placed and turned as the text is; their previews are off, since the component draws
+        the text in its colors.
+  \item[Bounds] the text's bounding rectangle, aligned with it.
+  \item[Anchor] the anchor point.
+\end{description}
+
+The component's message says what it shows and where it is anchored (\emph{Markdown, top left}). The preview draws the text
+in Grasshopper's preview color, code in its syntax colors, green while selected.
+
+\paragraph{Bake} (right-click \ui{Bake}) makes Rhino objects, grouped; a token's color is its object's color. Baked Markdown
+keeps what \code{MarkdownText}'s parts keep: double-click any of it to edit its Markdown in place, and its links work. Links in
+the preview aren't clickable: bake it.
+
+\section{V°Protect: is it still the original?}\label{sec:vprotect}
+
+Tab \menu{miniVivisection\>Files}. Lessons, templates and handed-out definitions get changed by accident. V°Protect tells
+whether a definition, or other files, are still the originals, and puts them back. It has no inputs and no outputs; its
+menu sets everything, saved with the definition.
+
+\subsection{Setting it up}
+
+\begin{description}
+  \item[Files:] None set: the definition's own file (\ui{Files: this definition}). In its submenu: \ui{Add files...}
+        (several at once), \ui{Add this definition}, each file's \ui{Remove}, \ui{Remove all (keep this definition)}.
+  \item[Where the originals go:] \ui{Archive}: by default \file{(the definition's name).protect.zip} next to it;
+        \ui{Choose...} another (an archive that exists is added to), or \ui{Next to the definition (the default)}. Or
+        \ui{Keep the originals in the definition itself}: no archive. The other files' originals are kept in the component, saved with the definition, which grows by
+        their size; the definition keeps its own original by a fingerprint of every object's saved state.
+  \item[Store now:] Stores at once. A definition not saved yet can't be kept; it says so.
+\end{description}
+
+In setup, the files are hashed (MD5) and copies stored in the archive whenever the component solves: placed, opened, a
+setting changed, \ui{Store now}. Two files of the same name in different folders are two entries; a file changed since is
+replaced, an unchanged one left as it is. Its \textbf{message balloon} says per file \emph{added}, \emph{replaced},
+\emph{unchanged} or \emph{missing} (a warning); its tooltip lists the files, the archive and the whole log.
+
+\subsection{Protect and Revert}
+
+\begin{description}
+  \item[Protect] (the button under it, or its menu): the definition is saved and stored as the original, with the component
+        protecting it. From then on the component looks like a Grasshopper Button: in front it says \textbf{original}, the
+        component \textcolor{mvgreen}{green}, while the file on disk is the original and the open definition has no changes;
+        \textbf{modified}, the component \textcolor{mvred}{red}, when either isn't so. Then a gray \textbf{Revert} button. Its
+        balloon and tooltip say which, and how the other files stand.
+  \item[Revert] (the button while \emph{modified}, or \ui{Revert to the original} in its menu) asks first. When the file
+        on disk isn't the original, the archived copy is written over it; then the definition is opened again from the
+        file, and the changes of the open one are dropped.
+  \item[Back to setup] (its menu: right-click anywhere on it) ends the protection: its files and where their originals
+        go can be changed again.
+\end{description}
+
+\paragraph{In a Panel's Markdown} \code{\{\{protected\}\}} shows \emph{protected} or \emph{not protected},
+\code{\{\{modified\}\}} \emph{modified}, \emph{not modified} or \emph{not tracked} (not protected): the definition's
+V°Protect's state, following it as it changes. A link \code{[Revert](protect:revert)} is its \ui{Revert}, asked first.
+V°Text shows the fields the same way. For Rhino files: \code{ProtectModel} (\see{sec:protectmodel}).
+
+\begin{note}
+V°Protect has no password and no write protection: it tells, and it puts back.
+\end{note}
+
+\begin{lesson}{the overview and every Grasshopper lesson}
+\lessonfile{gh0_overview.gh} has a V°Protect to try: move its slider, it turns red; \ui{Revert} puts the overview back. Every
+Grasshopper lesson has one under its text, keeping the original in the lesson itself. \lessonfile{gh4_v_edit}: V°Edit.
+\end{lesson}

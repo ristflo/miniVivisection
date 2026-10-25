@@ -1,0 +1,47 @@
+\chapter{Limits and troubleshooting}\label{ch:limits}
+
+\section{Limits}
+
+\begin{description}
+  \item[Experimental.] miniVivisection relies on internal code of Rhino~8's Script Editor (RhinoCode 8.36 when it was
+        written). A Rhino service release can change it. The plug-in then follows nothing; it doesn't fail.
+  \item[Python~3 first.] Inline values, tooltips with scope, the Python prompt in the paused frame and Edit in Rhino are
+        for Python~3 scripts only.
+  \item[IronPython~2] (\code{\#! python2}): FreePause, step over across modules, \vn{Watch} drawing and baking of plain variable
+        names, the hover preview and tooltip values of plain names, the value tree, conditional breakpoints, hit counts and
+        logpoints work. Left out, quietly: expressions in watches and the Watch tab, scoped tooltips, values at the ends of
+        lines, “was”, Edit in Rhino and Auto edit, visualizers and Interpret as for raw Python data, the Python prompt and
+        Claude's evaluation in the paused frame. While one is debugged, an amber notice on \vn{Python} and \vn{Claude} says so.
+        Full IronPython~2 support is planned.
+  \item[C\#:] Watches of plain variable names and conditional breakpoints with a small evaluator; largely untested.
+  \item[Two watch lists.] The editor's Watch tab shows values; \vn{Watch} draws. Each has its own list.
+  \item[Grasshopper:] Python~3 script components through their own script editor. The legacy GhPython (IronPython~2)
+        component isn't covered. With a component's editor closed and no hidden editor, \keys{Ctrl+Alt+B} can only stop it,
+        not pause it.
+  \item[Not traced:] Python code run by .NET threads.
+\end{description}
+
+\section{Troubleshooting}
+
+\begin{xltabular}{\linewidth}{@{}P{0.34\linewidth}L@{}}
+\toprule
+\textsf{\textbf{What happens}} & \textsf{\textbf{What to check}} \\ \midrule
+Nothing is drawn, no values in the code & Is the script paused? Is \vn{Debug} ON in the top bar? Is \setting{Draw watches in Rhino} on? Is the watch's eye open? \\
+\key{F5} doesn't stop                   & Without a breakpoint, \key{F5} is a plain run. Use \ui{Debug} (\see{sec:runbuttons}). \\
+\keys{Ctrl+Alt+B} does nothing          & An error sound means nothing could be paused or stopped; \vn{Log} says why. A plain run with \setting{RunPythonScript command} on \emph{Normal}, or a Grasshopper component in \emph{Normal} mode, is left alone. \\
+A breakpoint in a thread doesn't pause  & The freeze guard skipped it: the script runs on Rhino's UI thread. Add \code{\# async:true} (\see{sec:freezeguard}). \\
+A condition always pauses               & It fails: a typo or a missing name. Its marker is red, and \vn{Log} says why. \\
+The editor of a paused script is gone   & \code{miniVivisection StopPaused}. \\
+Claude says “the rhino MCP didn't answer” & RhinoAI's server isn't running in this Rhino: run \code{MCPStart}, or turn on \setting{Start RhinoAI's server for Claude} (\see{sec:rhinoai}). \\
+Claude doesn't work in the model        & RhinoAI isn't installed, or its server isn't running; or the tool is a destructive one: \code{/allow on}. \\
+Grasshopper shows “expired during a solution” & Something recomputed while a component was paused; it should be held back (\see{sec:ghheld}). Report it with the detailed log. \\
+A Grasshopper component can't be deleted & A component is paused; deleting waits for the pause to end. \\
+After a Rhino update, a feature is gone & The Script Editor's internal code may have changed. Look at the detailed log, and for a newer miniVivisection. \\
+\bottomrule
+\end{xltabular}
+
+\section{Reporting a problem}
+
+Note the version and build (the top bar, or the load message), what you did, and what happened. Open the log folder
+(\code{miniVivisection LogFolder}) and attach \file{minivivisection.log}, or \file{minivivisection.crashed-(time).log} after a crash. For
+a problem that is hard to see, set \setting{Detailed log} to \emph{Debug} or \emph{Trace} for the area concerned first.

@@ -1,0 +1,257 @@
+\chapter{Concepts}\label{ch:concepts}
+
+The features in this manual rest on a handful of ideas. Once these are clear, the rest follows: why a
+value can be drawn but not edited, why \keys{Ctrl+Alt+B} sometimes pauses and sometimes stops, why a
+Grasshopper component needs its script editor to be paused. Each idea gets a short section here; the
+chapters after it give the details.
+
+\section{Debugging in two minutes}\label{sec:debugging}
+
+A \emph{debugger} runs your script and stops it at a line you choose. While it is stopped, or
+\emph{paused}, you can look at every variable and see what the script really computed, not what you
+think it computed.
+
+\begin{xltabular}{\linewidth}{@{}P{0.3\linewidth}L@{}}
+\toprule
+\textsf{\textbf{Term}} & \textsf{\textbf{What it means}} \\ \midrule
+\ui{Breakpoint}            & A red dot left of a line number. Click there to set or remove one. The script pauses when it reaches that line. \\
+\ui{Debug} \key{F5}        & Runs the script in the debugger, so it stops at breakpoints. (\key{F5} without a breakpoint is a plain run; miniVivisection's \ui{Debug} button always debugs, \see{sec:runbuttons}.) \\
+\ui{Paused}                & The script waits. The highlighted line is the \emph{next} one to run; it has \emph{not} run yet. \\
+\ui{Continue} \key{F5}     & Runs on to the next breakpoint, or to the end. \\
+\ui{Step over} \key{F10}   & Runs one line, then pauses again. \\
+\ui{Step into} \key{F11}   & If the line calls a function, goes into it and pauses at its first line. \\
+\ui{Step out} \keys{Shift+F11} & Finishes the current function and pauses where it was called. \\
+\ui{Stop} \keys{Shift+F5}  & Ends the run. \\
+\ui{Variables} tab         & The editor's list of the paused script's variables, at the bottom. \\
+\bottomrule
+\end{xltabular}
+
+The method is always the same: guess where things go wrong, set a breakpoint just before that place,
+look at the values, step forward, and narrow it down until you see the line that makes a wrong value.
+miniVivisection makes the \emph{look} part faster: you see values as geometry, in the code, and in
+Rhino at once.
+
+\section{The paused frame}\label{sec:frame}
+
+When the debugger pauses, the script is in the middle of a function, a \emph{frame}, with its local
+variables, the globals of its module and everything it imported. Nearly everything miniVivisection
+does happens in this frame:
+
+\begin{itemize}
+  \item A watch such as \code{curves[0].PointAtEnd} is a Python expression, evaluated in the paused
+        frame at every pause. It sees the same names the paused line sees.
+  \item A tooltip reads a name \emph{as Python sees it at the hovered line}. Over a global \code{crv}
+        at module level you get the global curve, even while paused inside a function with a local
+        \code{crv}.
+  \item \vn{Python} runs what you type in the paused frame. An assignment changes the script's
+        variable, and the script continues with the new value.
+  \item Editing in Rhino writes the edited geometry back with an assignment in the paused frame.
+\end{itemize}
+
+Because watches run again at every pause, an expression with a side effect, such as
+\code{curves.pop()}, would act each time. Keep watches to expressions that only read.
+
+Python evaluation needs the \emph{paused thread}: the frame is found by walking up that thread's
+stack. When the script runs on Rhino's UI thread, the plug-in is already there. When it runs on a
+thread of its own, the plug-in hands the work to that thread through FreePause's wait loop
+(\see{sec:freepause}).
+
+\section{Drawn, not added}\label{sec:drawn}
+
+What \vn{Watch} shows in the viewports is \emph{drawn}: a display conduit paints copies of the values
+on top of the scene at every redraw. Nothing is added to the document, nothing is saved in the
+\file{.3dm}, and nothing has to be cleaned up. When the run ends, the drawing goes away.
+
+Two features make real Rhino objects instead, on purpose:
+
+\begin{description}
+  \item[Bake] copies drawn values into the document, on the layer \file{Script Editor Watch::Baked}, to
+        keep them (\see{sec:bake}).
+  \item[Edit in Rhino] turns a value into objects on the layer \file{Script Editor Watch::Edit}, so you
+        can edit them with Rhino's tools. They are removed when the run ends (\see{sec:editinrhino}).
+\end{description}
+
+The same principle applies in Grasshopper: \vn{Edit}'s edit objects belong to the component, not to the
+model. They are never saved in the \file{.3dm} and don't mark the model as changed (\see{sec:vedit}).
+
+\section{Write-back}\label{sec:writeback}
+
+Editing in Rhino is a round trip:
+
+\begin{center}
+\begin{tikzpicture}[node distance=7mm and 9mm, every node/.style={font=\sffamily\small},
+    box/.style={draw=mvbluemid, fill=mvbluelight, rounded corners=3pt, minimum height=9mm, inner xsep=6pt, align=center},
+    arr/.style={-{Stealth[length=2.5mm]}, mvblue, line width=0.8pt}]
+  \node[box] (var) {Variable in the\\paused frame};
+  \node[box, right=22mm of var] (obj) {Rhino object\\(layer …::Edit)};
+  \node[box, right=12mm of obj] (edit) {You edit it\\Gumball, points, Move};
+  \node[box, below=9mm of obj] (back) {Converted to the variable's type,\\assigned in the paused frame};
+  \draw[arr] (var) -- node[above, font=\sffamily\scriptsize, text=mvblue]{Edit in Rhino} (obj);
+  \draw[arr] (obj) -- (edit);
+  \draw[arr] (edit) |- node[near end, below, font=\sffamily\scriptsize, text=mvblue]{a command ends} (back);
+  \draw[arr] (back) -| node[near end, left, font=\sffamily\scriptsize, text=mvblue]{the script continues with it} (var);
+\end{tikzpicture}
+\end{center}
+
+The edited geometry is turned back into the variable's own type: a moved point into a \code{Point3d}, a
+curve that is still a line into a \code{Line}, and so on. A list item is written back as
+\code{curves[2] = …}. Rhino's Undo and Redo write the earlier or later geometry back too.
+
+\begin{caution}[A write-back lasts for this run]
+What you change while the script is paused, by dragging points or typing into \vn{Python}, changes
+the running script's data, not its code. When you have found the fix, change the code.
+\end{caution}
+
+\section{Rhino's UI thread and FreePause}\label{sec:uithread}
+
+Rhino has one \emph{UI thread}: it draws the viewports, reads the keyboard and mouse, and runs
+commands. A script started from the Script Editor normally runs on that same thread. When such a
+script pauses, Rhino's own debugger keeps the thread busy in a \ui{Select Action} prompt on the command
+line: typed text goes to that prompt, objects can't be selected, and only toolbar macros get through.
+
+\emph{FreePause} replaces that prompt. While the script is paused, Rhino sits at its normal
+\code{Command:} prompt and keeps its message loop going. You can select, run commands, use the Gumball
+and orbit the view. You continue and step with the Script Editor's buttons or keys
+(\key{F5}, \key{F10}, \key{F11}, \keys{Shift+F11}, \keys{Shift+F5}).
+
+A script can also run on a thread of its own: add \code{\# async:true} after its first line
+(\code{\#! python 3}). Rhino then stays free even while the script runs, not only while it is paused.
+Such a script mustn't use Rhino's UI directly. The difference matters for threads (\see{sec:freezeguard})
+and for Grasshopper (\see{sec:ghasync}).
+
+\section{Debug runs and plain runs: pause or stop}\label{sec:runkinds}
+
+A script can run in two ways, and the difference decides what \keys{Ctrl+Alt+B} can do with it.
+
+\begin{description}
+  \item[A debug run] is traced by the debugger line by line. It stops at breakpoints, and
+        \keys{Ctrl+Alt+B} \emph{pauses} it at its next line: you can look at it, step, and continue.
+  \item[A plain run] runs at full speed, without the debugger. Breakpoints are ignored. It can't be
+        paused, but with miniVivisection \keys{Ctrl+Alt+B} can \emph{stop} it, and the plug-in records
+        where it was: the file, the line, the call stack and the values of that moment. The Script
+        Editor later opens the script at that line and explains what happened (\emph{Stop and record}).
+\end{description}
+
+\begin{center}
+\begin{tikzpicture}[every node/.style={font=\sffamily\small},
+    run/.style={draw=mvbluemid, fill=mvbluelight, rounded corners=3pt, minimum width=36mm, minimum height=9mm, align=center},
+    res/.style={draw=#1, fill=#1!8, rounded corners=3pt, minimum width=52mm, minimum height=9mm, align=center},
+    arr/.style={-{Stealth[length=2.5mm]}, line width=0.8pt}]
+  \node[run] (dbg) at (0,0) {\textbf{Debug run}\\Debug button, F5 with a breakpoint};
+  \node[run] (pln) at (0,-2.1) {\textbf{Plain run}\\Run, RunPythonScript, Grasshopper};
+  \node[res=mvgreen] (pause) at (7.2,0) {\textbf{pauses} at the next line\\look, step, continue};
+  \node[res=mvorange] (stop) at (7.2,-2.1) {\textbf{stops}, and records where\\the editor opens at that line};
+  \draw[arr, mvgreen] (dbg) -- node[above]{Ctrl+Alt+B} (pause);
+  \draw[arr, mvorange] (pln) -- node[above]{Ctrl+Alt+B} (stop);
+\end{tikzpicture}
+\end{center}
+
+Which kind a script gets depends on how it is started:
+
+\begin{itemize}
+  \item In the Script Editor, \key{F5} debugs only when the script has a breakpoint, otherwise it is a
+        plain run. miniVivisection's \ui{Run} and \ui{Debug} buttons make it explicit (\see{sec:runbuttons}).
+  \item \code{RunPythonScript} and \code{ScriptEditor Run} run plainly, unless their \emph{Debug} mode is chosen
+        (\see{sec:runpythonscript}).
+  \item Grasshopper script components run plainly, unless \emph{Always debug} is on or the run was
+        started from the component's script editor with \ui{Debug} (\see{sec:ghmodes}).
+\end{itemize}
+
+\keys{Ctrl+Alt+B} is a Windows hotkey, taken only while a script runs. A script on Rhino's UI thread
+holds that thread, so nothing on screen can change; the hotkey answers with a sound instead. A soft
+sound means it paused or stopped something; an error sound means there was nothing it could do.
+
+\section{Threads}\label{sec:threadsconcept}
+
+Python scripts can start threads (\code{threading.Thread}). The debugger traces each of them. When one
+thread reaches a breakpoint and pauses, the others stop at their next line, until you continue.
+\vn{Threads} lists every thread and where it is.
+
+A paused \emph{worker} thread is dangerous when the script runs on Rhino's UI thread: the UI thread
+waits for the worker (in \code{join()}, say), the worker waits for you, and you can't click anything,
+because the UI thread is the one that would handle the click. Rhino freezes. miniVivisection's
+\emph{freeze guard} skips such a pause and says why (\see{sec:freezeguard}). To debug threads, run
+the script with \code{\# async:true}.
+
+\section{Grasshopper: components run inside a solution}\label{sec:ghconcept}
+
+A Grasshopper script component is not a script you run once. It runs once per item or per branch of
+its input data, inside a Grasshopper \emph{solution}, on Rhino's UI thread. Three things follow:
+
+\begin{description}
+  \item[Runs have names.] A component that fails for some data fails in particular runs. miniVivisection
+        names them by run number, branch (\code{\{0;3\}}) and item (\code{\{0;3\}[2]}), and a breakpoint can
+        pause for exactly that data (\see{sec:failingruns}).
+  \item[The debugger lives in the component's editor.] A component's breakpoints and stepping belong to
+        its script editor window. With the editor closed, there is no debugger to pause in, so
+        \keys{Ctrl+Alt+B} can only stop the component. Under \emph{Always debug}, miniVivisection gives
+        every Python~3 component a hidden editor, so it can pause even if you never opened it
+        (\see{sec:hiddeneditors}).
+  \item[A pause holds the solution.] While a component is paused, its solution is unfinished.
+        Grasshopper doesn't allow recomputing during a solution. miniVivisection keeps the canvas usable,
+        computes changes downstream with the paused component's last data, marks what depends on the
+        paused component, and runs everything properly when the pause ends (\cref{ch:ghpaused}).
+\end{description}
+
+The three modes for script components choose between these behaviors: \emph{Normal} (plain runs,
+left alone), \emph{Stop and record} (plain runs, \keys{Ctrl+Alt+B} stops a hang, the default) and
+\emph{Always debug} (every recompute in the debugger).
+
+\section{Markdown as documentation}\label{sec:markdownconcept}
+
+Markdown is plain text with light marks: \code{\# Heading}, \code{**bold**}, \code{*italic*},
+\code{`code`}, \code{- list}, \code{[text](target)}. miniVivisection uses it in three places, with the same
+parser and the same link targets:
+
+\begin{itemize}
+  \item \textbf{Panels in Grasshopper} show Markdown rendered and scripts as code (\cref{ch:panels}).
+  \item \textbf{Markdown text in Rhino}, made by the \code{MarkdownText} command, is real Rhino text that
+        you edit by double-clicking it (\cref{ch:markdowntext}).
+  \item \vn{Text} turns a Panel's text into Rhino text in Grasshopper (\see{sec:vtext}).
+\end{itemize}
+
+Links connect these documents with what they describe: a note on the canvas can lead to a
+component, a Rhino object, a named view, another definition, a model or a script, and back
+(\cref{ch:links}). The lessons use this: each ends with links to the one before and after, and an
+overview links to all of them.
+
+\section{Prompts and AI}\label{sec:aiconcept}
+
+Three prompts work on the paused script, in the Script Editor and in a window of their own for
+Grasshopper:
+
+\begin{description}
+  \item[\vn{Python}:] Python in the paused frame. Try a fix on live data before you change the code.
+  \item[\vn{PowerShell}:] A shell in the script's folder, for files, git and tools.
+  \item[\vn{Claude}:] A chat with Claude Code. Claude can read the script, the paused values and the run's
+        errors, set breakpoints, step, propose edits and, with RhinoAI, work in the model and in
+        Grasshopper.
+\end{description}
+
+Claude acts only through tools the plug-in gives it, and you keep control. Code it wants to run waits
+for your \code{/run}, edits to a paused script wait until the run ends, RhinoAI's destructive tools stay
+off until \code{/allow on}, and in Grasshopper each answer is one undo step (\see{sec:claude}).
+
+\section{The V names and the two switches}\label{sec:vnames}
+
+Everything miniVivisection adds is named with a V, so it is told apart from the editor's own:
+\vn{Watch}, \vn{Threads}, \vn{Python}, \vn{PowerShell}, \vn{Claude}, \vn{Log}, \vn{Settings}, \vn{Help},
+the Grasshopper components \vn{Edit}, \vn{Text} and \vn{Protect}, and the switches \vn{AI} and \vn{Debug}.
+Its items in Grasshopper's menus start with \ui{V°} too (\ui{V° Show as}, \ui{V° Debug this component}).
+
+The mark between the V and the name is a setting (\setting{Mark in the V names}): \ui{°} (the default),
+\ui{|}, \ui{∣} (a bar that stays on the line), or either bar with thin spaces (\ui{V\,∣\,Watch}). It applies
+to Script Editors opened afterwards, and to \vn{Edit} and \vn{Text} components placed afterwards. This manual
+writes V°Watch. To search for it, type V° (\keys{Alt+0176} on the number pad) or just the name.
+
+Two switches in the Script Editor's top bar turn miniVivisection on and off as a whole:
+
+\begin{xltabular}{\linewidth}{@{}P{0.18\linewidth}L@{}}
+\toprule
+\vn{Debug} & Every debugging feature: the V tabs and pages, drawing, tooltip values, line-end values,
+             the hover preview, watch expressions, conditional breakpoints (off: every breakpoint pauses),
+             FreePause, the menu items. Off, they are all gone; on, everything is back as it was, with the
+             settings unchanged. \\
+\vn{AI}    & The \vn{Claude} tab and page. Off, they are hidden in every Script Editor; their sessions keep running. \\
+\bottomrule
+\end{xltabular}

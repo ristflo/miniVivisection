@@ -1,0 +1,519 @@
+% miniVivisection -- title page designs for the manual (LaTeX)
+%
+% Created:   2026-10-19T19:41:44+03:00
+% Updated:   2026-10-19T20:21:14+03:00 -- designs 17-25, the outlined V° in the typographic layout
+% Generator: Claude Code (Model: Claude Opus 5.5, claude-opus-5-5)
+%
+% Original prompt:
+%   in a seperate latex /pdf file generate a varaiety of different designs for the first page, the
+%   title page, of the manual, with color, whiou out color, with whithout screen shot, with the V° logo
+%   as the main visual elemtn, etc.
+%
+% Context:
+% - Twenty-five alternative title pages for miniVivisection_Manual.tex, one per page, with an overview:
+%   color and black-and-white, with and without screenshots, the V° mark as the main element, and
+%   themes drawn from the plug-in itself (name dots, a Rhino viewport, the code editor, a blueprint).
+% - Build: python tools/make_manual_latex.py --titles -> docs/manual/title_designs.pdf. To use one,
+%   copy its picture into chapters/00_title.tex.
+
+\documentclass[a4paper, 10.5pt, oneside, open=any, parskip=false]{scrbook}
+\input{style}
+\input{generated/version}
+\usetikzlibrary{fadings, shadows}
+\hypersetup{pdftitle={miniVivisection -- title page designs}}
+
+% \vlogo (the V° mark's font) and \outlined come from style.tex.
+
+% The texts every design uses.
+\newcommand{\mvTitle}{miniVivisection}
+\newcommand{\mvSub}{See your script's data in Rhino while you debug}
+\newcommand{\mvWhat}{A plug-in for the Script Editor and Grasshopper of Rhino~8}
+\newcommand{\mvVer}{Manual \,·\, Version \mvversion\ (build \mvbuild) \,·\, \mvdate}
+
+% One design: \design{name}{tikz drawing, in mm from the page's lower left corner}
+\newcounter{design}
+\newcommand{\design}[2]{%
+  \clearpage\thispagestyle{empty}\stepcounter{design}\null
+  \begin{tikzpicture}[remember picture, overlay, x=1mm, y=1mm]
+    \begin{scope}[shift={(current page.south west)}]
+      #2
+      \node[anchor=south, inner sep=1pt, fill=white, fill opacity=0.85, text opacity=1]
+        at (105,2.5) {\sffamily\tiny\color{mvgray}Design \thedesign\ · #1};
+    \end{scope}
+  \end{tikzpicture}}
+
+% Viewport colors, as Rhino draws its Top view, and the watch color of the screenshots.
+\definecolor{rhinobg}{HTML}{C8C8C8}
+\definecolor{rhinominor}{HTML}{B4B4B4}
+\definecolor{rhinomajor}{HTML}{9A9A9A}
+\definecolor{watchmag}{HTML}{D63AD6}
+% VS Code's Dark+ colors, for the code editor design.
+\definecolor{vsbg}{HTML}{1E1E1E}
+\definecolor{vsgutter}{HTML}{858585}
+\definecolor{vskw}{HTML}{C586C0}
+\definecolor{vsblue}{HTML}{569CD6}
+\definecolor{vsstr}{HTML}{CE9178}
+\definecolor{vscom}{HTML}{6A9955}
+\definecolor{vsfn}{HTML}{DCDCAA}
+\definecolor{vsvar}{HTML}{9CDCFE}
+\definecolor{vsnum}{HTML}{B5CEA8}
+\definecolor{vstext}{HTML}{D4D4D4}
+\definecolor{vsstatus}{HTML}{007ACC}
+% The engraving plate.
+\definecolor{paper}{HTML}{F4EDDC}
+\definecolor{sepia}{HTML}{3B2A1A}
+% The blueprint.
+\definecolor{blueprint}{HTML}{0E3A6B}
+
+\begin{document}
+
+% ------------------------------------------------------------------ the overview
+\thispagestyle{empty}
+{\mvhead\Huge\color{mvblue} Title page designs}\par\vspace{0.4em}
+{\sffamily\color{mvgray} Twenty-five alternatives for the first page of the miniVivisection manual, one per page.
+To use one, copy its drawing into \file{chapters/00_title.tex}.}\par\vspace{1.2em}
+\newcommand{\yes}{\textcolor{mvgreen}{✓}}
+{\small
+\begin{xltabular}{\linewidth}{@{}>{\sffamily}r>{\sffamily\bfseries}P{0.29\linewidth}>{\centering\arraybackslash}p{0.06\linewidth}>{\centering\arraybackslash}p{0.06\linewidth}>{\centering\arraybackslash}p{0.06\linewidth}L@{}}
+\toprule
+ & \textsf{\textbf{Design}} & \textsf{\textbf{Color}} & \textsf{\textbf{Shot}} & \textsf{\textbf{V°}} & \textsf{\textbf{Idea}} \\ \midrule
+1  & Blue band and screenshot    & \yes & \yes &      & the current title page \\
+2  & Black band, grayscale       &      & \yes &      & design 1 without color, for printing \\
+3  & Typographic, black and white &     &      &      & Swiss: type, rules and white space only \\
+4  & The V° mark, large          & \yes &      & \yes & the mark as the cover's picture \\
+5  & The V° mark on blue         & \yes &      & \yes & reversed, the mark bleeding off the page \\
+6  & The V° mark in outline      &      &      & \yes & line only, black and white \\
+7  & The toolbar button          & \yes &      & \yes & the V° button on Grasshopper's toolbar, enlarged \\
+8  & Color strip with the mark   & \yes & \yes & \yes & a blue strip on the left, a screenshot on the right \\
+9  & Screenshot, full bleed      & \yes & \yes &      & the picture first, the title on a dark band \\
+10 & Mosaic of screenshots       & \yes & \yes &      & all sixteen screenshots as a wall \\
+11 & Mosaic, grayscale           &      & \yes &      & the wall without color \\
+12 & Name dot                    & \yes &      &      & the title in a name dot, pointing at a curve \\
+13 & Rhino viewport              & \yes &      &      & lesson 01's bow tie, drawn in a Top view \\
+14 & Code editor                 & \yes &      &      & the title as a paused script, dark theme \\
+15 & Blueprint                   & \yes &      & \yes & the mark as a technical drawing, with a title block \\
+16 & Anatomical plate            & \yes &      & \yes & a vivisection: the mark laid open, like an engraving \\ \midrule
+\multicolumn{6}{@{}l}{\textsf{\textbf{Fusions: the outlined V° (6) in the typographic layout (3)}}} \\ \midrule
+17 & Outlined V°, lower right    &      &      & \yes & the mark between the title and the footer \\
+18 & Behind the type, bleeding   &      &      & \yes & a huge light outline under the type \\
+19 & Blue V, orange °            & \yes &      & \yes & the outline in the manual's two colors \\
+20 & V° on top, type below       &      &      & \yes & the order turned round \\
+21 & Filled light gray, outlined &      &      & \yes & a gray body under the line \\
+22 & On the grid                 &      &      & \yes & the layout's columns and baselines shown \\
+23 & Reversed                    &      &      & \yes & white on black \\
+24 & Only the ° in orange        & \yes &      & \yes & one color, one spot \\
+25 & Inline lettering            &      &      & \yes & a white line inside a black one \\
+\bottomrule
+\end{xltabular}}
+{\sffamily\footnotesize\color{mvgray} Shot: with a screenshot. V°: the V° mark as the main element, in the font of the V° button
+on Grasshopper's toolbar. The grayscale designs (2, 11) turn the screenshots gray with a PDF blend mode; printed or in any
+current PDF viewer they show without color.}
+
+% ------------------------------------------------------------------ 1 blue band and screenshot
+\design{Blue band and screenshot (the current title page)}{
+  \fill[mvblue] (0,189) rectangle (210,297);
+  \fill[mvorange] (0,186.5) rectangle (210,189);
+  \node[anchor=north west, text=white, inner sep=0pt] at (24,267) {\mvhead\fontsize{42}{46}\selectfont\mvTitle};
+  \node[anchor=north west, text=mvbluemid, inner sep=0pt] at (24.5,247) {\mvlight\fontsize{17}{22}\selectfont\mvSub};
+  \node[anchor=north west, text=white, inner sep=0pt] at (24.5,223) {\sffamily\large\mvWhat};
+  \node[anchor=north west, text=mvbluemid, inner sep=0pt] at (24.5,209) {\sffamily\mvVer};
+  \node[anchor=north, inner sep=0pt, draw=mvbluemid, line width=0.8pt] at (105,171) {\includegraphics[width=150mm]{01_watch_values_in_rhino}};
+  \node[anchor=north west, text width=150mm, inner sep=0pt] at (30,72) {\sffamily\small\color{mvgray}A paused script's
+    \code{outline} and \code{corners} drawn in Rhino's Top view, each with its name: the outline crosses itself --
+    two corners are swapped.};
+}
+
+% ------------------------------------------------------------------ 2 black band, grayscale
+\design{Black band, grayscale screenshot (design 1 without color)}{
+  \fill[black] (0,189) rectangle (210,297);
+  \fill[black!45] (0,186.5) rectangle (210,189);
+  \node[anchor=north west, text=white, inner sep=0pt] at (24,267) {\mvhead\fontsize{42}{46}\selectfont\mvTitle};
+  \node[anchor=north west, text=black!25, inner sep=0pt] at (24.5,247) {\mvlight\fontsize{17}{22}\selectfont\mvSub};
+  \node[anchor=north west, text=white, inner sep=0pt] at (24.5,223) {\sffamily\large\mvWhat};
+  \node[anchor=north west, text=black!25, inner sep=0pt] at (24.5,209) {\sffamily\mvVer};
+  \node[anchor=north, inner sep=0pt] (shot) at (105,171) {\includegraphics[width=150mm]{01_watch_values_in_rhino}};
+  \fill[white, blend mode=saturation] (shot.south west) rectangle (shot.north east);
+  \draw[black!40, line width=0.6pt] (shot.south west) rectangle (shot.north east);
+  \node[anchor=north west, text width=150mm, inner sep=0pt] at (30,72) {\sffamily\small\color{black!60}A paused script's
+    \code{outline} and \code{corners} drawn in Rhino's Top view, each with its name: the outline crosses itself --
+    two corners are swapped.};
+}
+
+% ------------------------------------------------------------------ 3 typographic
+\design{Typographic, black and white}{
+  \node[anchor=south west, inner sep=0pt] at (24,270) {\sffamily\small\addfontfeature{LetterSpace=18}\bfseries MANUAL};
+  \node[anchor=south east, inner sep=0pt] at (186,270) {\sffamily\small Version \mvversion};
+  \draw[black, line width=0.5pt] (24,266) -- (186,266);
+  \node[anchor=north west, inner sep=0pt] at (23,252) {\fontsize{58}{60}\selectfont{\mvlight mini}{\mvhead Vivisection}};
+  \node[anchor=north west, inner sep=0pt, text width=162mm, align=left] at (24.5,222) {\rmfamily\itshape\fontsize{20}{26}\selectfont See your script's data in Rhino\\while you debug};
+  \draw[black, line width=2.5pt] (24.5,196) -- (54.5,196);
+  \node[anchor=north west, inner sep=0pt, text width=100mm] at (24.5,188) {\rmfamily\large A plug-in for the Script Editor\\
+    and Grasshopper of Rhino~8};
+  \draw[black, line width=0.5pt] (24,58) -- (186,58);
+  \node[anchor=north west, inner sep=0pt, text width=50mm] at (24,53) {\sffamily\footnotesize\bfseries Rhino 8\\\mdseries Script Editor\\Grasshopper};
+  \node[anchor=north west, inner sep=0pt, text width=50mm] at (80,53) {\sffamily\footnotesize\bfseries Version \mvversion\\\mdseries build \mvbuild\\experimental};
+  \node[anchor=north west, inner sep=0pt, text width=50mm] at (136,53) {\sffamily\footnotesize\bfseries \mvdate\\\mdseries formerly\\ScriptEditorWatchViz};
+}
+
+% ------------------------------------------------------------------ 4 the V° mark, large
+\design{The V° mark, large, in color}{
+  \node[inner sep=0pt] at (105,196) {\vlogo\fontsize{330}{330}\selectfont{\color{mvblue}V}{\color{mvorange}°}};
+  \node[anchor=north, inner sep=0pt] at (105,104) {\mvhead\fontsize{40}{44}\selectfont\color{mvink}\mvTitle};
+  \node[anchor=north, inner sep=0pt] at (105,86) {\mvlight\fontsize{16}{20}\selectfont\color{mvgray}\mvSub};
+  \draw[mvorange, line width=1.2pt] (95,72) -- (115,72);
+  \node[anchor=north, inner sep=0pt] at (105,64) {\sffamily\color{mvink}\mvWhat};
+  \node[anchor=south, inner sep=0pt] at (105,20) {\sffamily\small\color{mvgray}\mvVer};
+}
+
+% ------------------------------------------------------------------ 5 the V° mark on blue
+\design{The V° mark on blue, bleeding off the page}{
+  \fill[mvblue] (0,0) rectangle (210,297);
+  \begin{scope}
+    \clip (0,0) rectangle (210,297);
+    \node[anchor=south east, inner sep=0pt, text=white, text opacity=0.13] at (232,-24)
+      {\vlogo\fontsize{560}{560}\selectfont V°};
+  \end{scope}
+  \node[anchor=north west, inner sep=0pt] at (24,270) {\vlogo\fontsize{40}{40}\selectfont\color{white}V{\color{mvorange}°}};
+  \node[anchor=north west, inner sep=0pt, text=white] at (24,236) {\mvhead\fontsize{46}{50}\selectfont\mvTitle};
+  \node[anchor=north west, inner sep=0pt, text=mvbluemid, text width=140mm] at (24.5,214) {\mvlight\fontsize{18}{23}\selectfont\mvSub};
+  \fill[mvorange] (24.5,190) rectangle (44.5,191.5);
+  \node[anchor=north west, inner sep=0pt, text=white] at (24.5,184) {\sffamily\large\mvWhat};
+  \node[anchor=south west, inner sep=0pt, text=mvbluemid] at (24.5,22) {\sffamily\mvVer};
+}
+
+% ------------------------------------------------------------------ 6 the V° mark in outline
+\design{The V° mark in outline, black and white}{
+  \node[inner sep=0pt, text=black] at (105,190) {\vlogo\fontsize{330}{330}\selectfont\outlined{1.4}{V°}};
+  \draw[black, line width=0.4pt] (40,108) -- (170,108);
+  \node[anchor=north, inner sep=0pt] at (105,100) {\mvhead\fontsize{38}{42}\selectfont\color{black}\mvTitle};
+  \node[anchor=north, inner sep=0pt] at (105,82) {\rmfamily\itshape\fontsize{16}{20}\selectfont\color{black!70}\mvSub};
+  \draw[black, line width=0.4pt] (40,70) -- (170,70);
+  \node[anchor=north, inner sep=0pt] at (105,62) {\sffamily\color{black}\mvWhat};
+  \node[anchor=south, inner sep=0pt] at (105,20) {\sffamily\small\color{black!60}\mvVer};
+}
+
+% ------------------------------------------------------------------ 7 the toolbar button
+\design{The toolbar button, enlarged}{
+  \fill[mvgraylight] (0,0) rectangle (210,297);
+  % the button: a rounded square as Grasshopper's toolbar draws it, the V°, the green Run badge
+  \fill[black, opacity=0.10, rounded corners=9mm] (68,155) rectangle (148,235);
+  \filldraw[fill=white, draw=black!25, line width=0.8pt, rounded corners=9mm] (65,158) rectangle (145,238);
+  \node[inner sep=0pt] at (103,200) {\vlogo\fontsize{150}{150}\selectfont\color{black!78}V°};
+  \fill[mvgreen] (135,168) circle (14);
+  \fill[white] (130.5,160.5) -- (130.5,175.5) -- (143,168) -- cycle;
+  \node[anchor=north, inner sep=0pt] at (105,126) {\mvhead\fontsize{40}{44}\selectfont\color{mvink}\mvTitle};
+  \node[anchor=north, inner sep=0pt] at (105,108) {\mvlight\fontsize{16}{20}\selectfont\color{mvgray}\mvSub};
+  % the three modes
+  \foreach \x/\label/\col in {65/Normal/black!30, 105/Stop and record/mvgreen, 145/Always debug/mvorange} {
+    \filldraw[fill=white, draw=black!20, rounded corners=1.5mm] (\x-7,74) rectangle (\x+7,88);
+    \node[inner sep=0pt] at (\x-1,81) {\vlogo\fontsize{18}{18}\selectfont\color{black!70}V°};
+    \fill[\col] (\x+4.5,76.5) circle (2.4);
+    \node[anchor=north, inner sep=0pt] at (\x,71) {\sffamily\scriptsize\color{mvgray}\label};
+  }
+  \node[anchor=south, inner sep=0pt] at (105,22) {\sffamily\small\color{mvgray}\mvVer};
+}
+
+% ------------------------------------------------------------------ 8 color strip with the mark
+\design{Color strip with the mark, and a screenshot}{
+  \fill[mvblue] (0,0) rectangle (70,297);
+  \fill[mvorange] (70,0) rectangle (72,297);
+  \node[anchor=north, inner sep=0pt] at (35,272) {\vlogo\fontsize{110}{110}\selectfont\color{white}V{\color{mvorange}°}};
+  \node[rotate=90, anchor=west, inner sep=0pt] at (37,40) {\sffamily\addfontfeature{LetterSpace=25}\bfseries\color{mvbluemid}MANUAL};
+  \node[anchor=south, inner sep=0pt, text=mvbluemid, align=center] at (35,18) {\sffamily\scriptsize Version \mvversion\\build \mvbuild\\\mvdate};
+  \node[anchor=north west, inner sep=0pt] at (84,262) {\mvhead\fontsize{34}{38}\selectfont\color{mvblue}\mvTitle};
+  \node[anchor=north west, inner sep=0pt, text width=112mm] at (84.5,246) {\mvlight\fontsize{15}{19}\selectfont\color{mvink}\mvSub};
+  \node[anchor=north west, inner sep=0pt] at (84.5,226) {\sffamily\color{mvgray}\mvWhat};
+  \node[anchor=north west, inner sep=0pt, draw=mvbluemid, line width=0.6pt] (s) at (84,206) {\includegraphics[width=112mm]{02_values_in_the_code}};
+  \node[anchor=north west, inner sep=0pt, draw=mvbluemid, line width=0.6pt] at (84,132) {\includegraphics[width=112mm]{16_grasshopper_prompts}};
+  \node[anchor=north west, inner sep=0pt, text width=112mm] at (84,59) {\sffamily\scriptsize\color{mvgray}Above: values in the
+    code of a paused script, and drawn in Rhino. Below: a Grasshopper definition built by V°Claude from one message.};
+}
+
+% ------------------------------------------------------------------ 9 screenshot, full bleed
+\design{Screenshot, full bleed, the title on a dark band}{
+  \begin{scope}
+    \clip (0,96) rectangle (210,297);
+    \node[anchor=west, inner sep=0pt] at (-6,196.5) {\includegraphics[height=201mm]{01_watch_values_in_rhino}};
+  \end{scope}
+  \fill[mvink] (0,0) rectangle (210,96);
+  \fill[mvink, path fading=north] (0,96) rectangle (210,150);
+  \fill[mvorange] (24,80) rectangle (44,81.5);
+  \node[anchor=north west, inner sep=0pt, text=white] at (24,74) {\mvhead\fontsize{44}{48}\selectfont\mvTitle};
+  \node[anchor=north west, inner sep=0pt, text=white!75!mvink] at (24.5,54) {\mvlight\fontsize{17}{22}\selectfont\mvSub};
+  \node[anchor=north west, inner sep=0pt, text=white!60!mvink] at (24.5,38) {\sffamily\mvWhat};
+  \node[anchor=south west, inner sep=0pt, text=white!45!mvink] at (24.5,14) {\sffamily\small\mvVer};
+}
+
+% ------------------------------------------------------------------ 10, 11 mosaics
+\newcommand{\mosaic}{%
+  \foreach \name [count=\i from 0] in {01_watch_values_in_rhino, 05_which_branch_failed, 09_markdown_panel_links,
+      13_markdown_text_link_hint, 02_values_in_the_code, 06_paused_run_badge, 10_link_followed_in_grasshopper,
+      14_markdown_text_dialog, 03_python_in_the_paused_frame, 07_script_panel_as_code, 11_v_edit, 15_link_followed_in_rhino,
+      04_stop_and_record, 08_panel_edited_at_the_stop, 12_v_text, 16_grasshopper_prompts, 03_python_in_the_paused_frame,
+      09_markdown_panel_links, 11_v_edit, 01_watch_values_in_rhino, 06_paused_run_badge} {
+    \pgfmathtruncatemacro{\r}{\i/3}
+    \pgfmathtruncatemacro{\c}{mod(\i,3)}
+    \node[anchor=north west, inner sep=0pt] at (\c*70.5-0.5, 297.5-\r*44.25) {\includegraphics[width=69.5mm]{\name}};
+  }}
+\design{Mosaic of the screenshots}{
+  \fill[white] (0,0) rectangle (210,297);
+  \mosaic
+  \fill[mvblue, opacity=0.93] (0,104) rectangle (210,196);
+  \fill[mvorange] (0,102) rectangle (210,104);
+  \node[anchor=north west, inner sep=0pt, text=white] at (24,182) {\mvhead\fontsize{42}{46}\selectfont\mvTitle};
+  \node[anchor=north west, inner sep=0pt, text=mvbluemid] at (24.5,162) {\mvlight\fontsize{17}{22}\selectfont\mvSub};
+  \node[anchor=north west, inner sep=0pt, text=white] at (24.5,141) {\sffamily\large\mvWhat};
+  \node[anchor=north west, inner sep=0pt, text=mvbluemid] at (24.5,127) {\sffamily\mvVer};
+}
+\design{Mosaic of the screenshots, grayscale}{
+  \fill[white] (0,0) rectangle (210,297);
+  \mosaic
+  \fill[white, blend mode=saturation] (0,0) rectangle (210,297);
+  \fill[white, opacity=0.94] (0,104) rectangle (210,196);
+  \draw[black, line width=0.6pt] (0,104) -- (210,104) (0,196) -- (210,196);
+  \node[anchor=north west, inner sep=0pt, text=black] at (24,182) {\mvhead\fontsize{42}{46}\selectfont\mvTitle};
+  \node[anchor=north west, inner sep=0pt, text=black!70] at (24.5,162) {\rmfamily\itshape\fontsize{17}{22}\selectfont\mvSub};
+  \node[anchor=north west, inner sep=0pt, text=black] at (24.5,141) {\sffamily\large\mvWhat};
+  \node[anchor=north west, inner sep=0pt, text=black!60] at (24.5,127) {\sffamily\mvVer};
+}
+
+% ------------------------------------------------------------------ 12 name dot
+\design{Name dot: the title as a watch's label}{
+  % a curve with its control points, drawn as V°Watch draws a watch
+  \draw[watchmag, line width=1.6pt] (14,118) .. controls (60,190) and (110,60) .. (150,140) .. controls (165,170) and (185,150) .. (198,128);
+  \foreach \p in {(14,118),(49,140.6),(150,140),(198,128)} \fill[watchmag] \p ++(-1.6,-1.6) rectangle ++(3.2,3.2);
+  % the big dot, up and right of the point on the curve (49,140.6), its tail curving down from its bottom edge
+  \fill[watchmag] (62,178) -- (80,178) .. controls (76,162) and (62,148) .. (49,140.6) .. controls (60,150) and (64,164) .. (62,178) -- cycle;
+  \node[fill=watchmag, rounded corners=4mm, inner xsep=7mm, inner ysep=5mm, anchor=south west, text=white] at (56,176)
+    {\mvhead\fontsize{40}{44}\selectfont\mvTitle};
+  % a smaller one
+  \fill[watchmag] (148,104) -- (156,104) .. controls (156,118) and (153,130) .. (150,140) .. controls (150,128) and (150,116) .. (150,104) -- cycle;
+  \node[fill=watchmag, rounded corners=2mm, inner xsep=3mm, inner ysep=2mm, anchor=north west, text=white] at (138,106)
+    {\sffamily\bfseries Manual \mvversion};
+  \node[anchor=north west, inner sep=0pt, text width=160mm] at (24,74) {\mvlight\fontsize{18}{23}\selectfont\color{mvink}\mvSub};
+  \node[anchor=north west, inner sep=0pt] at (24.5,56) {\sffamily\color{mvgray}\mvWhat};
+  \node[anchor=south west, inner sep=0pt] at (24.5,20) {\sffamily\small\color{mvgray}\mvVer};
+}
+
+% ------------------------------------------------------------------ 13 Rhino viewport
+\design{Rhino viewport: lesson 01's bow tie in a Top view}{
+  \fill[rhinobg] (0,0) rectangle (210,297);
+  \foreach \x in {0,5,...,210} \draw[rhinominor, line width=0.25pt] (\x,0) -- (\x,297);
+  \foreach \y in {2,7,...,297} \draw[rhinominor, line width=0.25pt] (0,\y) -- (210,\y);
+  \foreach \x in {0,25,...,210} \draw[rhinomajor, line width=0.45pt] (\x,0) -- (\x,297);
+  \foreach \y in {2,27,...,297} \draw[rhinomajor, line width=0.45pt] (0,\y) -- (210,\y);
+  \draw[red!75!black, line width=0.8pt] (0,102) -- (210,102);
+  \draw[green!50!black, line width=0.8pt] (50,0) -- (50,297);
+  \node[anchor=north west, inner sep=0pt] at (5,293) {\sffamily\small\color{black!75}Top};
+  % the outline with two corners swapped: a bow tie
+  \draw[watchmag, line width=1.4pt, line join=round] (50,102) -- (175,102) -- (50,180) -- (175,180) -- cycle;
+  \foreach \p in {(50,102),(175,102),(50,180),(175,180)} \fill[watchmag] \p circle (1.6);
+  \fill[watchmag] (70,198) -- (78,198) .. controls (78,190) and (60,186) .. (50,180) .. controls (60,188) and (70,192) .. (70,198) -- cycle;
+  \node[fill=watchmag, rounded corners=1.5mm, inner xsep=2.5mm, inner ysep=1.2mm, anchor=south west, text=white] at (66,196.5) {\sffamily\small outline};
+  \fill[watchmag] (195,120) -- (201,120) .. controls (201,112) and (185,106) .. (175,102) .. controls (186,108) and (195,113) .. (195,120) -- cycle;
+  \node[fill=watchmag, rounded corners=1.5mm, inner xsep=2.5mm, inner ysep=1.2mm, anchor=south east, text=white] at (205,118.5) {\sffamily\small corners (4)};
+  % the title, as a panel floating over the view
+  \fill[black, opacity=0.12] (21,214) rectangle (195,282);
+  \fill[white, opacity=0.94] (19,216) rectangle (193,284);
+  \node[anchor=north west, inner sep=0pt] at (27,276) {\mvhead\fontsize{40}{44}\selectfont\color{mvblue}\mvTitle};
+  \node[anchor=north west, inner sep=0pt] at (27.5,257) {\mvlight\fontsize{16}{20}\selectfont\color{mvink}\mvSub};
+  \node[anchor=north west, inner sep=0pt] at (27.5,240) {\sffamily\color{mvgray}\mvWhat};
+  \node[anchor=north west, inner sep=0pt] at (27.5,229) {\sffamily\small\color{mvgray}\mvVer};
+  \node[anchor=north west, inner sep=0pt, text width=120mm] at (57,92) {\sffamily\small\color{black!70}Four corners that each look right
+    in numbers. Drawn, the outline crosses itself: two of them are swapped.};
+}
+
+% ------------------------------------------------------------------ 14 code editor
+\newcommand{\cl}[3]{% a code line: number, y, code
+  \node[anchor=base east, inner sep=0pt] at (25,#2) {\ttfamily\small\color{vsgutter}#1};
+  \node[anchor=base west, inner sep=0pt] at (31,#2) {\ttfamily\small\color{vstext}#3};}
+\design{Code editor: the title as a paused script}{
+  \fill[vsbg] (0,0) rectangle (210,297);
+  \fill[white, opacity=0.04] (0,270) rectangle (210,284);
+  \node[anchor=west, inner sep=0pt] at (8,277) {\sffamily\small\color{vstext}miniVivisection_Manual.py};
+  \fill[vsfn!35!vsbg] (0,200.4) rectangle (210,206.2);
+  \fill[red!80!black] (12,203.3) circle (1.6);
+  % (\color swallows the space after it: spaces go before it)
+  \cl{1}{258}{\color{vscom}\#! python 3}
+  \cl{2}{250}{\color{vskw}import \color{vstext}Rhino.Geometry \color{vskw}as \color{vstext}rg}
+  \cl{3}{242}{\color{vskw}import \color{vstext}miniVivisection \color{vskw}as \color{vstext}mv}
+  \cl{4}{234}{}
+  \cl{5}{226}{\color{vscom}\# See your script's data in Rhino while you debug}
+  \cl{6}{218}{\color{vsvar}manual \color{vstext}= mv.\color{vsfn}Manual\color{vstext}(\color{vsvar}version\color{vstext}=\color{vsstr}"\mvversion"\color{vstext}, \color{vsvar}build\color{vstext}=\color{vsnum}\mvbuild\color{vstext})\quad \color{vsgutter}manual = Manual(…)}
+  \cl{7}{210}{\color{vskw}for \color{vsvar}script \color{vskw}in \color{vsvar}manual\color{vstext}.scripts:\quad \color{vsgutter}script = 01_watch_geometry.py}
+  \cl{8}{202}{\quad \color{vsvar}corners \color{vstext}= script.\color{vsfn}points\color{vstext}()\quad \color{vsgutter}corners = [(0,0,0),(8,0,0),(0,5,0),(8,5,0)]}
+  \cl{9}{194}{\quad mv.\color{vsfn}watch\color{vstext}(\color{vsvar}corners\color{vstext})\quad\quad \color{vscom}\# drawn in Rhino, with its name}
+  \cl{10}{186}{\quad mv.\color{vsfn}edit\color{vstext}(\color{vsvar}corners\color{vstext})\quad\quad\ \color{vscom}\# drag them, and the script goes on with yours}
+  \node[anchor=north west, inner sep=0pt] at (31,150) {\ttfamily\fontsize{38}{42}\selectfont\color{vsfn}\mvTitle\color{vstext}()};
+  \node[anchor=north west, inner sep=0pt] at (31,128) {\ttfamily\large\color{vscom}\# \mvSub};
+  \node[anchor=north west, inner sep=0pt] at (31,118) {\ttfamily\large\color{vscom}\# \mvWhat};
+  \fill[vsstatus] (0,10) rectangle (210,18);
+  \node[anchor=west, inner sep=0pt] at (8,14) {\sffamily\small\color{white}miniVivisection \mvversion\ · build \mvbuild\ · \mvdate};
+  \node[anchor=east, inner sep=0pt] at (202,14) {\sffamily\small\color{white}V°Debug ON \quad Paused at line 8};
+}
+
+% ------------------------------------------------------------------ 15 blueprint
+\design{Blueprint: the mark as a technical drawing}{
+  \fill[blueprint] (0,0) rectangle (210,297);
+  \foreach \x in {0,5,...,210} \draw[white, opacity=0.07, line width=0.25pt] (\x,0) -- (\x,297);
+  \foreach \y in {0,5,...,297} \draw[white, opacity=0.07, line width=0.25pt] (0,\y) -- (210,\y);
+  \foreach \x in {0,25,...,210} \draw[white, opacity=0.16, line width=0.4pt] (\x,0) -- (\x,297);
+  \foreach \y in {0,25,...,297} \draw[white, opacity=0.16, line width=0.4pt] (0,\y) -- (210,\y);
+  \draw[white, opacity=0.7, line width=0.8pt] (8,8) rectangle (202,289);
+  \node[inner sep=0pt, text=white] (v) at (102,190) {\vlogo\fontsize{300}{300}\selectfont\outlined{1}{V°}};
+  % dimensions
+  \begin{scope}[white, line width=0.35pt, font=\ttfamily\scriptsize]
+    \draw ([yshift=-3mm]v.south west) -- ++(0,-14);
+    \draw ([yshift=-3mm]v.south east) -- ++(0,-14);
+    \draw[{Stealth[length=2mm]}-{Stealth[length=2mm]}] ([yshift=-14mm]v.south west) -- node[fill=blueprint, inner sep=1.5pt]{mini · Vivisection} ([yshift=-14mm]v.south east);
+    \draw ([xshift=-3mm]v.north west) -- ++(-12,0);
+    \draw ([xshift=-3mm]v.south west) -- ++(-12,0);
+    \draw[{Stealth[length=2mm]}-{Stealth[length=2mm]}] ([xshift=-12mm]v.north west) -- node[fill=blueprint, inner sep=1.5pt, rotate=90]{V° = 300 pt} ([xshift=-12mm]v.south west);
+    \draw[dashed] ([xshift=-23mm, yshift=-13mm]v.north east) circle (13);
+    \draw ([xshift=-14mm, yshift=-4mm]v.north east) -- ++(16,14) -- ++(22,0) node[anchor=south east]{DETAIL A: THE MARK};
+  \end{scope}
+  % the title block
+  \begin{scope}[white, line width=0.6pt]
+    \draw (92,14) rectangle (196,64);
+    \draw (92,48) -- (196,48) (92,30) -- (196,30) (150,14) -- (150,30);
+    \node[anchor=north west, inner sep=0pt] at (95,62) {\ttfamily\tiny TITLE};
+    \node[anchor=west, inner sep=0pt] at (95,54) {\mvhead\fontsize{22}{22}\selectfont\color{white}\mvTitle};
+    \node[anchor=north west, inner sep=0pt] at (95,46) {\ttfamily\tiny SUBJECT};
+    \node[anchor=north west, inner sep=0pt, text width=98mm] at (95,42) {\ttfamily\scriptsize\color{white}\mvSub.\\ \mvWhat.};
+    \node[anchor=north west, inner sep=0pt] at (95,28) {\ttfamily\tiny VERSION};
+    \node[anchor=west, inner sep=0pt] at (95,20) {\ttfamily\small\color{white}\mvversion\ (build \mvbuild)};
+    \node[anchor=north west, inner sep=0pt] at (153,28) {\ttfamily\tiny DATE · SHEET};
+    \node[anchor=west, inner sep=0pt] at (153,20) {\ttfamily\small\color{white}\mvdate\ · 1};
+  \end{scope}
+  \node[anchor=north west, inner sep=0pt] at (16,281) {\ttfamily\small\color{white}MANUAL · DRAWING No. MV-\mvbuild};
+}
+
+% ------------------------------------------------------------------ 16 anatomical plate
+\design{Anatomical plate: the mark laid open}{
+  \fill[paper] (0,0) rectangle (210,297);
+  \draw[sepia, line width=1.4pt] (12,12) rectangle (198,285);
+  \draw[sepia, line width=0.4pt] (14.5,14.5) rectangle (195.5,282.5);
+  \node[anchor=north, inner sep=0pt] at (105,272) {\rmfamily\small\addfontfeature{LetterSpace=20}\color{sepia}PLATE I.};
+  \node[anchor=north, inner sep=0pt] at (105,262) {\rmfamily\bfseries\fontsize{36}{40}\selectfont\color{sepia}\mvTitle};
+  \node[anchor=north, inner sep=0pt] at (105,245) {\rmfamily\itshape\fontsize{14}{18}\selectfont\color{sepia}or, the Anatomy of a Paused Script};
+  \draw[sepia, line width=0.4pt] (80,236) -- (130,236);
+  % the specimen, with fine hatching behind it
+  \begin{scope}
+    \clip (105,152) circle (52);
+    \foreach \i in {-110,-107,...,110} \draw[sepia, opacity=0.18, line width=0.25pt] (105+\i,100) -- (105+\i+60,210);
+  \end{scope}
+  \draw[sepia, line width=0.5pt] (105,152) circle (52);
+  \node[inner sep=0pt, text=sepia] (v) at (103,150) {\vlogo\fontsize{190}{190}\selectfont V°};
+  % the labels, as on an engraved plate
+  \begin{scope}[sepia, line width=0.35pt, font=\rmfamily\itshape\small]
+    \draw (76,182) -- (40,206) node[anchor=south east, inner sep=1pt]{a.};
+    \draw (101,112) -- (52,96) node[anchor=north east, inner sep=1pt]{b.};
+    \draw (141,186) -- (170,206) node[anchor=south west, inner sep=1pt]{c.};
+    \draw (124,128) -- (172,100) node[anchor=north west, inner sep=1pt]{d.};
+  \end{scope}
+  \node[anchor=north west, inner sep=0pt, text width=150mm] at (30,82) {\rmfamily\small\color{sepia}
+    \textit{a.} The left limb, where values are drawn in the viewports (V°Watch). \quad
+    \textit{b.} The apex, where the script is held at a breakpoint and opened. \quad
+    \textit{c.} The mark, a watch's name dot. \quad
+    \textit{d.} The right limb, where geometry is edited and handed back (V°Edit).};
+  \node[anchor=north, inner sep=0pt] at (105,52) {\rmfamily\itshape\small\color{sepia}Fig. 1. — The V° of miniVivisection, laid open. \mvSub.};
+  \node[anchor=south, inner sep=0pt] at (105,22) {\rmfamily\small\addfontfeature{LetterSpace=8}\color{sepia}RHINO 8 · SCRIPT EDITOR · GRASSHOPPER · \mvversion\ · \mvdate};
+}
+
+% ------------------------------------------------------------------ 17-25: the outlined V° (design 6) in the typographic layout (design 3)
+% The typographic layout's parts. \swissheader{ink}; \swisstitle{top of the title}{ink}{color of "Vivisection"}{subtitle color};
+% \swissfooter{ink}{gray}.
+\newcommand{\swissheader}[1]{%
+  \node[anchor=south west, inner sep=0pt, text=#1] at (24,270) {\sffamily\small\addfontfeature{LetterSpace=18}\bfseries MANUAL};
+  \node[anchor=south east, inner sep=0pt, text=#1] at (186,270) {\sffamily\small Version \mvversion};
+  \draw[#1, line width=0.5pt] (24,266) -- (186,266);}
+\newcommand{\swisstitle}[4]{%
+  \node[anchor=north west, inner sep=0pt, text=#2] at (23,#1) {\fontsize{58}{60}\selectfont{\mvlight mini}{\color{#3}\mvhead Vivisection}};
+  \node[anchor=north west, inner sep=0pt, text width=162mm, align=left, text=#4] at (24.5,#1-30)
+    {\rmfamily\itshape\fontsize{20}{26}\selectfont See your script's data in Rhino\\while you debug};
+  \draw[#2, line width=2.5pt] (24.5,#1-56) -- (54.5,#1-56);
+  \node[anchor=north west, inner sep=0pt, text width=100mm, text=#2] at (24.5,#1-64) {\rmfamily\large A plug-in for the Script Editor\\
+    and Grasshopper of Rhino~8};}
+\newcommand{\swissfooter}[2]{%
+  \draw[#1, line width=0.5pt] (24,58) -- (186,58);
+  \node[anchor=north west, inner sep=0pt, text width=50mm, text=#1] at (24,53) {\sffamily\footnotesize\bfseries Rhino 8\\\mdseries\color{#2}Script Editor\\Grasshopper};
+  \node[anchor=north west, inner sep=0pt, text width=50mm, text=#1] at (80,53) {\sffamily\footnotesize\bfseries Version \mvversion\\\mdseries\color{#2}build \mvbuild\\experimental};
+  \node[anchor=north west, inner sep=0pt, text width=50mm, text=#1] at (136,53) {\sffamily\footnotesize\bfseries \mvdate\\\mdseries\color{#2}formerly\\ScriptEditorWatchViz};}
+% The V° at #1 pt, outlined with a #2 bp stroke.
+\newcommand{\vout}[2]{\vlogo\fontsize{#1}{#1}\selectfont\outlined{#2}{V°}}
+
+\design{Fusion: the outlined V° in the typographic layout}{
+  \swissheader{black}
+  \swisstitle{252}{black}{black}{black}
+  \node[anchor=south east, inner sep=0pt, text=black] at (188,64) {\vout{250}{1.2}};
+  \swissfooter{black}{black!65}
+}
+
+\design{Fusion: the outlined V° behind the type, bleeding off the page}{
+  \begin{scope}
+    \clip (0,0) rectangle (210,297);
+    \node[anchor=south east, inner sep=0pt, text=black!30] at (236,-30) {\vout{620}{0.8}};
+  \end{scope}
+  \swissheader{black}
+  \swisstitle{252}{black}{black}{black}
+  \swissfooter{black}{black!65}
+}
+
+\design{Fusion with color: a blue V, an orange °}{
+  \swissheader{black}
+  \swisstitle{252}{black}{mvblue}{black!80}
+  \node[anchor=south east, inner sep=0pt] at (188,64)
+    {\vlogo\fontsize{250}{250}\selectfont{\color{mvblue}\outlined{1.6}{V}}{\color{mvorange}\outlined{1.6}{°}}};
+  \swissfooter{black}{black!65}
+}
+
+\design{Fusion: the V° on top, the type below}{
+  \swissheader{black}
+  \node[anchor=north, inner sep=0pt, text=black] at (105,258) {\vout{260}{1.2}};
+  \swisstitle{150}{black}{black}{black}
+  \swissfooter{black}{black!65}
+}
+
+\design{Fusion: the V° filled light gray and outlined}{
+  \swissheader{black}
+  \swisstitle{252}{black}{black}{black}
+  \node[anchor=south east, inner sep=0pt, text=black!8] at (188,64) {\vlogo\fontsize{250}{250}\selectfont V°};
+  \node[anchor=south east, inner sep=0pt, text=black] at (188,64) {\vout{250}{1.2}};
+  \swissfooter{black}{black!65}
+}
+
+\design{Fusion on the grid: the V° set on the layout's columns and baselines}{
+  \foreach \y in {58,63,...,266} \draw[black!7, line width=0.3pt] (24,\y) -- (186,\y);
+  \foreach \x in {24,80,136,186} \draw[black!12, line width=0.3pt] (\x,14) -- (\x,282);
+  \swissheader{black}
+  \swisstitle{252}{black}{black}{black}
+  \node[anchor=south west, inner sep=0pt, text=black] at (22,63) {\vout{250}{1.2}};
+  \node[anchor=south east, inner sep=0pt, text=black!55] at (186,63) {\sffamily\tiny V° · Segoe UI Bold · 250 pt};
+  \swissfooter{black}{black!65}
+}
+
+\design{Fusion, reversed: white on black}{
+  \fill[black] (0,0) rectangle (210,297);
+  \swissheader{white}
+  \swisstitle{252}{white}{white}{white!80!black}
+  \node[anchor=south east, inner sep=0pt, text=white] at (188,64) {\vout{250}{1.2}};
+  \swissfooter{white}{white!60!black}
+}
+
+\design{Fusion with one color: only the ° filled orange}{
+  \swissheader{black}
+  \swisstitle{252}{black}{black}{black}
+  \node[anchor=south east, inner sep=0pt] at (188,64)
+    {\vlogo\fontsize{250}{250}\selectfont{\color{black}\outlined{1.2}{V}}{\color{mvorange}°}};
+  \swissfooter{black}{black!65}
+}
+
+\design{Fusion: the V° in inline lettering, a white line inside a black one}{
+  \swissheader{black}
+  \swisstitle{252}{black}{black}{black}
+  \node[anchor=south east, inner sep=0pt, text=black] at (188,64) {\vout{250}{4.2}};
+  \node[anchor=south east, inner sep=0pt, text=white] at (188,64) {\vout{250}{1.8}};
+  \swissfooter{black}{black!65}
+}
+
+\end{document}

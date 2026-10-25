@@ -1,0 +1,111 @@
+\chapter{Introduction}\label{ch:intro}
+
+miniVivisection extends the debugger of Rhino~8's Script Editor, and it brings that debugger into
+Grasshopper. When a script stops at a breakpoint, you see what its variables hold \emph{as geometry in
+Rhino's viewports}, not only as lines of text. You can change that geometry with Rhino's own tools and
+write it back into the running script. The values appear where you read the code: in the tooltips, and
+at the ends of the lines. Rhino stays usable the whole time, so you can select, measure and run commands
+while the script waits.
+
+\section{Why it exists}
+
+Scripts that make geometry are hard to debug with a text debugger. A list of four
+\code{Point3d} values can look right number by number and still describe a rectangle whose corners
+are in the wrong order. On the screen, the mistake is obvious: the outline crosses itself
+(the cover picture). Rhino's Script Editor has a good debugger. It shows values as text, though, and
+while a script is paused Rhino is locked in a \ui{Select Action} prompt: you can't select an object,
+measure a distance or look at the model from another side.
+
+Other problems come up again and again in teaching and practice:
+\begin{itemize}
+  \item A script started from Rhino's command line hangs in a loop, and the only way out is to kill
+        Rhino and lose the model.
+  \item A Grasshopper script component fails for three items out of a hundred, and Grasshopper says
+        only \emph{“'NoneType' object is not iterable”}, not which item, branch or run.
+  \item Notes about a definition sit in Panels as centered plain text, and scripts kept in Panels have
+        no line numbers, so an error's line number points nowhere.
+\end{itemize}
+
+miniVivisection addresses each of these, inside the tools you already use. It adds nothing you have to
+learn before you can start: set a breakpoint, press \key{F5}, and the values are drawn.
+
+\section{What it does, in six ideas}
+
+\begin{description}
+  \item[See.] A paused script's values are drawn in Rhino: points, curves, surfaces, meshes, planes,
+    vectors and lists of them, each with a name. The code shows its values in tooltips and at the ends
+    of the lines, and what changed since the last step (\cref{ch:watch,ch:code}).
+  \item[Change and keep.] Turn a value into Rhino objects, edit them with the Gumball or control
+    points, and the paused script continues with your edit. Or bake what was computed into the
+    document before the script crashes (\cref{ch:edit}).
+  \item[Stop where you want.] Breakpoints with conditions, hit counts and log messages. \keys{Ctrl+Alt+B}
+    pauses a running script at its next line, even one that holds Rhino's UI thread, or stops a
+    plain run and records where it was (\cref{ch:breakpoints,ch:running}).
+  \item[Ask the paused script.] A Python prompt runs in the paused frame and can change the script's
+    variables. A PowerShell prompt and a chat with Claude work on the same paused script
+    (\cref{ch:prompts}).
+  \item[Debug Grasshopper.] Script components pause at breakpoints and \keys{Ctrl+Alt+B}. Failing runs
+    are named by branch and item, and can be debugged one by one. The canvas stays usable while a
+    component is paused (\cref{ch:ghdebug,ch:ghpaused}).
+  \item[Document in Markdown.] Panels show scripts as code and notes as rendered Markdown. Markdown
+    becomes Rhino text, and links lead from a note to a component, a Rhino object, a named view,
+    another file or a script (\cref{ch:panels,ch:markdowntext,ch:links}).
+\end{description}
+
+\section{Requirements}
+
+\begin{xltabular}{\linewidth}{@{}P{0.28\linewidth}L@{}}
+\toprule
+\ui{Rhino} & Rhino~8 for Windows, with its Script Editor (RhinoCode). Rhino~8 runs on .NET; IronPython~2
+             scripts need the .NET~8 runtime (Rhino's \code{SetDotNetRuntime}). \\
+\ui{Python 3 scripts} & Get every feature. This is what miniVivisection is made for. \\
+\ui{IronPython 2 scripts} & (\code{\#! python2}) Get the debugger features, drawing of plain variable names and
+             conditional breakpoints; not expressions, inline values, editing in Rhino or the Python
+             prompt in the paused frame (\cref{ch:limits}). \\
+\ui{C\# scripts} & Watches of plain variable names and conditional breakpoints (a small C\# evaluator);
+             largely untested. \\
+\ui{Grasshopper} & Rhino~8's Python~3 script components. The legacy GhPython (IronPython) component is not covered. \\
+\ui{V°Claude} (optional) & Claude Code, the \code{claude} command line program, installed and signed in.
+             RhinoAI (McNeel's Rhino MCP Platform) lets Claude work in the model and in Grasshopper. \\
+\ui{V°PowerShell} & PowerShell~7 (\code{pwsh}) or Windows PowerShell. \\
+\bottomrule
+\end{xltabular}
+
+\begin{caution}[Experimental]
+miniVivisection~\mvversion\ is experimental. The Script Editor has no extension interface, so the plug-in
+reaches into its internal code. A Rhino service release can change that code and switch parts of the
+plug-in off; it then does nothing rather than fail. It was called ScriptEditorWatchViz until October 2026.
+\end{caution}
+
+\section{How this manual is organized}
+
+\begin{description}
+  \item[Part I, Getting to know miniVivisection:] This introduction, all features at a glance
+    (\cref{ch:features}), the concepts the features are built on (\cref{ch:concepts}) and a first session
+    (\cref{ch:start}). Read \cref{ch:concepts} once: most questions about why something works the way it
+    does are answered there.
+  \item[Part II, In the Script Editor:] Every feature for scripts, from drawing values to threads and the
+    prompts.
+  \item[Part III, In Grasshopper:] Debugging script components, the canvas while paused, Panels as code
+    and Markdown, the components \vn{Edit}, \vn{Text} and \vn{Protect}, and the prompts window.
+  \item[Part IV, In Rhino:] Markdown as Rhino text, and links between Rhino, Grasshopper and scripts.
+  \item[Part V, Reference:] The lessons, commands and keys, every setting, limits and troubleshooting.
+\end{description}
+
+The Markdown manual that \vn{Help} opens in the Script Editor (\file{miniVivisection_Manual.md}) has the
+same features in short form. This manual explains them at length.
+
+\section{Conventions}
+
+\begin{xltabular}{\linewidth}{@{}P{0.32\linewidth}L@{}}
+\toprule
+\ui{Edit in Rhino}            & A button, menu item, tab or label as it appears on screen. \\
+\menu{V°Watch\>Interpret as}  & A path through tabs and menus. \\
+\setting{Stop once per line}  & A setting, in \vn{Settings} or \menu{Tools\>Options\>miniVivisection} (\cref{ch:settings}). \\
+\keys{Ctrl+Alt+B}             & Keys to press together. \\
+\code{crv.PointAtStart}       & Code: Python, a command, a value. \\
+\file{examples}               & A file or folder. \\
+\lessonfile{04_edit_in_rhino.py} & A lesson that teaches the feature (\cref{ch:examples}). \\
+\vn{Watch}                    & One of miniVivisection's names (\see{sec:vnames}). \\
+\bottomrule
+\end{xltabular}

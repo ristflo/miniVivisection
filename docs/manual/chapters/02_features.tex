@@ -1,0 +1,105 @@
+\chapter{Features at a glance}\label{ch:features}
+
+Every feature in one list, grouped by what it is for. The last column links to the section that explains it.
+
+\begin{features}{Seeing values while paused}
+\feat{V°Watch}{Watched values drawn in Rhino: points, curves, surfaces, meshes, planes, vectors, lists; name dots; Show, Bake, selection both ways.}{ch:watch}
+\feat{Expressions in watches}{Any Python expression: \code{curves[0]}, \code{crv.PointAtStart}, comprehensions, constructors.}{sec:addwatch}
+\feat{Interpret as}{Raw data drawn as points, polylines, curves, lines, vectors or triangles.}{sec:interpretas}
+\feat{Visualizers}{Your own drawing, and editing, for your own classes.}{ch:visualizers}
+\feat{Tooltip values}{A name's value as a line of code, its facts, “was” after a step, links to watch, edit, bake, Tree.}{sec:tooltips}
+\feat{Watch a call}{Over a class called on the line: watch the whole call, \code{rg.Point3d(…)}.}{sec:tooltiplinks}
+\feat{Value tree}{A small window with a value's members, updated at every pause.}{sec:tooltiplinks}
+\feat{Hover preview}{The geometry under the mouse in the code, drawn in yellow in Rhino.}{sec:hoverpreview}
+\feat{Values at line ends}{Gray values after each line of the paused function; changed ones orange.}{sec:inlinevalues}
+\feat{Watch tab expressions}{The editor's own Watch tab evaluates any Python expression.}{sec:watchtab}
+\feat{Context menus}{Watch, Bake, Edit in Rhino from the code and the Variables and Watch tabs.}{sec:contextmenus}
+\end{features}
+
+\begin{features}{Changing and keeping}
+\feat{Edit in Rhino}{A value as Rhino objects; edit them, and the change is written back into the paused script, with Undo.}{sec:editinrhino}
+\feat{Auto edit}{Every shown watch editable at each pause.}{sec:autoedit}
+\feat{Bake}{Drawn values copied into the document; \code{BakeAll}.}{sec:bake}
+\end{features}
+
+\begin{features}{Stopping where you want}
+\feat{Conditions, hit counts, log messages}{Breakpoints that pause only when they should, or print instead.}{ch:breakpoints}
+\feat{Thread and run variables}{\code{thread_name}, \code{is_main_thread}; in Grasshopper \code{gh_run}, \code{gh_branch}, \code{gh_item}.}{sec:conditions}
+\feat{Stop once per line}{Continue and Step over finish a line that runs code several times.}{sec:onceperline}
+\feat{Run and Debug buttons}{Run always runs plainly, Debug always debugs, breakpoint or not.}{sec:runbuttons}
+\feat{Break now: Ctrl+Alt+B}{Pauses a debug run at its next line, also on Rhino's UI thread; in your script only; a sound answers.}{sec:breaknow}
+\feat{FreePause}{Rhino stays usable while a script is paused.}{sec:freepause}
+\feat{Editor stays open}{While debugging and for async scripts, so V°Threads can be used.}{sec:keepeditor}
+\feat{No freeze from another pause}{A debug run on the UI thread waits, Rhino usable, while another script is paused on its own thread.}{sec:nofreeze}
+\end{features}
+
+\begin{features}{Scripts started from Rhino's command line}
+\feat{Stop and record}{\code{RunPythonScript} at full speed; Ctrl+Alt+B stops it, and the editor opens it at the line with its values.}{sec:runpythonscript}
+\feat{Debug mode}{\code{RunPythonScript} in the debugger, the editor invisible until the script pauses.}{sec:runpythonscript}
+\feat{ScriptEditor Run, Debug=On}{The same for \code{ScriptEditor Run} and toolbar buttons.}{sec:scripteditorrun}
+\end{features}
+
+\begin{features}{Threads}
+\feat{V°Threads}{Every thread and where it is; its stack; Break now; Debug.}{sec:vthreads}
+\feat{Where is everyone?}{The same while the script runs, for hangs; “deadlock?”.}{sec:vthreads}
+\feat{Watches in every thread}{Each watch drawn once per thread, \code{pt @Worker-1}, each with its eye.}{sec:everythread}
+\feat{Freeze guard}{A worker's pause that would freeze Rhino is skipped, and you are told why.}{sec:freezeguard}
+\end{features}
+
+\begin{features}{Prompts and helpers}
+\feat{V°Python}{Python in the paused frame; \code{show}, \code{bake}, \code{watch}, \code{edit}, \code{breakpoints}.}{sec:vpython}
+\feat{V°PowerShell}{A PowerShell prompt in the script's folder.}{sec:vpowershell}
+\feat{V°Claude}{Claude Code on the paused script: reads, evaluates, debugs, edits; code waits for \code{/run}; Tab completes commands.}{sec:claude}
+\feat{RhinoAI}{Claude in the Rhino model and Grasshopper; offered for install.}{sec:rhinoai}
+\feat{V°Log, V°Settings, V°Help}{What happened, in plain words; every setting, on the tabs General (with Markdown), Rhino and Grasshopper; the manual.}{sec:vlog}
+\feat{The V names}{V°Watch, V°Python, …: the mark between V and name is a setting; Grasshopper's tab reads V° when its tabs don't fit.}{sec:vnames}
+\feat{Drop a folder}{Opens in the editor's Explorer.}{sec:conveniences}
+\feat{Version}{With its build number and build time in your time zone: the top bar, the load message, About V°Edit.}{sec:conveniences}
+\end{features}
+
+\begin{features}{Grasshopper: debugging}
+\feat{Three modes}{Normal, Stop and record (default), Always debug; the V° toolbar button goes round them.}{sec:ghmodes}
+\feat{Ctrl+Alt+B on a component}{Pauses it with its editor open; stops it and opens its editor at the line when closed.}{sec:ghbreak}
+\feat{Hidden editors}{Under Always debug every Python~3 component can pause, even if its editor was never opened.}{sec:hiddeneditors}
+\feat{Editors follow the definition}{Another definition opened or switched to: the script editors of the one left close.}{sec:closeeditors}
+\feat{Which run is paused}{A badge names the run, its branch or item, the inputs' paths.}{sec:runbadge}
+\feat{Which branch failed}{Failing runs named; copy their paths; debug exactly that run, by data or by number.}{sec:failingruns}
+\feat{Wiring without pausing}{An error right after rewiring doesn't bring up the editor.}{sec:rewiring}
+\feat{Recomputes held back}{No “expired during a solution” dialog.}{sec:ghheld}
+\feat{async:true in a component}{Its runs on a thread of their own: Rhino and Grasshopper stay usable; its threads pause.}{sec:ghasync}
+\end{features}
+
+\begin{features}{Grasshopper: while paused}
+\feat{Canvas usable}{Pan, drag, hover, select while a component is paused.}{ch:ghpaused}
+\feat{Compute downstream}{A change is computed at once with what is downstream, from the paused component's last data.}{sec:pauseddownstream}
+\feat{Marks}{What depends on the paused component gets an orange veil and dashed wires.}{sec:pausedmarks}
+\end{features}
+
+\begin{features}{Grasshopper: Panels and script inputs}
+\feat{Panels as code}{Scripts in Panels with line numbers, colors, no wrapping; edited in place.}{sec:panelcode}
+\feat{Panel at the stop}{After Ctrl+Alt+B a Panel's script opens at the line, with what happened.}{sec:panelstop}
+\feat{Script inputs}{A Panel's or a file's script edited in the Script Editor, saved back; debugged.}{sec:scriptinput}
+\feat{Library input}{Double-click: its files and its script open in the Script Editor.}{sec:libraryinput}
+\feat{Show as}{Autodetect, Python, C\#, Markdown, Plain text, per Panel.}{sec:showas}
+\feat{Markdown in Panels}{Rendered; double-click edits the source at that word; click a task box to check it; Markdig or the plug-in's parser; the look from the Grasshopper Markdown style.}{sec:panelmarkdown}
+\end{features}
+
+\begin{features}{Grasshopper: components and prompts}
+\feat{V°Edit}{Edit Grasshopper geometry in Rhino and feed it back: items, lists, trees; saved with the definition.}{sec:vedit}
+\feat{V°Text}{A Panel's text as Rhino text: Markdown, code in colors, plain text; Bake.}{sec:vtext}
+\feat{V°Protect}{Is a definition still the original? Green or red, and Revert; a Panel shows its state with \code{\{\{protected\}\}} and \code{\{\{modified\}\}}, and \code{protect:revert} reverts.}{sec:vprotect}
+\feat{Prompts window}{V°Claude, V°Python, V°PowerShell for the definition; each Claude answer one undo step.}{ch:ghprompts}
+\end{features}
+
+\begin{features}{Rhino: Markdown and links}
+\feat{MarkdownText}{Markdown as Rhino text; double-click to edit it, the same objects updated; changes in Rhino taken in; click a task box to check it; Undo a word at a time in the dialog, the whole edit in Rhino.}{ch:markdowntext}
+\feat{ProtectModel}{V°Protect for Rhino files: is the model still the original? Its original in an archive or in the file itself; Revert; Markdown texts show the state.}{sec:protectmodel}
+\feat{Markdown styles}{How Markdown looks, in a small CSS file: sizes, fonts, colors, spacing, bullets, task boxes, the quote's bar, links. One per Rhino file, edited, loaded and saved in MarkdownText's dialog; one for Grasshopper's Panels; a small editor; read-only defaults.}{sec:mdstyle}
+\feat{Links}{\code{gh:}, \code{ghview:}, \code{rhino:}, \code{rhinoview:}, \code{script:}, files and the web; into another file and back; followed with a click, Ctrl+click or not at all (one setting for Rhino and Grasshopper); blue words, a line under them.}{ch:links}
+\end{features}
+
+\begin{features}{Learning}
+\feat{Lessons}{17 script lessons, 12 Grasshopper lessons, the Markdown text example, an overview in Rhino and in Grasshopper, both protected; your own copies.}{ch:examples}
+\feat{Help and examples}{The miniVivisection toolbar in Rhino -- the manual, the examples' overview in Rhino and in Grasshopper, your lessons folder, the settings, MarkdownText, ProtectModel --, and V°Examples, V°Manual, V°Settings in Grasshopper; each can be hidden.}{sec:findexamples}
+\feat{Feature test}{\file{miniVivisection_Test.py}: automatic checks and a guided tour.}{sec:featuretest}
+\end{features}

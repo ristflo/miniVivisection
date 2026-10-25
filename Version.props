@@ -1,0 +1,35 @@
+<Project>
+  <!-- miniVivisection's version, shared by the plug-in (.rhp) and its Grasshopper component
+       (.gha): major.minor.patch here, and a build number counted up by every build (the
+       .gha builds first and counts; the .rhp takes its number) in build-number.txt: local,
+       not in git. The build's time is recorded in UTC; VersionInfo shows it in local time. -->
+  <PropertyGroup>
+    <VersionPrefix>0.2.0</VersionPrefix>
+    <MvBuildNumberFile>$(MSBuildThisFileDirectory)build-number.txt</MvBuildNumberFile>
+  </PropertyGroup>
+
+  <Target Name="MvBuildNumber" BeforeTargets="GetAssemblyAttributes;CoreGenerateAssemblyInfo">
+    <ReadLinesFromFile File="$(MvBuildNumberFile)" Condition="Exists('$(MvBuildNumberFile)')">
+      <Output TaskParameter="Lines" PropertyName="MvLastBuild" />
+    </ReadLinesFromFile>
+    <PropertyGroup>
+      <MvLastBuild Condition="'$(MvLastBuild)' == ''">0</MvLastBuild>
+      <MvBuild Condition="'$(MvCountBuilds)' == 'true' And '$(DesignTimeBuild)' != 'true'">$([MSBuild]::Add($(MvLastBuild), 1))</MvBuild>
+      <MvBuild Condition="'$(MvBuild)' == ''">$(MvLastBuild)</MvBuild>
+      <FileVersion>$(VersionPrefix).$(MvBuild)</FileVersion>
+      <MvBuildTimeUtc>$([System.DateTime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"))</MvBuildTimeUtc>
+    </PropertyGroup>
+    <!-- Not for an IDE's design-time builds (they run this target too, on every project load). -->
+    <WriteLinesToFile Condition="'$(MvCountBuilds)' == 'true' And '$(DesignTimeBuild)' != 'true'" File="$(MvBuildNumberFile)" Lines="$(MvBuild)" Overwrite="true" />
+    <ItemGroup>
+      <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+        <_Parameter1>BuildNumber</_Parameter1>
+        <_Parameter2>$(MvBuild)</_Parameter2>
+      </AssemblyAttribute>
+      <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+        <_Parameter1>BuildTimeUtc</_Parameter1>
+        <_Parameter2>$(MvBuildTimeUtc)</_Parameter2>
+      </AssemblyAttribute>
+    </ItemGroup>
+  </Target>
+</Project>

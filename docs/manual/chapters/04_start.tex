@@ -1,0 +1,125 @@
+\chapter{Getting started}\label{ch:start}
+
+\section{Installing}\label{sec:install}
+
+miniVivisection runs in Rhino~8 (8.36 or later) on Windows. It comes as a Rhino package,
+\file{minivivisection-<version>-rh8\_36-win.yak}, from Rhino's Package Manager or from the web page.
+The package holds the plug-in \file{miniVivisection.rhp}, its Grasshopper
+part \file{miniVivisection.GH.gha}, the libraries they need, the lessons in \file{examples}, and this
+manual.
+
+\paragraph{Installing the package.} In Rhino~8, run \code{PackageManager}, search for
+\ui{miniVivisection}, tick \ui{Include pre-releases} (it's a beta) and click \ui{Install}. Or drag the
+\file{.yak} file from the web page onto Rhino~8's window: Rhino installs it as a package all the same.
+Restart Rhino: it loads from then on, its Grasshopper components too. \code{PackageManager} offers
+newer builds, however miniVivisection was installed (keep \ui{Include pre-releases} ticked). To remove
+it: \code{PackageManager}, \ui{Installed}, miniVivisection, \ui{Uninstall}. Each version
+goes into a folder of its own, so keep your own \file{rhino\_tools.json} in the plug-in's settings
+folder (\file{\%APPDATA\%\bs McNeel\bs Rhinoceros\bs 8.0\bs Plug-ins\bs miniVivisection (…)\bs
+settings}), where it comes before the one next to the \file{.rhp}.
+
+\paragraph{From the zip to the package.} Earlier versions came as a zip. Not both: Rhino would find
+the plug-in twice. Close Rhino and double-click \file{miniVivisection\_Remove\_Old\_Install.cmd} (from
+the web page, and in the package's \file{misc} folder). It lists what it finds -- Rhino's registration of the zip copy, its Grasshopper
+link, copies of the Grasshopper part in Grasshopper's Libraries -- asks, and moves them into a backup
+folder (registry keys as \file{.reg} files), so nothing is lost. The settings stay; the package uses
+them too. \code{-DeleteFiles} moves the zip copy's files out as well, \code{-ResetSettings} the
+settings, \code{-ListOnly} only lists. In Rhino, \code{PlugInManager} (miniVivisection,
+\ui{Uninstall}) removes the registration too.
+
+\paragraph{From a build folder.} For development, the build folder \file{bin\bs Release\bs net7.0}
+holds the same files. Remove the package first, in \code{PackageManager}. Then:
+
+\begin{enumerate}[label=\arabic*.]
+  \item Close Rhino if it runs an older miniVivisection: Rhino locks a loaded plug-in.
+  \item Start Rhino~8 and drag \file{miniVivisection.rhp} onto its window, or install it with
+        \code{PlugInManager}. Do this once; from then on it loads when Rhino starts.
+  \item The command line confirms it:
+        \code{miniVivisection 0.2.0 (build N), <date> loaded (experimental). …}
+  \item The Grasshopper components need nothing else. At its first load, the plug-in tells Grasshopper
+        where they are (a \file{miniVivisection.ghlink} in Grasshopper's Libraries folder, if needed; a
+        package needs none, and an old link is removed then); they appear from Grasshopper's next start,
+        on the tab \ui{miniVivisection}.
+\end{enumerate}
+
+\begin{note}[Coming from ScriptEditorWatchViz]
+After the rename, drag \file{miniVivisection.rhp} onto Rhino once: Rhino still looks for the old
+\file{ScriptEditorWatchViz.rhp}. The settings are kept: Rhino stores them by the plug-in's id, which
+didn't change.
+\end{note}
+
+\section{Where it shows}\label{sec:whereitshows}
+
+Open the Script Editor (command \code{ScriptEditor}). miniVivisection adds to it in four places
+(\cref{fig:editor}):
+
+\begin{description}
+  \item[The top bar] shows \ui{miniVivisection 0.2.0 · 2026-10-09 14:05 AST}: the version and when it was
+        built, in your time zone. Next to it are the switches \vn{AI} and \vn{Debug} and the \vn{Help}
+        button, which opens the Markdown manual in the editor.
+  \item[The bottom tabs] are \vn{Watch}, \vn{Threads}, \vn{Python}, \vn{PowerShell} and \vn{Claude}, next to the
+        editor's own Terminal, Problems, Variables and Watch tabs.
+  \item[The left panel] gets pages below Explorer, Search and Help: \vn{Claude} (an orange speech bubble),
+        \vn{Watch} (a blue eye), \vn{Threads}, \vn{PowerShell} (a blue prompt), \vn{Log} (a gray page) and
+        \vn{Settings} (a gear). Click an icon to show its page; click the shown page's icon to fold the
+        panel. They are separate instances from the bottom tabs, laid out for the narrow panel.
+  \item[The toolbar] gets fixed \ui{Run} and \ui{Debug} buttons in place of the editor's switching Run button
+        (\see{sec:runbuttons}).
+\end{description}
+
+\shot{02_values_in_the_code}{The Script Editor paused in lesson 01. Values at the ends of the lines (gray),
+  \vn{Watch} below, the V tabs along the bottom, and in the top bar the switches \vn{AI} and \vn{Debug},
+  \vn{Help}, and the version.}{fig:editor}
+
+Each tab and page can be turned off in \menu{V°Settings\>Editor tabs and pages}. A Grasshopper
+component's script editor uses a \emph{compact layout}: its left panel's icons sit in the status bar at
+the bottom, and the V pages get buttons there too, after the editor's own (Search, Templates,
+Examples, Help). Click one to show its page, again to fold the panel.
+
+\section{Your first session}\label{sec:firstsession}
+
+Lesson 01 shows the core idea in two minutes.
+
+\begin{enumerate}[label=\arabic*.]
+  \item In the Script Editor's left panel, open \menu{Examples\>miniVivisection} and double-click
+        \lessonfile{01_watch_geometry.py}. (Or open it from the \file{examples} folder next to the plug-in.)
+  \item Read the text at the top: \emph{The bug}, \emph{Try this}, \emph{Without miniVivisection}.
+  \item Click left of the line marked \code{\# <-- BREAKPOINT} to set a breakpoint, and press \key{F5}.
+  \item The script pauses. The ends of the lines show their values in gray.
+  \item In \vn{Watch}, type \code{outline} and press \key{Enter}, then \code{corners}. Both are drawn in
+        Rhino's viewports, each with a name dot. The outline is a bow tie, not a rectangle: two corners
+        are swapped (cover picture).
+  \item Hover \code{corners} in the code. The tooltip shows its value and facts, and Rhino highlights it
+        in yellow.
+  \item Press \keys{Shift+F5} to stop, swap the two corners in the code, and run again.
+\end{enumerate}
+
+The other lessons go on from there, one feature each (\cref{ch:examples}). New to debugging? Start with
+\file{00_Examples_Guide.pdf} in the \file{examples} folder.
+
+\section{The feature test}\label{sec:featuretest}
+
+\file{miniVivisection_Test.py}, next to the \file{.rhp}, checks an installation:
+
+\begin{description}
+  \item[Part A] runs by itself (Run or Debug): the plug-in is loaded, its build time and switches, and
+        the drawing pipeline with real Rhino geometry: curves, Breps, meshes, points, polylines, lists,
+        edit modes, raw write-back, and a visualizer with its inverse. One PASS or FAIL line per check,
+        and a summary, in the Terminal.
+  \item[Part B] is a guided tour: set the breakpoints marked \code{<- BREAKPOINT A} to \code{D} and debug;
+        the STEP comments say what to try at each.
+\end{description}
+
+\section{Editor conveniences}\label{sec:conveniences}
+
+\begin{description}
+  \item[Drop a folder] anywhere on the Script Editor (tabs, panels, trays): it opens in the editor's
+        Explorer in the left panel, as its \ui{Explore Path} does, with an undo step (\keys{Ctrl+Z} goes back
+        to the folder before). Files dropped still open as scripts. Setting:
+        \setting{Drop a folder: open it in the editor's Explorer}.
+  \item[Version] is shown, with its build number and build time in your time zone, in three places:
+        the top bar, the load message on the command line, and \ui{About V°Edit} in Grasshopper. Quote them
+        when you report a problem.
+  \item[\vn{Help}] opens the Markdown manual in the Script Editor, rendered. A second click shows its tab
+        again. It works in a Grasshopper component's script editor too.
+\end{description}

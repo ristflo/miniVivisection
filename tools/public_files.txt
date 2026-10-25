@@ -1,0 +1,42 @@
+# What goes into the public repository (ristflo/miniVivisection): tools/publish_public.py.
+# One pattern a line, the repository's paths with "/": "+ pattern" takes files in, "- pattern"
+# leaves them out; the last pattern that matches a file decides, a file nothing matches stays out.
+# "*" matches across folders too (fnmatch).
+
+# The project
++ README.md
++ LICENSE
++ THIRD-PARTY-NOTICES.txt
++ miniVivisection.sln
++ Version.props
++ .gitignore
+
+# Code, tests, lessons
++ src/*
++ tests/*
++ examples/*
+
+# The manuals and the public notes
++ docs/miniVivisection_Manual.md
++ docs/miniVivisection_Manual.pdf
++ docs/miniVivisection_Highlights.md
++ docs/Project_Structure_and_Naming.md
++ docs/manual/*
++ docs/screenshots/*
+
+# The web pages, with the packages they offer; the package's parts
++ web/pages/*
++ packaging/*
+
+# The tools that build things
++ tools/*.py
++ tools/public_files.txt
+
+# Private: notes, the agents' rules, artwork sources, uploading and its account
+- AGENTS.md
+- docs/notes/*
+- docs/naming/*
+- web/sources/*
+- tools/publish_webpages.py
+- tools/publish.local.json
+- build-number.txt

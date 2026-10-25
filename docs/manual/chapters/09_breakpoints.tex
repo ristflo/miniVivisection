@@ -1,0 +1,87 @@
+\chapter{Breakpoints with conditions}\label{ch:breakpoints}
+
+A plain breakpoint pauses every time its line runs. In a loop of a thousand rounds, where the 731st goes
+wrong, that is a thousand pauses. miniVivisection adds conditions, hit counts and log messages, as in
+VS~Code.
+
+\section{Setting them}
+
+Right-click a line in the code and choose one of these. A small box opens at the mouse: \key{Enter}
+applies, \key{Esc} cancels, an empty text clears it. A breakpoint is made on the line if there is none.
+
+\begin{xltabular}{\linewidth}{@{}P{0.27\linewidth}L@{}}
+\toprule
+\ui{Breakpoint Condition…} & Pauses only when the expression is true, such as \code{i \% 3 == 0}. \\
+\ui{Hit Count…}            & \code{5} (the 5th hit), \code{>= 5}, \code{> 5}, \code{<= 5}, \code{< 5}, \code{\% 10} (every 10th). Counted from the run's start, when the condition holds. \\
+\ui{Log Message…}          & Prints a line to the Terminal instead of pausing: \code{i = \{i\}, n = \{len(pts)\}}. \\
+\ui{Remove Condition}      & Back to a plain breakpoint. \\
+\bottomrule
+\end{xltabular}
+
+\section{Conditions}\label{sec:conditions}
+
+\begin{description}
+  \item[Python scripts:] Any Python expression, evaluated in the script's frame at that line:
+        \code{i > 3 and crv.IsClosed}.
+  \item[C\# scripts:] A small evaluator over the frame's variables: literals, names, members, indexers,
+        method calls (and \code{Math.}), arithmetic, comparisons, and \code{\&\&}, \code{||}, \code{!}, which
+        short-circuit, so \code{crv != null \&\& crv.IsClosed} works. No LINQ, lambdas, casts or generics.
+  \item[IronPython~2 scripts:] The same evaluator, which also reads Python's \code{and}, \code{or}, \code{not}
+        and \code{True}, \code{False}, \code{None}: \code{i > 3 and name == 'a'}.
+\end{description}
+
+A condition that fails, by a typo or a missing name, \emph{pauses}, as without a condition. The marker
+turns red, and \vn{Log} says why, once per run.
+
+\paragraph{Variables only conditions know.}
+\begin{xltabular}{\linewidth}{@{}P{0.25\linewidth}L@{}}
+\toprule
+\code{thread_name}    & \code{"main"}, \code{"script"} for an async script's thread, or the thread's name: \code{thread_name == 'Worker-3' and i > 5} \\
+\code{thread_id}      & the thread's id \\
+\code{is_main_thread} & \code{True} on the script's main thread \\
+\code{gh_run}         & in Grasshopper: the component's run number \\
+\code{gh_branch}      & in Grasshopper: the run's branch, \code{"\{0;3\}"} \\
+\code{gh_item}        & in Grasshopper: the run's item, \code{"\{0;3\}[2]"}; \code{gh_item == "\{0;3\}[2]"} pauses only for that data \\
+\bottomrule
+\end{xltabular}
+
+\section{Log messages (logpoints)}\label{sec:logpoints}
+
+A log message prints instead of pausing, with each \code{\{expression\}} filled in; \code{\{\{} and \code{\}\}} are
+literal braces. The lines go to the Terminal and to \vn{Log}. While the script runs threads of its own,
+each line starts with its thread, \code{[Worker-2] i=3} (\setting{Logpoints name their thread}). In
+Grasshopper, \code{run \{gh_run\} \{gh_item\}: n=\{n\}} labels every line with its run.
+
+\section{In the code and the Breakpoints tab}
+
+A breakpoint with a spec shows it after its line: \code{◆ if i > 3 · hit >= 2 · 4 hits}. Its tooltip has the
+details. The specs move with their lines while you edit, and are kept per script file between sessions.
+The editor's Breakpoints tab gets a column with the same text, a right-click menu with the same four
+items, and a double-click on it edits the condition. In \vn{Python}, \code{breakpoints()} lists them with this
+run's hits. Claude's \code{set_breakpoint} takes a condition, hit count and log message too.
+
+\section{Stepping ignores conditions}
+
+\key{F10}, \key{F11} and \keys{Shift+F11} step as usual; only continuing (\key{F5}) is filtered by
+conditions, as in VS~Code.
+
+\section{Stop once per line}\label{sec:onceperline}
+
+Python's tracer reports a line for every round of code within that line: each item of a comprehension
+such as \code{y = [r.Line for r in rungs]}, a generator expression or lambda, each round of a one-line loop.
+A breakpoint there paused once per item, and \ui{Step over} inside a comprehension too. That is how
+RhinoCode's debugger, like Python's \code{pdb}, works.
+
+With \setting{Stop once per line} (on by default), such a line pauses once. \ui{Continue} and
+\ui{Step over} then finish the line instead of stopping for every item. \ui{Step into} still goes into
+the comprehension, and a breakpoint with a condition, hit count or log message still decides for every
+item.
+
+\section{Turning it off}
+
+\setting{Conditional breakpoints, hit counts and logpoints} in \menu{V°Settings\>Debugger}, or the
+\vn{Debug} switch, turns all of it off: every breakpoint pauses, and the markers are hidden.
+
+\begin{lesson}{lesson 05}
+\lessonfile{05_conditional_breakpoints.py}: conditions, hit counts, log messages.
+\end{lesson}

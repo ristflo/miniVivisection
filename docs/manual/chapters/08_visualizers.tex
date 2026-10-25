@@ -1,0 +1,79 @@
+\chapter{Visualizers and Interpret as}\label{ch:visualizers}
+
+Rhino geometry draws itself. Your own classes, such as a \code{Sensor}, a \code{Room} or a \code{Truss}, don't:
+miniVivisection can't know which of their fields are coordinates. A \emph{visualizer} tells it. Raw data,
+numbers in tuples and lists, can mean several things; \emph{Interpret as} chooses one.
+
+\section{The order}
+
+What a watch is drawn as is decided in this order:
+
+\begin{enumerate}[label=\arabic*.]
+  \item \textbf{A visualizer} registered for the value's type.
+  \item \textbf{Rhino geometry}, as it is (\see{sec:whatdrawn}).
+  \item \textbf{Raw data} by Interpret as: a triple as a point or vector; a list of triples as points, a
+        polyline, a closed polyline, an interpolated curve or vectors; pairs as lines or anchored
+        vectors; six-number rows as anchored vectors; point triples as triangles; containers item by
+        item; or plain data, not drawn.
+\end{enumerate}
+
+\section{Writing a visualizer}
+
+\code{rhinoviv.py} ships with the plug-in (in \file{python} next to the \file{.rhp}) and can be imported in
+Rhino's Python. A visualizer is a function that returns geometry, one item or a list, for a value of
+its class:
+
+\begin{lstlisting}
+import rhinoviv
+import Rhino.Geometry as rg
+
+class Sensor:
+    def __init__(self, x, y, z):
+        self.x, self.y, self.z = x, y, z
+
+class SensorArray:
+    def __init__(self, sensors):
+        self.sensors = sensors
+
+@rhinoviv.visualize(SensorArray)
+def show_sensors(array):
+    return [rg.Point3d(s.x, s.y, s.z) for s in array.sensors]
+
+@rhinoviv.inverse(SensorArray)        # optional: makes it editable in Rhino
+def update_sensors(array, edited):    # edited: one geometry, or the list in drawing order
+    for s, pt in zip(array.sensors, edited):
+        s.x, s.y, s.z = pt.X, pt.Y, pt.Z
+\end{lstlisting}
+
+With the visualizer registered, a watch of an array draws its sensors as points; \ui{In Rhino} says
+\code{drawn by show_sensors (12)}. With the inverse, \ui{Edit in Rhino} and Auto edit work on it: drag a
+point, and the sensor's coordinates change in the paused script. A value without an inverse can't be
+edited.
+
+\section{Where to register them}
+
+\begin{description}
+  \item[In the script itself:] As above.
+  \item[In \vn{Python} while paused:] They count at once.
+  \item[In visualizer scripts:] \setting{Visualizer scripts} in \menu{V°Settings\>Visualizers} lists Python
+        files, separated by \code{;}. They run in the paused script's context at the first pause of every run,
+        and again when saved (\setting{Reload a visualizer script when it's saved}).
+\end{description}
+
+In \vn{Python}, \code{visualizers()} lists what is registered and \code{reload_visualizers()} runs the visualizer
+scripts again.
+
+\section{Choosing an interpretation}
+
+\begin{itemize}
+  \item \menu{V°Watch\>right-click\>Interpret as}: the choices that fit the value, \emph{Auto} first.
+  \item \menu{Watch in Rhino as ▸} in the editor's context menus adds a watch with one.
+  \item \code{show(pts, as_="polyline")} in \vn{Python} draws with a chosen interpretation.
+\end{itemize}
+
+When raw points, polylines and single points are edited in Rhino, they are written back into the list:
+lists stay the same lists, tuples become tuples. Other interpretations are drawn only.
+
+\begin{lesson}{lessons 07, 10}
+\lessonfile{07_raw_data_interpret_as.py}: Interpret as. \lessonfile{10_visualizers.py}: visualizers.
+\end{lesson}

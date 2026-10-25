@@ -1,0 +1,207 @@
+% miniVivisection manual -- the look: fonts, colors, headings, boxes, keys, code.
+% Compiled with LuaLaTeX (fontspec, system fonts for symbols): tools/make_manual_latex.py.
+
+% ---------------------------------------------------------------- fonts
+\usepackage{fontspec}
+\setmainfont{SourceSerif4}[
+  UprightFont = *-Regular, ItalicFont = *-RegularIt, BoldFont = *-Semibold, BoldItalicFont = *-SemiboldIt,
+  Extension = .otf, Numbers = Lining]
+\setsansfont{SourceSans3}[
+  UprightFont = *-Regular, ItalicFont = *-RegularIt, BoldFont = *-Semibold, BoldItalicFont = *-SemiboldIt,
+  Extension = .otf]
+\setmonofont{SourceCodePro}[
+  UprightFont = *-Regular, ItalicFont = *-RegularIt, BoldFont = *-Semibold,
+  Extension = .otf, Scale = 0.86]
+\newfontfamily\mvhead{SourceSans3}[
+  UprightFont = *-Semibold, BoldFont = *-Bold, ItalicFont = *-SemiboldIt, Extension = .otf, Ligatures = TeX]
+\newfontfamily\mvlight{SourceSans3}[UprightFont = *-Light, Extension = .otf, Ligatures = TeX]
+\newfontfamily\symbolfont{Segoe UI Symbol}
+% The V° mark, in the font of the V° button on Grasshopper's toolbar.
+\newfontfamily\vlogo{Segoe UI Bold}
+% Outlined text: stroked, not filled (PDF text render mode 1), the stroke #1 bp wide.
+\providecommand{\outlined}[2]{\pdfextension literal{1 Tr #1 w}#2\pdfextension literal{0 Tr}}
+\usepackage{newunicodechar}
+\newunicodechar{◆}{{\symbolfont ◆}}
+\newunicodechar{☐}{{\symbolfont ☐}}
+\newunicodechar{☑}{{\symbolfont ☑}}
+\newunicodechar{∣}{{\symbolfont ∣}}
+\newunicodechar{✓}{{\symbolfont ✓}}
+\newunicodechar{▸}{{\symbolfont ▸}}
+\newunicodechar{⟶}{{\symbolfont ⟶}}
+\usepackage{microtype}
+\usepackage[strings]{underscore} % _ in text: code names such as gh_item
+
+% ---------------------------------------------------------------- colors
+\usepackage[table]{xcolor}
+\definecolor{mvblue}{HTML}{1A4D8F}
+\definecolor{mvbluelight}{HTML}{EAF0F8}
+\definecolor{mvbluemid}{HTML}{C9D6EA}
+\definecolor{mvorange}{HTML}{D9661F}
+\definecolor{mvorangelight}{HTML}{FCEFE6}
+\definecolor{mvgreen}{HTML}{2E7D4F}
+\definecolor{mvgreenlight}{HTML}{E8F4EC}
+\definecolor{mvred}{HTML}{B3261E}
+\definecolor{mvredlight}{HTML}{FBEAE9}
+\definecolor{mvgray}{HTML}{5F6B7A}
+\definecolor{mvgraylight}{HTML}{F2F4F7}
+\definecolor{mvink}{HTML}{1D1D1F}
+\definecolor{codebg}{HTML}{F6F8FA}
+\definecolor{codekw}{HTML}{0000FF}
+\definecolor{codestr}{HTML}{A31515}
+\definecolor{codecom}{HTML}{008000}
+\definecolor{codenum}{HTML}{098658}
+\definecolor{codefn}{HTML}{795E26}
+\color{mvink}
+
+% ---------------------------------------------------------------- page
+\usepackage[a4paper, top=24mm, bottom=26mm, inner=24mm, outer=24mm, headsep=9mm, footskip=12mm]{geometry}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.55em plus 0.2em minus 0.1em}
+\linespread{1.07}
+\usepackage{scrlayer-scrpage}
+\pagestyle{scrheadings}
+\clearpairofpagestyles
+\automark[section]{chapter}
+\ihead{\sffamily\small\color{mvgray}miniVivisection \,·\, Manual}
+\ohead{\sffamily\small\color{mvgray}\leftmark}
+\ofoot*{\sffamily\small\color{mvblue}\thepage}
+\setkomafont{pageheadfoot}{\normalfont}
+\renewcommand*{\chaptermarkformat}{\thechapter\enskip}
+
+% ---------------------------------------------------------------- headings
+\setkomafont{disposition}{\mvhead\color{mvblue}}
+\setkomafont{chapter}{\mvhead\Huge\color{mvblue}}
+\setkomafont{section}{\mvhead\Large\color{mvblue}}
+\setkomafont{subsection}{\mvhead\large\color{mvink}}
+\setkomafont{subsubsection}{\mvhead\normalsize\color{mvink}}
+\setkomafont{paragraph}{\mvhead\normalsize\color{mvblue}}
+\setkomafont{part}{\mvhead\Huge\color{mvblue}}
+\setkomafont{partnumber}{\mvlight\Large\color{mvgray}}
+\RedeclareSectionCommand[beforeskip=-1.6em plus -0.4em, afterskip=0.6em]{section}
+\RedeclareSectionCommand[beforeskip=-1.2em plus -0.3em, afterskip=0.35em]{subsection}
+\RedeclareSectionCommand[beforeskip=-0.9em plus -0.2em, afterskip=0.25em]{subsubsection}
+\RedeclareSectionCommand[beforeskip=0.7em plus 0.2em, afterskip=-0.6em]{paragraph}
+\RedeclareSectionCommand[beforeskip=0pt, afterskip=2.2em]{chapter}
+\renewcommand*{\chapterformat}{%
+  \begin{tikzpicture}[baseline=(n.base)]
+    \node[fill=mvblue, text=white, inner xsep=7pt, inner ysep=5pt, rounded corners=3pt, font=\mvhead\huge] (n) {\thechapter};
+  \end{tikzpicture}\hspace{0.6em}}
+\renewcommand*{\chapterlinesformat}[3]{%
+  \parbox{\linewidth}{\raggedright#2#3\par\vspace{0.35em}{\color{mvbluemid}\rule{\linewidth}{1.2pt}}}}
+\renewcommand*{\sectionformat}{{\color{mvbluemid}\thesection}\hspace{0.7em}}
+
+% ---------------------------------------------------------------- lists, tables, figures
+\usepackage{enumitem}
+\setlist{itemsep=0.2em, topsep=0.3em, parsep=0.15em, leftmargin=1.4em}
+\setlist[itemize,1]{label={\color{mvblue}\small\textbullet}}
+\setlist[itemize,2]{label={\color{mvgray}\footnotesize–}}
+\setlist[description]{font=\sffamily\bfseries\color{mvink}, itemsep=0.25em, leftmargin=1.4em}
+\usepackage{booktabs, tabularx, longtable, xltabular, array, multirow}
+\renewcommand{\arraystretch}{1.22}
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+\newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
+\setlength{\aboverulesep}{0.25ex}
+\setlength{\belowrulesep}{0.45ex}
+\arrayrulecolor{mvbluemid}
+\usepackage{graphicx}
+% The screenshots as high-quality JPEGs, made from docs/screenshots/*.png by tools/make_manual_latex.py.
+\graphicspath{{generated/jpg/}}
+\usepackage[font={small,sf}, labelfont={bf,color=mvblue}, justification=raggedright, singlelinecheck=false, skip=6pt]{caption}
+\usepackage{float}
+
+% ---------------------------------------------------------------- tikz, boxes
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, shapes.geometric, calc, fit, backgrounds}
+% TikZ's ragged alignment sets \spaceskip for Computer Modern -- far too wide in Source Sans: the font's own spaces.
+\tikzset{every node/.append style={execute at begin node={\spaceskip=0pt\relax\xspaceskip=0pt\relax}}}
+\usepackage[most]{tcolorbox}
+\tcbset{
+  mvbox/.style={enhanced, breakable, boxrule=0pt, arc=2pt, left=10pt, right=10pt, top=6pt, bottom=6pt,
+    before skip=0.8em, after skip=0.8em, fonttitle=\sffamily\bfseries\small, coltitle=#1, attach title to upper={\enskip}},
+}
+\newtcolorbox{note}[1][Note]{mvbox=mvblue, colback=mvbluelight, borderline west={3pt}{0pt}{mvblue}, title={#1}}
+\newtcolorbox{tip}[1][Tip]{mvbox=mvgreen, colback=mvgreenlight, borderline west={3pt}{0pt}{mvgreen}, title={#1}}
+\newtcolorbox{caution}[1][Careful]{mvbox=mvorange, colback=mvorangelight, borderline west={3pt}{0pt}{mvorange}, title={#1}}
+\newtcolorbox{lesson}[1]{mvbox=mvgray, colback=mvgraylight, borderline west={3pt}{0pt}{mvgray}, title={Try it: #1}}
+% A concept: a titled box of its own.
+\newtcolorbox{concept}[1]{enhanced, breakable, colback=white, colframe=mvbluemid, boxrule=0.8pt, arc=3pt,
+  left=10pt, right=10pt, top=8pt, bottom=8pt, before skip=1em, after skip=1em,
+  title={#1}, fonttitle=\mvhead\normalsize, coltitle=mvblue, colbacktitle=mvbluelight,
+  attach boxed title to top left={xshift=8pt, yshift=-8pt}, boxed title style={boxrule=0.8pt, colframe=mvbluemid, arc=2pt}}
+
+% ---------------------------------------------------------------- inline markup
+% \vn{Watch} -> V°Watch, the plug-in's V names.
+\newcommand{\vn}[1]{\mbox{\sffamily\bfseries V°#1}}
+% \ui{Edit in Rhino}: a label, button or menu item as the user sees it.
+\newcommand{\ui}[1]{{\sffamily\bfseries #1}}
+% \menu{A}{B}: a path through menus or settings groups.
+\newcommand{\menu}[1]{{\sffamily\bfseries\def\>{\,{\color{mvgray}\small▸}\,}#1}}
+% \setting{V°Settings > Debugger > Stop once per line}
+\newcommand{\setting}[1]{{\sffamily\itshape\color{mvblue}#1}}
+% \code{...}: code in the text.
+\newcommand{\code}[1]{\texttt{\color{mvink}#1}}
+\setlength{\emergencystretch}{2.5em}
+\newcommand{\codebreak}[1]{\texttt{\color{mvink}#1}}
+% \bs: a backslash in a path, where the line may break.
+\newcommand{\bs}{\textbackslash\allowbreak}
+% \file{...}: file and folder names.
+\newcommand{\file}[1]{\texttt{\color{mvgray}#1}}
+% \key{Ctrl}: a key cap; \keys{Ctrl+Alt+B} for a chord.
+\newcommand{\key}[1]{\tikz[baseline=(k.base)]\node[draw=mvgray!70, fill=mvgraylight, rounded corners=1.5pt, inner xsep=2.6pt, inner ysep=1.4pt, line width=0.45pt, font=\sffamily\scriptsize] (k) {\strut #1};}
+\ExplSyntaxOn
+\NewDocumentCommand{\keys}{m}{
+  \seq_set_split:Nnn \l_tmpa_seq {+} {#1}
+  \bool_set_true:N \l_tmpa_bool
+  \seq_map_inline:Nn \l_tmpa_seq {
+    \bool_if:NF \l_tmpa_bool { \mbox{\scriptsize\,+\,} }
+    \bool_set_false:N \l_tmpa_bool
+    \key{##1}
+  }
+}
+\ExplSyntaxOff
+% A reference to a section, shown as "§ 5.2" with a link.
+\newcommand{\see}[1]{\mbox{\hyperref[#1]{§\,\ref*{#1}}}}
+% A lesson's file.
+\newcommand{\lessonfile}[1]{\texttt{\color{mvgreen}#1}}
+
+% ---------------------------------------------------------------- code listings
+\usepackage{listings}
+\lstdefinestyle{mv}{
+  basicstyle=\ttfamily\small, columns=fullflexible, keepspaces=true,
+  backgroundcolor=\color{codebg}, frame=single, framerule=0pt, rulecolor=\color{codebg},
+  framesep=6pt, xleftmargin=6pt, xrightmargin=6pt, aboveskip=0.8em, belowskip=0.8em,
+  keywordstyle=\color{codekw}, stringstyle=\color{codestr}, commentstyle=\color{codecom}\itshape,
+  showstringspaces=false, upquote=true, breaklines=true, breakatwhitespace=true,
+  literate={°}{{°}}1 {→}{{$\rightarrow$}}1 {…}{{\dots}}1 {◆}{{\symbolfont ◆}}1,
+}
+\lstdefinelanguage{PythonMV}[]{Python}{morekeywords={True,False,None,as,with,async,await,nonlocal}}
+\lstset{style=mv, language=PythonMV}
+\lstdefinestyle{plain}{style=mv, language={}}
+
+% ---------------------------------------------------------------- links
+\usepackage[hidelinks, bookmarksnumbered, bookmarksopen, bookmarksopenlevel=1, pdfdisplaydoctitle]{hyperref}
+\usepackage{bookmark}
+\hypersetup{colorlinks=true, linkcolor=mvblue, urlcolor=mvblue, citecolor=mvblue}
+\usepackage[capitalise, noabbrev]{cleveref}
+
+% ---------------------------------------------------------------- table of contents
+\setkomafont{chapterentry}{\mvhead\color{mvblue}}
+\setkomafont{partentry}{\mvhead\large\color{mvink}}
+\RedeclareSectionCommand[tocentryformat=\mvhead\color{mvblue}, tocpagenumberformat=\mvhead\color{mvblue}]{chapter}
+\setcounter{tocdepth}{1}
+
+% A figure with one of the screenshots (960 x 600): \shot{file}{caption}{label}
+\newcommand{\shot}[3]{%
+  \begin{figure}[htbp]
+    \centering
+    \tikz\node[inner sep=0pt, draw=mvbluemid, line width=0.6pt]{\includegraphics[width=0.92\linewidth]{#1}};
+    \caption{#2}\label{#3}
+  \end{figure}}
+
+% A feature list's table: \begin{features}{Heading} \feat{name}{what}{section} ... \end{features}
+\usepackage{needspace}
+\newenvironment{features}[1]{%
+  \par\needspace{7\baselineskip}\smallskip{\mvhead\color{mvblue}#1}\par\nopagebreak\vspace{-0.4em}
+  \xltabular{\linewidth}{@{}P{0.27\linewidth}L>{\raggedleft\arraybackslash}p{0.07\linewidth}@{}}
+  \toprule}{\bottomrule\endxltabular}
+\newcommand{\feat}[3]{{\sffamily\bfseries #1} & #2 & \see{#3}\\}

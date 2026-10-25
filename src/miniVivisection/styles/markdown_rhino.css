@@ -1,0 +1,76 @@
+/* miniVivisection default Markdown style for Rhino -- checksum 66fce6de6b64d858 -- read-only: Save as makes your own */
+
+/*
+  How Markdown is drawn as Rhino text: the MarkdownText command, and Grasshopper's V Text
+  (with the active Rhino file's style). A Rhino file keeps a copy of the style its texts
+  are drawn with -- one per file; MarkdownText's dialog edits, loads and saves it, for all
+  of them. A file's copy of this default is replaced by the default of the plug-in that
+  opens it -- a style of your own never is. Which style a new file starts with: V
+  Settings, "Markdown style for Rhino" (empty: this default).
+
+  A small part of CSS: element names (several with commas), the properties below and
+  nothing else -- no classes, no nesting; body's font-family and color are inherited.
+  Unknown elements, properties and values are reported (V Log), and left out.
+
+  Lengths: em -- one base text height (Rhino's text height of a paragraph: its capitals);
+  a plain number is em too; 120% is 1.2em.
+  Colors: a name (RoyalBlue), #RRGGBB, #RGB or rgb(r, g, b); none: the layer's color.
+  Characters: in quotes -- "-", or "\2022" for the character with that hexadecimal code.
+*/
+
+body {
+  font-family: inherit;          /* the base font: inherit -- the dialog's Font, else the dimension style's -- or a font's name */
+  color: none;                   /* the texts' color; none: their layer's */
+  margin-bottom: 0.7em;          /* the space after every block */
+}
+
+h1 { font-size: 1.8em;  font-weight: bold; margin-top: 0.5em; border-bottom: line; padding-bottom: 0.3em; }
+h2 { font-size: 1.45em; font-weight: bold; margin-top: 0.5em; border-bottom: line; padding-bottom: 0.3em; }
+h3 { font-size: 1.2em;  font-weight: bold; margin-top: 0.5em; }
+h4, h5, h6 { font-size: 1.05em; font-weight: bold; margin-top: 0.5em; }
+/* also: font-family, font-style, color; border-bottom: line or none */
+
+p { }                            /* font-family, font-size, font-weight, font-style, color */
+
+li {
+  margin-left: 0.5em;            /* a list's indent */
+  padding-left: 1.6em;           /* each level deeper */
+  list-style-type: "\2022";      /* the bullet: one per level, e.g. "\2022" "\25E6" "\25AA" (the last one for deeper levels) */
+  marker-width: 1.4em;           /* the room for a bullet or number before the text, at least */
+}
+
+task {                           /* a task list's box: - [ ] and - [x] */
+  checked: drawn;                /* drawn: a square with a check mark; or a character, e.g. "\2611" */
+  unchecked: drawn;              /* drawn: a square; or a character, e.g. "\2610" */
+  size: 0.85em;                  /* a drawn box's side */
+  marker-width: 1.6em;           /* the room for the box before the text */
+}
+
+blockquote {
+  font-style: italic;
+  padding-left: 1.2em;           /* each level of quoting */
+  margin-left: 0.3em;            /* where the bar is */
+  bar: "|";                      /* the bar beside a quote: a character on each of its lines, line (a thin line) or none */
+  bar-weight: bold;              /* the bar character's weight */
+}
+
+pre {                            /* a code block */
+  font-family: Consolas;
+  font-size: 0.95em;
+  padding: 0.5em 0.6em;          /* top and bottom, left and right */
+  border: frame;                 /* frame or none */
+}
+
+code { font-family: Consolas; }  /* `code` in a line */
+
+a {                              /* links (V Settings, "Markdown links in color" off: in the text's color) */
+  color: #0066CC;                /* their words and the line under them */
+  text-decoration: underline;    /* the line under their words: underline or none */
+  text-decoration-thickness: 10%;  /* its thickness, of the text height */
+  text-underline-offset: 15%;    /* its top under the baseline, of the text height (about 30%: under g, p and y) */
+}
+
+table { padding: 0.4em; border: grid; }   /* the space around a cell's text; grid or none */
+th { font-weight: bold; }                  /* the header row */
+
+hr { margin-top: 0.4em; margin-bottom: 1.1em; }   /* a rule: the space above its line, and after it */

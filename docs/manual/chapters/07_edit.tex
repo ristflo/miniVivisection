@@ -1,0 +1,70 @@
+\chapter{Edit in Rhino, and Bake}\label{ch:edit}
+
+\section{Edit in Rhino}\label{sec:editinrhino}
+
+Some fixes are easier to find by hand than with numbers: drag a control point until the curve looks
+right, then read off what it should have been. \ui{Edit in Rhino} makes a paused script's value into
+real Rhino objects for that. Change them with any Rhino tool, and the change is written back into the
+paused script (\see{sec:writeback}). Python~3 scripts only.
+
+\paragraph{Starting it.} Choose \ui{Edit in Rhino} in \vn{Watch}'s toolbar, in a tooltip, or in the
+right-click menu of a name or a Variables row; or type \code{edit('crv')} in \vn{Python}. The value
+becomes objects on the layer \file{Script Editor Watch::Edit}, one object per list item. Its drawing is
+hidden meanwhile, and its name dot moves to the edited objects and with them.
+
+\paragraph{Editing.} Move them, drag control points, use the Gumball, \code{Scale}, \code{Rebuild}, even
+Undo. When a command ends, its edits are written back together, with one redraw. The new geometry is
+turned back into the variable's type and assigned in the paused frame:
+
+\begin{xltabular}{\linewidth}{@{}P{0.38\linewidth}L@{}}
+\toprule
+\textsf{\textbf{The variable was}} & \textsf{\textbf{Written back from}} \\ \midrule
+\code{Point3d}                 & a point \\
+\code{Line}, \code{Polyline}, \code{Circle}, \code{Arc} & a curve, if it still is one \\
+\code{Box}                     & a Brep \\
+\code{Vector3d}                & its arrow \\
+\code{Curve}, \code{Brep}, \code{Mesh} & as they are \\
+a list item                    & written as \code{curves[2] = …} \\
+raw points, polylines (Interpret as) & written into the list; lists stay the same lists, tuples become tuples \\
+your class with a visualizer   & through its \code{@rhinoviv.inverse} function (\cref{ch:visualizers}) \\
+\bottomrule
+\end{xltabular}
+
+\paragraph{Undo.} \keys{Ctrl+Z} and Redo write the earlier or later geometry back too.
+
+\paragraph{At every pause} the objects take the script's current values. \textbf{When the run ends}, they are
+removed; \code{miniVivisection StopEditing} removes them earlier.
+
+\paragraph{Limits.}
+\begin{itemize}
+  \item Write-back works only while paused. With the script on a thread of its own, it needs FreePause.
+  \item An edit that changes the kind of geometry, a circle made into a free-form curve, say, is reported
+        and not written back.
+  \item Planes can't be edited.
+  \item Other interpretations of raw data (Interpret as) are drawn only.
+\end{itemize}
+
+\section{Auto edit}\label{sec:autoedit}
+
+With \ui{Auto edit} on (the default), every shown watch whose value is geometry becomes editable objects
+at each pause, and right away for a watch added or shown while paused. It is \vn{Watch}'s toolbar switch,
+and one setting for all editors (\setting{Auto edit}): every \vn{Watch} tab and the settings show the same
+state. Turning it off removes those objects.
+
+\section{Bake}\label{sec:bake}
+
+\ui{Bake} copies drawn values into the document, on the layer \file{Script Editor Watch::Baked}. Each copy
+is named after its expression and uses its color; a list's items are grouped. It is one undo step.
+
+Bake from \vn{Watch}'s toolbar (the selected watch, or per thread row, \see{sec:everythread}), from a tooltip,
+from the right-click menu (\ui{Bake to Rhino}), with \code{bake(value)} in \vn{Python}, or with
+\code{miniVivisection BakeAll}, which bakes everything drawn right now.
+
+\begin{tip}[Pause before a crash]
+A script that crashes after a long computation loses its results. Set a breakpoint just before the line
+that fails, and bake what was computed so far.
+\end{tip}
+
+\begin{lesson}{lessons 03, 04}
+\lessonfile{03_bake_before_a_crash.py}: Bake. \lessonfile{04_edit_in_rhino.py}: Edit in Rhino, Auto edit.
+\end{lesson}

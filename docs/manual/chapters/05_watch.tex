@@ -1,0 +1,111 @@
+\chapter{V°Watch: values drawn in Rhino}\label{ch:watch}
+
+\vn{Watch} is a list of expressions that are drawn in Rhino's viewports at every pause. It is a tab at
+the bottom of the Script Editor and a page in its left panel, next to the editor's own Watch tab, which
+shows values but doesn't draw them. Each editor has its own list, and it is kept between Rhino sessions.
+
+\shot{01_watch_values_in_rhino}{Lesson 01 paused: \vn{Watch} lists \code{outline} (a PolylineCurve,
+  \emph{drawn}) and \code{corners} (a list, \emph{drawn as points (4)}). Rhino's Top view draws them with
+  their name dots: the outline crosses itself.}{fig:watch}
+
+\section{Adding a watch}\label{sec:addwatch}
+
+\begin{itemize}
+  \item Type an expression in the box above the list and press \key{Enter}: a name (\code{crv}), an item
+        (\code{curves[0]}), a slice (\code{pts[1:3]}), a member (\code{crv.PointAtStart}), a comprehension
+        (\code{[c.PointAtEnd for c in curves]}) or a constructor (\code{rg.Line(a, b)}).
+  \item Right-click a name in the code, or a row in the editor's Variables or Watch tab, and choose
+        \ui{Watch in Rhino}. A nested row counts as its path, such as \code{curves[0]} or \code{node.x}.
+  \item In a tooltip, click \ui{Watch in Rhino} (\see{sec:tooltiplinks}).
+  \item In \vn{Python}, \code{watch('crv.PointAtStart')}.
+  \item Right-click a member row inside a watch (\code{Degree}, \code{[0]}) and choose \ui{Watch in Rhino} to
+        make it a watch of its own.
+\end{itemize}
+
+A watch added while paused is drawn at once. Each watch gets its own color.
+
+\section{The list}\label{sec:watchlist}
+
+The list is a tree, like the editor's Variables tab.
+
+\begin{xltabular}{\linewidth}{@{}P{0.2\linewidth}L@{}}
+\toprule
+\ui{Show}       & An eye: open and blue means drawn, closed and gray means hidden. Click it to hide a watch without removing it. A hidden watch's row is grayed out. \\
+\ui{Expression} & In its drawing color. Click the cell or press \key{F2} to edit it in place; the watch is drawn again with the new expression. \\
+\ui{Value}, \ui{Type} & As the editor's Variables tab shows them. Rows expand into the value's members: a curve's \code{Degree}, \code{Domain}, \code{PointAtStart}; a list's \code{[0]}, \code{[1]}, … Rhino objects show their data as in the Variables tab. \\
+\ui{In Rhino}   & What the last pause found: \code{drawn}, \code{drawn (3)} for three items, \code{drawn by show\_sensors (12)} for a visualizer, the value's type with \emph{nothing to draw}, or the error. \\
+\bottomrule
+\end{xltabular}
+
+A row is grayed when the last pause couldn't evaluate it, and every row is grayed while the script runs
+or after it ended (\emph{running}, \emph{not running}).
+
+\paragraph{Toolbar.} One row above the list: the expression to add, then \ui{Add}, \ui{Remove} (or \key{Del}),
+\ui{Bake}, \ui{Edit in Rhino}, \ui{Auto edit} (a switch with a green \ui{ON} or gray \ui{OFF} label) and
+\ui{Clear all}. Their tooltips name them. The right-click menu has \ui{Interpret as}, \ui{In every thread}, \ui{Remove},
+\ui{Bake to Rhino} and \ui{Edit in Rhino} (on a member row, \ui{Watch in Rhino}).
+
+\section{What is drawn, and how}\label{sec:whatdrawn}
+
+\begin{xltabular}{\linewidth}{@{}P{0.42\linewidth}L@{}}
+\toprule
+\textsf{\textbf{Value}} & \textsf{\textbf{Drawn as}} \\ \midrule
+\code{Curve}, \code{Line}, \code{Polyline}, \code{Arc}, \code{Circle}, \code{Ellipse}, \code{Rectangle3d} & the curve \\
+\code{Point3d}, \code{Point3f}, \code{Point} & a point \\
+\code{Vector3d}, \code{Vector3f} & an arrow from the world origin \\
+\code{Plane} & its axes, x red, y green, z blue, 60 pixels long at any zoom \\
+\code{Box}, \code{BoundingBox}, \code{Brep}, \code{Surface}, \code{Extrusion} & shaded, translucent in the watch's color, with isocurves \\
+\code{Mesh}, \code{SubD} & shaded, with mesh wires \\
+\code{PointCloud}, \code{TextDot} & as such \\
+a \code{Guid} of a Rhino object (rhinoscriptsyntax) & that object's geometry, in the watch's color \\
+a .NET collection, a Python list, tuple or set & every drawable item, up to 4 levels deep and 10\,000 items \\
+your own class & what its visualizer returns (\cref{ch:visualizers}) \\
+raw data: numbers in tuples and lists & by \ui{Interpret as}: points, a polyline, vectors, … (\see{sec:interpretas}) \\
+\bottomrule
+\end{xltabular}
+
+Other values aren't drawn; the \ui{In Rhino} column says what they are. A generator or other iterator
+is left alone, since reading it would consume it.
+
+\paragraph{Name dots.} Each drawn value has a dot with its name (and item count), up and to the right of
+it, with a tail that curves down from the dot's bottom edge to a point at the value, like a speech
+bubble. That way the dot never covers a point, at any zoom. Four settings in
+\menu{V°Settings\>Rhino\>Watches in Rhino}: \setting{Name dots} (on or off; the values stay drawn),
+\setting{Name dot offset} (pixels; 0 puts the dot on the value), \setting{Name dot opacity} (\%; lower
+lets geometry show through) and \setting{Name dot pointer} (the curved \emph{Tail} or a straight \emph{Line}).
+
+\section{Interpret as}\label{sec:interpretas}
+
+Raw data, such as \code{[(0,0,0), (5,0,0), (5,5,0)]}, can mean several things. Right-click a watch and
+choose \menu{Interpret as}: \emph{Auto} (the first, checked by default), or one of the choices that fit the
+value, read from the paused script. A triple can be a point or a vector; a list of triples points, a
+polyline, a closed polyline, an interpolated curve or vectors; pairs of triples lines or anchored
+vectors; six-number rows anchored vectors; point triples triangles; containers are taken item by item.
+\emph{Plain data} draws nothing. See \cref{ch:visualizers} for the full order.
+
+\section{Selection, both ways}\label{sec:selection}
+
+\begin{itemize}
+  \item Selecting a row, in \vn{Watch} or in the editor's Variables and Watch tabs, draws its geometry in
+        Rhino's selection color, and selects its objects being edited.
+  \item Clicking drawn geometry in a viewport selects its row (a list item's row when its list is
+        expanded) and its variable. \setting{Select a watch by clicking its drawing}: a plain click (the
+        default), \keys{Alt+click}, or off.
+  \item Selecting an object being edited in Rhino highlights its watch and selects its variable
+        (\setting{Selecting edited objects highlights their watch}).
+\end{itemize}
+
+\section{Watches in every thread}
+
+While a script runs more than one thread, each watch is also evaluated in the other threads and drawn
+once per thread, as \code{pt @Worker-1}. The details are in \see{sec:everythread}.
+
+\section{C\# and IronPython scripts}
+
+For C\# scripts and IronPython~2 scripts, watches of plain variable names are drawn and baked;
+expressions need Python~3.
+
+\begin{lesson}{lessons 01, 06, 07}
+\lessonfile{01_watch_geometry.py}: V°Watch. \lessonfile{06_watch_expressions.py}: expressions in watches.
+\lessonfile{07_raw_data_interpret_as.py}: Interpret as.
+\end{lesson}

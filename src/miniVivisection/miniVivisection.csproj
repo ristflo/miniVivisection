@@ -1,0 +1,92 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- miniVivisection's Rhino plug-in: a companion to Rhino 8's Script Editor debugger.
+         See README.md at the repository's root. Rhino 8 (net7.0). -->
+    <TargetFramework>net7.0</TargetFramework>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <TargetExt>.rhp</TargetExt>
+    <NoWarn>NU1701</NoWarn>
+    <RootNamespace>MiniVivisection</RootNamespace>
+    <!-- miniVivisection.rhp. The plug-in's GUID (Properties/AssemblyInfo.cs) is the one it had as
+         ScriptEditorWatchViz, so Rhino keeps its settings. -->
+    <AssemblyName>miniVivisection</AssemblyName>
+    <Title>miniVivisection</Title>
+    <Company>miniVivisection Authors</Company>
+    <Description>A companion to the Rhino 8 Script Editor's debugger: watched values drawn in the viewports, values in the code, conditional breakpoints, Python and PowerShell terminals, Claude Code, and Grasshopper's V Edit, V Text and script Panels.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The Grasshopper part, built with the plug-in into the same folder: miniVivisection.GH.gha
+         next to the .rhp (GrasshopperLink). -->
+    <ProjectReference Include="..\miniVivisection.GH\miniVivisection.GH.csproj" ReferenceOutputAssembly="false" SkipGetTargetFrameworkProperties="true" Private="false" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="RhinoCommon" Version="8.36.26272.13001-rc" ExcludeAssets="runtime" />
+    <PackageReference Include="Eto.Forms" Version="2.11.0" ExcludeAssets="runtime" />
+    <!-- Runtime patching of the Script Editor debugger's pause (FreePause.cs);
+         0Harmony.dll ships next to the .rhp. -->
+    <PackageReference Include="Lib.Harmony" Version="2.4.2" />
+  </ItemGroup>
+
+  <!-- The version: major.minor.patch, build number and build time (UTC), shared with the
+       Grasshopper part (VersionInfo shows it). Changes every build, so the plug-in is
+       always recompiled. -->
+  <Import Project="..\..\Version.props" />
+
+  <ItemGroup>
+    <!-- RhinoAI's tools for the Claude tab (RhinoToolPolicy): next to the .rhp,
+         editable without a rebuild. -->
+    <None Update="rhino_tools.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- The drawing pipeline and rhinoviv (the visualizer decorators, a copy of RhinoVivisection's
+         bridge/rhinoviv.py), next to the .rhp in python/; PythonPaths makes them importable. -->
+    <None Update="python\minivivisection_visualize.py" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="python\rhinoviv.py" CopyToOutputDirectory="PreserveNewest" />
+    <!-- The Python helpers PythonBridge runs in the paused script's Python: inside the .rhp. -->
+    <None Remove="python\minivivisection_helpers.py" />
+    <EmbeddedResource Include="python\minivivisection_helpers.py" LogicalName="minivivisection_helpers.py" />
+    <!-- The default Markdown styles (MarkdownStyle): inside the .rhp, and next to it in styles\ to read and copy. -->
+    <EmbeddedResource Include="styles\markdown_rhino.css" LogicalName="markdown_rhino.css" />
+    <EmbeddedResource Include="styles\markdown_grasshopper.css" LogicalName="markdown_grasshopper.css" />
+    <None Include="styles\*.css" CopyToOutputDirectory="PreserveNewest" />
+    <!-- The toolbar (tools/make_toolbar.py): next to the .rhp in toolbar\, opened from a copy (RhinoToolbar). -->
+    <None Include="toolbar\miniVivisection.rui" CopyToOutputDirectory="PreserveNewest" />
+    <!-- The feature test (tests/rhino), next to the .rhp: open it in the Script Editor. -->
+    <None Include="..\..\tests\rhino\miniVivisection_Test.py" Link="miniVivisection_Test.py" CopyToOutputDirectory="PreserveNewest" />
+    <!-- The manual (docs), next to the .rhp: the Markdown (V°Help) and the typeset PDF (docs\manual, tools\make_manual_latex.py). -->
+    <None Include="..\..\docs\miniVivisection_Manual.md" Link="miniVivisection_Manual.md" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\docs\miniVivisection_Manual.pdf" Link="miniVivisection_Manual.pdf" CopyToOutputDirectory="PreserveNewest" />
+    <!-- The examples (one feature, one bug each), in examples\ next to the .rhp, with the manual. -->
+    <None Include="..\..\examples\**\*" Exclude="..\..\examples\**\__pycache__\**;..\..\examples\**\*.3dmbak;..\..\examples\**\*.rhl" LinkBase="examples" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\docs\miniVivisection_Manual.md" Link="examples\miniVivisection_Manual.md" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\docs\miniVivisection_Manual.pdf" Link="examples\miniVivisection_Manual.pdf" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- RhinoCode's public debugging API (IDebugControls, ExecFrame, ExecVariable).
+         No NuGet package exists: compiled against the local Rhino 8 install, never
+         copied, since Rhino has it loaded already. -->
+    <Reference Include="Rhino.Runtime.Code">
+      <HintPath>C:\Program Files\Rhino 8\System\Rhino.Runtime.Code.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- The Script Editor's Monaco view (Ed.Eto.IEd: replacing the selection, undoable
+         in the editor). Same rules. -->
+    <Reference Include="Ed.Eto">
+      <HintPath>C:\Program Files\Rhino 8\System\Ed.Eto.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- Rhino's Markdig (the Script Editor's Markdown preview): MarkdownText. Same rules. -->
+    <Reference Include="Markdig.Signed">
+      <HintPath>C:\Program Files\Rhino 8\System\Markdig.Signed.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Markdig's parse into MarkdownBlocks: shared with the .gha (its Panels) -->
+    <Compile Include="..\miniVivisection.GH\MarkdownMarkdig.cs" Link="MarkdownMarkdig.cs" />
+    <!-- V°Protect's archive: also ProtectModel's (RhinoProtect) -->
+    <Compile Include="..\miniVivisection.GH\FileArchive.cs" Link="FileArchive.cs" />
+  </ItemGroup>
+
+</Project>

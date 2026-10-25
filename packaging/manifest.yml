@@ -1,0 +1,36 @@
+# miniVivisection's Yak manifest (Rhino's Package Manager). tools/make_yak.py copies it into
+# the package with the version filled in: 0.2.0-beta.<build> (a pre-release), or 0.2.0 with
+# --stable. Published versions can't be changed or deleted: see Research_Yak_Package_Manager.md.
+name: miniVivisection
+version: 0.0.0
+authors:
+- Florian Rist
+description: >
+  A companion to the Rhino 8 Script Editor's debugger (Windows, Rhino 8.36 or later).
+  While a script is paused, its watched values (points, curves, meshes, planes...) are
+  drawn in the Rhino viewports, values show in the code and its tooltips, and Rhino stays
+  usable. Breakpoints get conditions, hit counts and log messages; Ctrl+Alt+B pauses a
+  running script. Tabs add a Python prompt in the paused frame, PowerShell, and Claude Code
+  (installed separately; code Claude wants to run waits for /run). For Grasshopper: script
+  components that can be debugged and stopped, V°Edit (edit Grasshopper geometry in Rhino),
+  V°Text, V°Protect, and script Panels shown as code. With 17 Script Editor and 12
+  Grasshopper lessons and a manual (V°Help). Experimental: it patches parts of the Script
+  Editor at runtime (Harmony) and runs a local MCP server for Claude.
+url: https://restweiss.de/miniVivisection
+icon: icon.png
+keywords:
+- debugger
+- debugging
+- script-editor
+- python
+- csharp
+- grasshopper
+- watch
+- breakpoints
+- visualization
+- claude
+- ai
+- mcp
+- teaching
+- guid:c198ec17-3078-46a0-8f9b-94a40e9ba298
+- guid:6d0f4c1e-6a8b-4f0e-9b5d-2f1b3e7c9a41

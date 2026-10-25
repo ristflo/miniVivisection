@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>miniVivisection — see your Rhino script's data while you debug</title>
+<meta name="description" content="miniVivisection: see inside your running scripts. A debugger extension for Rhino 8's Script Editor and Grasshopper.">
+<meta name="color-scheme" content="dark light">
+<meta name="robots" content="noindex">  <!-- a style variant of clinical-imaging -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="miniVivisection — see your Rhino script's data while you debug">
+<meta property="og:description" content="miniVivisection: see inside your running scripts. A debugger extension for Rhino 8's Script Editor and Grasshopper.">
+<meta property="og:image" content="https://restweiss.de/miniVivisection/luminous-gallery/hero.jpg?b=365">
+<meta property="og:url" content="https://restweiss.de/miniVivisection/luminous-gallery/">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%270%200%2032%2032%27%3E%3Crect%20width=%2732%27%20height=%2732%27%20rx=%277%27%20fill=%27%230d1017%27/%3E%3Ctext%20x=%2715%27%20y=%2723%27%20font-family=%27Segoe%20UI,Arial,sans-serif%27%20font-size=%2719%27%20font-weight=%27700%27%20text-anchor=%27middle%27%20fill=%27%23e3bf86%27%3EV%C2%B0%3C/text%3E%3C/svg%3E">
+<style>
+  /* Luminous gallery: a dark museum room, one warm light, glass and its shadows. */
+  :root {
+    --room: #0d1017;           /* the gallery's dark, from the image */
+    --room-2: #121821;
+    --glass: rgba(255, 244, 225, .045);
+    --glass-edge: rgba(227, 191, 134, .22);
+    --gold: #e3bf86;           /* the lit wall */
+    --gold-deep: #b98f55;
+    --ink: #efe6d6;
+    --ink-soft: #b6ab98;
+    --ink-faint: #948a7a;
+    --code-bg: rgba(227, 191, 134, .12);
+    --shadow: 0 20px 50px -20px rgba(0, 0, 0, .7);
+    color-scheme: dark;
+  }
+  /* In a light room: the gallery in daylight -- warm stone, the same gold, darker. */
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --room: #f3eee5; --room-2: #ebe3d6; --glass: rgba(255, 255, 255, .55); --glass-edge: rgba(150, 110, 55, .28);
+      --gold: #8a6224; --gold-deep: #6e4d18; --ink: #1f1a14; --ink-soft: #5b5144; --ink-faint: #6b6153;
+      --code-bg: rgba(138, 98, 36, .1); --shadow: 0 20px 50px -24px rgba(80, 55, 20, .35); color-scheme: light;
+    }
+  }
+  :root[data-theme="light"] {
+    --room: #f3eee5; --room-2: #ebe3d6; --glass: rgba(255, 255, 255, .55); --glass-edge: rgba(150, 110, 55, .28);
+    --gold: #8a6224; --gold-deep: #6e4d18; --ink: #1f1a14; --ink-soft: #5b5144; --ink-faint: #6b6153;
+    --code-bg: rgba(138, 98, 36, .1); --shadow: 0 20px 50px -24px rgba(80, 55, 20, .35); color-scheme: light;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    color: var(--ink);
+    background: var(--room);
+    /* pools of warm light in the dark, as the torch throws them */
+    background-image:
+      radial-gradient(60rem 40rem at 85% 10%, rgba(227, 191, 134, .08), transparent 70%),
+      radial-gradient(50rem 40rem at 10% 70%, rgba(227, 191, 134, .05), transparent 70%);
+    background-attachment: fixed;
+    font: 16px/1.7 "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  }
+  h1, h2, h3 { font-family: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif; font-weight: 400; margin: 0; line-height: 1.15; }
+  a { color: var(--gold); text-decoration-color: rgba(227, 191, 134, .4); text-underline-offset: 3px; }
+  a:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+  .btn.primary:focus-visible { outline-color: var(--gold); }
+  code { font: .88em/1.4 "Cascadia Mono", Consolas, monospace; background: var(--code-bg); color: var(--gold); padding: 1px 6px; border-radius: 4px; overflow-wrap: anywhere; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
+
+  header.top {
+    position: absolute; top: 0; left: 0; right: 0; z-index: 3;
+    background: linear-gradient(180deg, rgba(5, 7, 11, .75), transparent);
+  }
+  header.top .wrap { display: flex; align-items: center; justify-content: space-between; padding-top: 18px; padding-bottom: 18px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-family: "Iowan Old Style", Palatino, Georgia, serif; font-size: 1.2rem; letter-spacing: .04em; color: #efe6d6; }
+  .brand .dot { width: 9px; height: 9px; border-radius: 50%; background: #e3bf86; box-shadow: 0 0 12px 3px rgba(227, 191, 134, .7); }
+  nav a { margin-left: 24px; text-decoration: none; color: rgba(239, 230, 214, .75); font-size: .9rem; letter-spacing: .08em; text-transform: uppercase; }
+  nav a:hover { color: #e3bf86; }
+  /* phones: the nav as a wrapped row under the name */
+  @media (max-width: 680px) { header.top .wrap { flex-wrap: wrap; row-gap: 8px; } nav { display: flex; flex-wrap: wrap; gap: 4px 18px; width: 100%; } nav a { margin-left: 0; } }
+
+  /* the hero: the image whole, as the room; the headline on its dark wall, upper left */
+  .hero { position: relative; color: #efe6d6; } /* the page's own dark shows through: no seam */
+  .hero figure { margin: 0; position: relative; }
+  .hero figure img {
+    width: 100%; height: auto; display: block;
+    /* the floor fades into the page itself, whatever light is behind it */
+    -webkit-mask-image: linear-gradient(180deg, #000 68%, transparent 100%);
+    mask-image: linear-gradient(180deg, #000 68%, transparent 100%);
+  }
+  .hero figure::after {
+    content: ""; position: absolute; inset: 0;
+    background: radial-gradient(48% 52% at 0% 0%, rgba(8, 11, 16, .7), transparent 70%);
+  }
+  .hero-title { position: absolute; top: 0; left: 0; right: 0; padding-top: clamp(70px, 9vw, 120px); z-index: 2; }
+  .hero-title > * { max-width: 42%; }
+  .eyebrow { font-size: .74rem; letter-spacing: .28em; text-transform: uppercase; color: var(--gold); }
+  .hero .eyebrow { color: #e3bf86; }
+  .hero h1 { font-size: clamp(2rem, 4.4vw, 3.7rem); margin: 12px 0 0; letter-spacing: -.01em; text-shadow: 0 2px 30px rgba(0, 0, 0, .7); }
+  .hero h1 em { font-style: italic; color: #e3bf86; text-shadow: 0 0 28px rgba(227, 191, 134, .45); }
+  .hero-text { position: relative; z-index: 2; margin-top: -40px; padding-bottom: 20px; max-width: 1120px; }
+  .hero-text p.lead { font-size: 1.1rem; color: var(--ink-soft); margin: 0 0 26px; max-width: 720px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; }
+  .btn {
+    display: inline-flex; max-width: 100%; overflow-wrap: anywhere; align-items: center; gap: 10px;
+    padding: 13px 24px; border-radius: 2px; font-weight: 600; text-decoration: none; letter-spacing: .04em;
+    transition: box-shadow .2s ease, background .2s ease;
+  }
+  .btn.primary { background: #e3bf86; color: #15110b; box-shadow: 0 0 0 1px rgba(227, 191, 134, .6), 0 0 34px -6px rgba(227, 191, 134, .75); }
+  .btn.primary:hover { box-shadow: 0 0 0 1px rgba(227, 191, 134, .8), 0 0 46px -4px rgba(227, 191, 134, .95); }
+  .btn.ghost { color: var(--ink); border: 1px solid var(--glass-edge); background: var(--glass); }
+  .btn.ghost:hover { background: rgba(227, 191, 134, .12); }
+  .meta { font-size: .82rem; color: var(--ink-faint); margin-top: 16px; letter-spacing: .04em; }
+  @media (max-width: 760px) {
+    /* phones: the headline below the image, where there's room */
+    .hero-title { position: static; padding: 18px 16px 0; background: #0d1017; }
+    .hero-title > * { max-width: none; }
+    .hero-text { margin-top: 0; padding-top: 14px; }
+    header.top { position: static; background: #0d1017; }
+  }
+
+  section { padding: 76px 0; position: relative; }
+  section + section::before {
+    content: ""; position: absolute; top: 0; left: 50%; width: min(560px, 80%); height: 1px; transform: translateX(-50%);
+    background: linear-gradient(90deg, transparent, var(--glass-edge), transparent);
+  }
+  .section-head { margin-bottom: 30px; max-width: 760px; }
+  .section-head .eyebrow { display: block; margin-bottom: 10px; }
+  .section-head h2 { font-size: clamp(1.8rem, 3.6vw, 2.5rem); }
+  .section-head p { color: var(--ink-soft); margin: 10px 0 0; }
+  #why .section-head { margin-bottom: 0; }
+
+  /* glass panels: translucent, a fine gold edge, lit from the top corner */
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 18px; }
+  .card {
+    position: relative; overflow: hidden;
+    background: var(--glass);
+    border: 1px solid var(--glass-edge);
+    border-radius: 6px; padding: 24px 24px 20px;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  }
+  .card::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(22rem 14rem at 0% 0%, rgba(227, 191, 134, .10), transparent 70%);
+  }
+  .card > * { position: relative; }
+  .card h3 { font-size: 1.3rem; color: var(--gold); margin-bottom: 10px; }
+  .card ul { margin: 0; padding-left: 18px; color: var(--ink-soft); }
+  .card li { margin: 8px 0; }
+  .card li::marker { color: var(--gold-deep); }
+  .card li strong { color: var(--ink); font-weight: 600; }
+
+  .download { display: grid; grid-template-columns: 1.2fr 1fr; gap: 18px; }
+  @media (max-width: 880px) { .download { grid-template-columns: 1fr; } }
+  .download .btn.primary { color: #15110b; }
+  .spec { width: 100%; border-collapse: collapse; margin: 20px 0 16px; font-size: .95rem; }
+  .spec td { padding: 10px 0; border-bottom: 1px solid var(--glass-edge); vertical-align: top; }
+  .spec tr:last-child td { border-bottom: 0; }
+  .spec td:first-child { width: 34%; color: var(--ink-faint); text-transform: uppercase; font-size: .72rem; letter-spacing: .18em; padding-top: 13px; }
+  ol.steps { margin: 0; padding: 0; list-style: none; counter-reset: step; color: var(--ink-soft); }
+  ol.steps li { counter-increment: step; position: relative; padding-left: 42px; margin: 14px 0; }
+  ol.steps li::before {
+    content: counter(step); position: absolute; left: 0; top: 0;
+    width: 27px; height: 27px; border-radius: 50%; display: grid; place-items: center;
+    font: 600 .82rem/1 Georgia, serif; color: var(--gold);
+    border: 1px solid var(--glass-edge); box-shadow: 0 0 14px -4px rgba(227, 191, 134, .6);
+  }
+  .note { margin-top: 20px; font-size: .9rem; color: var(--ink-soft); padding: 12px 16px; border-left: 2px solid var(--gold-deep); background: rgba(227, 191, 134, .06); }
+
+  footer { padding: 30px 0 48px; color: var(--ink-faint); font-size: .85rem; border-top: 1px solid var(--glass-edge); }
+  footer .wrap { display: flex; flex-wrap: wrap; gap: 8px 26px; justify-content: space-between; }
+  .shots { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 18px; }
+  .shots figure { margin: 0; }
+  .shots img { width: 100%; height: auto; display: block; border-radius: 6px; border: 1px solid var(--glass-edge); box-shadow: var(--shadow); }
+  .shots figcaption { color: var(--ink-soft); font-size: .92rem; line-height: 1.45; margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand"><span class="dot" aria-hidden="true"></span>miniVivisection</div>
+    <nav>
+      <a href="#features">Features</a>
+      <a href="#grasshopper">Grasshopper</a>
+      <a href="#screenshots">Screenshots</a>
+      <a href="#download">Download</a>
+      <a href="miniVivisection_Manual.pdf">Manual</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="hero">
+    <figure>
+      <img src="hero.jpg?b=365" width="1672" height="941" alt="A dark gallery: a crouching visitor shines a torch on a transparent glass rhinoceros on a plinth; its filigree of veins, ribs and a heart casts a huge golden shadow of the rhino across the wall.">
+    </figure>
+    <div class="wrap hero-title">
+        <div class="eyebrow">Rhino 8 &middot; Script Editor &middot; Grasshopper</div>
+        <h1>See inside your <em>running</em> scripts.</h1>
+    </div>
+  </div>
+  <div class="wrap hero-text">
+        <p class="lead">
+          miniVivisection extends the debugger of Rhino 8's Script Editor. When a script stops, the geometry in its
+          variables appears in Rhino's viewports; you can edit it with Rhino's own tools and send it back into the
+          running script. Values show up right in the code, breakpoints get conditions, and Rhino stays usable the whole time.
+        </p>
+        <div class="actions">
+          <a class="btn primary" href="minivivisection-0.2.0-beta.365-rh8_36-win.yak" download>&#8595;&ensp;Download 0.2.0 &middot; build 365</a>
+          <a class="btn ghost" href="miniVivisection_Manual.pdf">Read the manual</a>
+        </div>
+        <div class="meta">Built 2026-10-25 18:26 UTC+3 &middot; 7.1 MB &middot; Windows &middot; Rhino 8 &middot; experimental</div>
+  </div>
+
+  <section id="why">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="eyebrow">Why</span>
+        <h2>Rhino's debugger shows text, not shapes.</h2>
+        <p>Rhino 8's debugger can pause a script, but it shows the script's values only as text, such as "Curve" or a list of numbers. While a script is paused, Rhino itself is blocked, so you can't even look around the model. And a script that hangs can only be ended by closing Rhino.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="features">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="eyebrow">What it does</span>
+        <h2>Features</h2>
+        <p>For Python 3 scripts in Rhino 8's Script Editor; most of it also for Grasshopper's script components. Limits: C# and IronPython 2 scripts get a subset. The manual explains each one.</p>
+      </div>
+      <div class="cards">
+        <div class="card">
+          <h3>See values while paused</h3>
+          <ul>
+            <li><strong>V°Watch</strong> draws watched values in Rhino: points, curves, meshes, planes, vectors, with name dots.</li>
+            <li><strong>In the code:</strong> values in tooltips and at the ends of lines, what changed since the last pause, a value tree, a preview on hover.</li>
+            <li><strong>Edit in Rhino:</strong> move, reshape or rebuild a value with Rhino's tools and write it back into the paused script, with Undo.</li>
+            <li><strong>Bake</strong> values into the document, and draw your own types with <strong>visualizers</strong>.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Stop where you want</h3>
+          <ul>
+            <li><strong>Conditional breakpoints</strong>, hit counts and log messages.</li>
+            <li><strong>Break now (Ctrl+Alt+B)</strong> pauses a running script at its next line, even one running on Rhino's UI thread; a sound confirms.</li>
+            <li><strong>Stop once per line</strong> for comprehensions and one-line loops.</li>
+            <li><strong>Run</strong> runs plainly; <strong>Debug</strong> always runs in the debugger.</li>
+            <li><strong>FreePause:</strong> select, measure and run commands while the script waits.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Scripts from the command line</h3>
+          <ul>
+            <li><strong>Stop and record:</strong> <code>RunPythonScript</code> runs at full speed.
+              <ul>
+                <li>Ctrl+Alt+B stops it (an error is recorded too).</li>
+                <li>The Script Editor then opens it at that line, with the call stack and values of that moment, and an explanation.</li>
+              </ul>
+            </li>
+            <li><strong>Debug mode:</strong> run it in the editor's debugger instead.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Threads</h3>
+          <ul>
+            <li><strong>V°Threads:</strong> every thread of the script, where it is and what it waits for.</li>
+            <li><strong>Where is everyone?</strong> finds hangs and deadlocks while the script runs.</li>
+            <li>Watches <strong>in every thread</strong>, and a freeze guard.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Prompts and lessons</h3>
+          <ul>
+            <li><strong>V°Python</strong> in the paused frame, <strong>V°PowerShell</strong>, and <strong>V°Claude</strong>: debugging with Claude, optionally in the Rhino model through RhinoAI. By default, Claude asks before it runs code. Its edits to a script that is running, paused or stopped at an error wait until the run has ended.</li>
+            <li>Syntax colors and font size in all three.</li>
+            <li><strong>The V° names:</strong> the mark between V and the name is a setting: °, a bar, or a bar with thin spaces.</li>
+            <li><strong>Lessons</strong>, your own copies:
+              <ul>
+                <li><strong>17 lessons</strong> in the editor's Examples tab, each with a bug the debugger helps find.</li>
+                <li><strong>12 Grasshopper lessons</strong> (.gh definitions).</li>
+                <li>A Rhino model with Markdown text and links.</li>
+              </ul>
+            </li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Markdown text in Rhino</h3>
+          <ul>
+            <li><strong>MarkdownText</strong> makes Markdown into Rhino text: headings, bold, italic, code, lists, task boxes, quotes, code blocks, tables.</li>
+            <li><strong>Double-click</strong> any part to edit its Markdown, the caret at that part; the same objects are updated in place, and changes made in Rhino are taken back in. In the editor, Undo goes back a word at a time; in Rhino, one Undo takes the whole edit back.</li>
+            <li><strong>Links</strong> to Rhino objects and named views, and into Grasshopper definitions: <strong>click</strong> one to follow it (or Ctrl+click, a setting); a hint by the mouse says where it goes. Blue words with a line under them; the color, the line's thickness and its distance from the text are settings.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="grasshopper">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="eyebrow">Grasshopper</span>
+        <h2>Debug components. Find the branch that broke.</h2>
+        <p>Script components get the same debugger as scripts, and their failing data gets a name you can paste.</p>
+      </div>
+      <div class="cards">
+        <div class="card">
+          <h3>Debugging components</h3>
+          <ul>
+            <li><strong>Three modes</strong>, switched with the V° button on Grasshopper's toolbar:
+              <ul>
+                <li><strong>Normal:</strong> components run plainly.</li>
+                <li><strong>Stop and record</strong> (the default): Ctrl+Alt+B stops a component that hangs, and its editor opens at the line it was on, with an explanation.</li>
+                <li><strong>Always debug:</strong> every recompute runs in the debugger, so a slider change stops at your breakpoints.</li>
+              </ul>
+            </li>
+            <li><strong>Pause, not only stop:</strong> with Always debug, every Python 3 component gets a hidden script editor (up to 24).
+              <ul>
+                <li>Ctrl+Alt+B pauses even a component whose editor you never opened.</li>
+                <li>The editor comes up at that line, and you continue or step on.</li>
+              </ul>
+            </li>
+            <li>Recomputes asked for while a script is paused wait until the solution ends: no "expired during a solution" dialog.</li>
+            <li><strong>The canvas while paused:</strong> pan, drag and hover; deleting waits until the pause ends.</li>
+            <li><strong>Wiring doesn't pause:</strong> an error right after you connect or disconnect wires shows on the component, the editor stays closed.</li>
+            <li><strong>Editors follow the definition:</strong> open or switch to another definition, and the script editors of the one you leave close.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Which branch failed?</h3>
+          <ul>
+            <li>Failing runs are named on the component: run number, branch <code>{0;3}</code>, item <code>{0;3}[2]</code>, line.</li>
+            <li><strong>Copy failing branches / items</strong> to a Panel and feed Tree Branch to isolate exactly that data.</li>
+            <li><strong>Debug failing run N</strong> stops at the error line in that run only.</li>
+            <li>Breakpoint conditions and log messages know the run: <code>gh_run</code>, <code>gh_branch</code>, <code>gh_item</code>.</li>
+            <li>A <strong>badge</strong> at the top of the paused code names the run, its branch or item, and the inputs' paths.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>V°Edit component</h3>
+          <ul>
+            <li>Shows Grasshopper geometry in Rhino as objects you can <strong>edit with any Rhino tool</strong>; the edited geometry flows back into the definition and is saved with it.</li>
+            <li>Items, lists and trees; indices, paths and <code>{path}[index]</code> in one input.</li>
+            <li>Name dots, <strong>Reset sel.</strong> and <strong>Reset all</strong>, and an About entry with its version.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Scripts in Panels</h3>
+          <ul>
+            <li>A Panel holding a Python or C# script shows it as <strong>code</strong>: line numbers, syntax colors, no wrapping. Double-click to edit it right on the canvas.</li>
+            <li><strong>Show as</strong> in the Panel's menu (<em>miniVivisection: Show as</em>): Autodetect, Python, C#, Markdown or Plain text, saved with the Panel.</li>
+            <li>After Ctrl+Alt+B the Panel opens at the line where its component stopped, with what happened.</li>
+            <li>A component with a <strong>script input</strong>: a double-click opens its script and library files.</li>
+            <li><code># async:true</code> in a Python script component runs it on a thread of its own: Rhino and Grasshopper stay usable while it computes.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Markdown and links</h3>
+          <ul>
+            <li>Panels render <strong>Markdown</strong> with Rhino's own parser; a double-click edits the source where you clicked. Panels fed by another one too.</li>
+            <li><strong>Links</strong> to components (<code>gh:Ring</code>), saved canvas views, Rhino objects and views, web pages; across files, from a definition into a Rhino model and back. Click to follow, as in Rhino.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>V°Text component</h3>
+          <ul>
+            <li>A Panel's text as <strong>Rhino text</strong>, as the Panel shows it: Markdown laid out, a script as code with line numbers and syntax colors.</li>
+            <li>Height in points, the anchor at any corner, an angle, a width, a font picker. <strong>Bake</strong> makes Rhino text you double-click to edit.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="screenshots">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="eyebrow">Screenshots</span>
+        <h2>What it looks like.</h2>
+        <p>Rhino 8, its Script Editor and Grasshopper with miniVivisection 0.2.0. Click a picture for its full size.</p>
+      </div>
+      <div class="shots">
+        <figure><a href="screenshots/01_watch_values_in_rhino.png?b=365"><img src="screenshots/01_watch_values_in_rhino.png?b=365" width="960" height="600" loading="lazy" alt="Rhino's Top view with a magenta bow-tie outline and the name dots outline and corners; over it the Script Editor paused at a breakpoint, its V°Watch tab listing outline and corners."></a><figcaption><strong>V°Watch:</strong> a paused script's outline drawn in Rhino: a bow tie, not the rectangle it meant.</figcaption></figure>
+        <figure><a href="screenshots/03_python_in_the_paused_frame.png?b=365"><img src="screenshots/03_python_in_the_paused_frame.png?b=365" width="960" height="600" loading="lazy" alt="The Script Editor's V°Python tab: the swapped corners printed, a fixed outline built and shown; in Rhino an orange rectangle named fixed over the bow tie."></a><figcaption><strong>V°Python:</strong> in the paused frame: the fix tried on the live data, and drawn in Rhino.</figcaption></figure>
+        <figure><a href="screenshots/04_stop_and_record.png?b=365"><img src="screenshots/04_stop_and_record.png?b=365" width="960" height="600" loading="lazy" alt="The Script Editor opened at line 12 of grow_spiral.py, a script with an endless loop that RunPythonScript ran and Ctrl+Alt+B stopped; an overlay says Stopped at line 12 and lists the values of points and turn at that moment."></a><figcaption><strong>Stop and record:</strong> a script from the command line stopped with Ctrl+Alt+B, opened at its line, with its values.</figcaption></figure>
+        <figure><a href="screenshots/05_which_branch_failed.png?b=365"><img src="screenshots/05_which_branch_failed.png?b=365" width="960" height="600" loading="lazy" alt="Grasshopper: a red Divide component and its right-click menu with miniVivisection's items, Debug failing run 7 -- data {0;2}[0], line 4, and Copy failing branches."></a><figcaption><strong>Which branch failed:</strong> the failing component names its runs; its menu debugs exactly one.</figcaption></figure>
+        <figure><a href="screenshots/09_markdown_panel_links.png?b=365"><img src="screenshots/09_markdown_panel_links.png?b=365" width="960" height="600" loading="lazy" alt="Grasshopper Panels rendered as Markdown with headings, lists and links; a tooltip over a link reads Grasshopper: go to Ring -- click."></a><figcaption><strong>Markdown in Panels:</strong> with links to components, views and the Rhino model; a tooltip says where each goes.</figcaption></figure>
+        <figure><a href="screenshots/11_v_edit.png?b=365"><img src="screenshots/11_v_edit.png?b=365" width="960" height="600" loading="lazy" alt="Rhino's Perspective view with a red lofted surface and one blue profile curve marked by the name dot V°Edit [1]; over it the Grasshopper window with the V°Edit component between Profiles and Loft, showing 1 in Rhino."></a><figcaption><strong>V°Edit:</strong> a Grasshopper profile edited in Rhino; the loft follows, and the edit is saved with the definition.</figcaption></figure>
+        <figure><a href="screenshots/12_v_text.png?b=365"><img src="screenshots/12_v_text.png?b=365" width="960" height="600" loading="lazy" alt="Rhino's Top view with a Markdown note and a Python script drawn as text; a Grasshopper window with the two Panels feeding V°Text components."></a><figcaption><strong>V°Text:</strong> Panels as Rhino text: Markdown laid out, a script with line numbers and syntax colors.</figcaption></figure>
+        <figure><a href="screenshots/14_markdown_text_dialog.png?b=365"><img src="screenshots/14_markdown_text_dialog.png?b=365" width="960" height="600" loading="lazy" alt="Markdown text in Rhino with the MarkdownText dialog over it: the nested list in black at the caret, the rest of the Markdown gray, width, size and font below."></a><figcaption><strong>MarkdownText:</strong> Markdown as Rhino text; double-click a part and its section opens, the rest in gray.</figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <section id="download">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="eyebrow">Download</span>
+        <h2>The latest build.</h2>
+        <p>One Rhino package (.yak): the plug-in, its Grasshopper part, the examples and the manual. Get it from Rhino's Package Manager, or drag it onto Rhino 8.</p>
+      </div>
+      <div class="download">
+        <div class="card">
+          <a class="btn primary" href="minivivisection-0.2.0-beta.365-rh8_36-win.yak" download>&#8595;&ensp;Download (7.1 MB)</a>
+          <table class="spec">
+            <tr><td>Version</td><td>0.2.0, build 365 (experimental)</td></tr>
+            <tr><td>Built</td><td>2026-10-25 18:26 UTC+3</td></tr>
+            <tr><td>Size</td><td>7.1 MB, 62 files</td></tr>
+            <tr><td>Contains</td><td><code>miniVivisection.rhp</code> (the plug-in), <code>miniVivisection.GH.gha</code> (the Grasshopper plug-in: V°Edit, V°Text, Panels as code and Markdown, links), 17 example lessons, 12 Grasshopper lessons and a Rhino example with Markdown text, the examples guide (PDF), the manual (PDF and Markdown), a feature test script, the license (MIT)</td></tr>
+            <tr><td>Requires</td><td>Windows, Rhino 8.36 or later (tested with 8.37) on .NET Core (Rhino 8's default), not .NET Framework; Python 3 scripts in the Script Editor</td></tr>
+            <tr><td>Optional</td><td>Claude Code (the <code>claude</code> command) for V°Claude; McNeel's RhinoAI for Claude in the Rhino model (offered for install)</td></tr>
+          </table>
+          <a href="miniVivisection_Manual.pdf">The manual (PDF)</a>
+        </div>
+        <div class="card">
+          <h3>Install</h3>
+          <ol class="steps">
+            <li>Installed miniVivisection from a zip before? Close Rhino and double-click <a href="../miniVivisection_Remove_Old_Install.cmd" download>the removal tool</a> (one file, <code>miniVivisection_Remove_Old_Install.cmd</code>; if Windows says it protected your PC: <em>More info</em>, <em>Run anyway</em>). It shows what it found, asks, and removes the old copy's registration and Grasshopper link, so Rhino doesn't find the plug-in twice; it keeps a backup.</li>
+            <li>In Rhino 8: command <em>PackageManager</em>, search for <em>miniVivisection</em>, tick <em>Include pre-releases</em> (it's a beta), <em>Install</em>. Or drag the downloaded <code>.yak</code> file onto Rhino 8's window. Then restart Rhino.</li>
+            <li>Open the Script Editor: its top bar now shows <em>miniVivisection 0.2.0</em> with the V°AI and V°Debug switches and V°Help.</li>
+            <li>V°Edit and V°Text are on Grasshopper's <em>miniVivisection</em> tab. If Grasshopper was already open, restart it.</li>
+            <li>Try the lessons: Script Editor &gt; Examples &gt; miniVivisection. Grasshopper lessons: <code>%LOCALAPPDATA%\miniVivisection\lessons\grasshopper</code>.</li>
+            <li>Updates: <em>PackageManager</em> offers newer builds, however miniVivisection was installed (keep <em>Include pre-releases</em> ticked). To remove it: <em>PackageManager</em>, <em>Installed</em>, miniVivisection, <em>Uninstall</em>.</li>
+          </ol>
+          <div class="note">Experimental software: it hooks into the Script Editor's internals, which can change with Rhino updates. Every feature can be turned off in V°Settings, or all at once with V°Debug.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>miniVivisection 0.2.0 &middot; <a href="miniVivisection_Manual.pdf">the manual (PDF)</a></span>
+    <span>Not affiliated with Robert McNeel &amp; Associates. Rhino and Grasshopper are trademarks of their owners.</span>
+  </div>
+</footer>
+
+</body>
+</html>

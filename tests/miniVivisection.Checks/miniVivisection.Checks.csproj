@@ -1,0 +1,73 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Checks for the MiniVivisection plug-in that run outside Rhino: its own source
+       files, compiled against Rhino 8's assemblies (pythonnet, Eto, RhinoCode), with
+       small stand-ins for the parts that need a running Rhino (Stubs.cs).
+       Run: dotnet run, in this folder.
+       The exit code is the number of failed checks. See README.md next to the plug-in. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net7.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>disable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>MiniVivisection</RootNamespace>
+    <NoWarn>NU1701</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\src\miniVivisection\Logging.cs" Link="Plugin\Logging.cs" />
+    <Compile Include="..\..\src\miniVivisection\MiniVivisectionSettings.cs" Link="Plugin\MiniVivisectionSettings.cs" />
+    <Compile Include="..\..\src\miniVivisection\VNames.cs" Link="Plugin\VNames.cs" />
+    <Compile Include="..\..\src\miniVivisection\SlashCommands.cs" Link="Plugin\SlashCommands.cs" />
+    <Compile Include="..\..\src\miniVivisection\PythonBridge.cs" Link="Plugin\PythonBridge.cs" />
+    <Compile Include="..\..\src\miniVivisection\StoppedRuns.Record.cs" Link="Plugin\StoppedRuns.Record.cs" />
+    <Compile Include="..\..\src\miniVivisection\CodeViewScripts.cs" Link="Plugin\CodeViewScripts.cs" />
+    <Compile Include="..\..\src\miniVivisection\VersionInfo.cs" Link="Plugin\VersionInfo.cs" />
+    <EmbeddedResource Include="..\..\src\miniVivisection\python\minivivisection_helpers.py" LogicalName="minivivisection_helpers.py" />
+    <Compile Include="..\..\src\miniVivisection\ValueText.cs" Link="Plugin\ValueText.cs" />
+    <Compile Include="..\..\src\miniVivisection\TerminalView.cs" Link="Plugin\TerminalView.cs" />
+    <Compile Include="..\..\src\miniVivisection\SyntaxColors.cs" Link="Plugin\SyntaxColors.cs" />
+    <Compile Include="..\..\src\miniVivisection\MiniVivisectionOptionsPage.cs" Link="Plugin\MiniVivisectionOptionsPage.cs" />
+    <Compile Include="..\..\src\miniVivisection\CSharpConditions.cs" Link="Plugin\CSharpConditions.cs" />
+    <Compile Include="..\..\src\miniVivisection\BreakpointConditions.cs" Link="Plugin\BreakpointConditions.cs" />
+    <Compile Include="..\..\src\miniVivisection\StateToggle.cs" Link="Plugin\StateToggle.cs" />
+    <Compile Include="..\..\src\miniVivisection\DrawnIcons.cs" Link="Plugin\DrawnIcons.cs" />
+    <Compile Include="..\..\src\miniVivisection\HoverText.cs" Link="Plugin\HoverText.cs" />
+    <Compile Include="..\..\src\miniVivisection\TabStrips.cs" Link="Plugin\TabStrips.cs" />
+    <Compile Include="..\..\src\miniVivisection\McpServer.cs" Link="Plugin\McpServer.cs" />
+    <Compile Include="..\..\src\miniVivisection\StepTracking.cs" Link="Plugin\StepTracking.cs" />
+    <Compile Include="..\..\src\miniVivisection\OncePerLine.cs" Link="Plugin\OncePerLine.cs" />
+    <Compile Include="..\..\src\miniVivisection\ScriptKinds.cs" Link="Plugin\ScriptKinds.cs" />
+    <Compile Include="..\..\src\miniVivisection\ValueHistory.cs" Link="Plugin\ValueHistory.cs" />
+    <Compile Include="..\..\src\miniVivisection\FolderDrop.cs" Link="Plugin\FolderDrop.cs" />
+    <Compile Include="..\..\src\miniVivisection\Threads.cs" Link="Plugin\Threads.cs" />
+    <Compile Include="..\..\src\miniVivisection\EditorExamples.cs" Link="Plugin\EditorExamples.cs" />
+    <Compile Include="..\..\src\miniVivisection\ScriptTokens.cs" Link="Plugin\ScriptTokens.cs" />
+    <Compile Include="..\..\src\miniVivisection\MarkdownBlocks.cs" Link="Plugin\MarkdownBlocks.cs" />
+    <Compile Include="..\..\src\miniVivisection.GH\MarkdownMarkdig.cs" Link="Plugin\MarkdownMarkdig.cs" />
+    <Compile Include="..\..\src\miniVivisection.GH\FileArchive.cs" Link="Plugin\FileArchive.cs" />
+    <Compile Include="..\..\src\miniVivisection\TraceLockGuard.cs" Link="Plugin\TraceLockGuard.cs" />
+    <Compile Include="..\..\src\miniVivisection\CodeApproval.cs" Link="Plugin\CodeApproval.cs" />
+    <Compile Include="..\..\src\miniVivisection\RhinoTextLayout.cs" Link="Plugin\RhinoTextLayout.cs" />
+    <Compile Include="..\..\src\miniVivisection\MarkdownLinks.cs" Link="Plugin\MarkdownLinks.cs" />
+    <Compile Include="..\..\src\miniVivisection\MarkdownStyle.cs" Link="Plugin\MarkdownStyle.cs" />
+    <Compile Include="..\..\src\miniVivisection\MarkdownFields.cs" Link="Plugin\MarkdownFields.cs" />
+    <Compile Include="..\..\src\miniVivisection\MarkdownStyleFiles.cs" Link="Plugin\MarkdownStyleFiles.cs" />
+    <Compile Include="..\..\src\miniVivisection\MarkdownStyleEditor.cs" Link="Plugin\MarkdownStyleEditor.cs" />
+    <EmbeddedResource Include="..\..\src\miniVivisection\styles\markdown_rhino.css" LogicalName="markdown_rhino.css" />
+    <EmbeddedResource Include="..\..\src\miniVivisection\styles\markdown_grasshopper.css" LogicalName="markdown_grasshopper.css" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
+    <PackageReference Include="Lib.Harmony" Version="2.4.2" />
+    <Reference Include="McNeel.Python39.Runtime"><HintPath>C:\Program Files\Rhino 8\System\McNeel.Python39.Runtime.dll</HintPath></Reference>
+    <Reference Include="Rhino.Runtime.Code"><HintPath>C:\Program Files\Rhino 8\System\Rhino.Runtime.Code.dll</HintPath></Reference>
+    <Reference Include="RhinoCommon"><HintPath>C:\Program Files\Rhino 8\System\RhinoCommon.dll</HintPath></Reference>
+    <Reference Include="Eto"><HintPath>C:\Program Files\Rhino 8\System\Eto.dll</HintPath></Reference>
+    <Reference Include="Markdig.Signed"><HintPath>C:\Program Files\Rhino 8\System\Markdig.Signed.dll</HintPath></Reference>
+    <Reference Include="Eto.Wpf"><HintPath>C:\Program Files\Rhino 8\System\Eto.Wpf.dll</HintPath></Reference>
+  </ItemGroup>
+
+</Project>

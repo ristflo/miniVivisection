@@ -1,0 +1,137 @@
+\chapter{Scripts and Markdown in Panels}\label{ch:panels}
+
+A Panel is Grasshopper's text box. People keep two kinds of text in Panels: scripts, fed to a script component's
+\emph{script} input, and notes. Grasshopper shows both as centered plain text. miniVivisection shows scripts as
+code, edits them in place, and renders notes as Markdown.
+
+\section{Scripts in Panels shown as code}\label{sec:panelcode}
+
+A Panel holding a Python or C\# script shows it in Grasshopper's monospace font, with line numbers and syntax
+colors, unwrapped. A long line runs on past the Panel's edge; a scroll bar along the bottom (drag it, or click the
+track) brings it into view, next to the Panel's own scroll bar on the right.
+
+\shot{07_script_panel_as_code}{Lesson GH~9: the \emph{Twist script} Panel holds the script the \emph{Twist} component
+  runs. It is shown as code, with line numbers and syntax colors.}{fig:panelcode}
+
+\paragraph{When a Panel counts as a script.} When its first line is RhinoCode's marker (\code{\#! python 3},
+\code{\#! python 2}, \code{// \#! csharp}); when it is connected to a script component's \emph{script} input (that
+component's language); or when its lines are plainly Python or C\#: imports, \code{def} and \code{class} lines,
+\code{using} lines, statements ending in \code{;}. Notes stay text. Setting: \setting{Scripts in Panels shown as code}.
+
+\section{Editing a script Panel in place}\label{sec:paneledit}
+
+\textbf{Double-click} a script Panel to edit it right there, looking the same:
+
+\begin{xltabular}{\linewidth}{@{}P{0.32\linewidth}L@{}}
+\toprule
+mouse, \key{Shift}+arrows       & caret and selection \\
+\keys{Ctrl+Z}, \keys{Ctrl+Y}    & undo, redo \\
+\keys{Ctrl+C}, \keys{Ctrl+X}, \keys{Ctrl+V} & clipboard \\
+\key{Enter}                     & keeps the indentation; indents after a \code{:} in Python, a \code{\{} in C\# \\
+\key{Tab}, \keys{Shift+Tab}     & indent, outdent \\
+\keys{Ctrl+/}                   & comments lines in or out \\
+wheel, \keys{Shift+wheel}       & scroll, scroll sideways \\
+click elsewhere, \keys{Ctrl+Enter}, \keys{Ctrl+S} & keep the changes: one step of Grasshopper's Undo \\
+\key{Esc}                       & drop them \\
+\bottomrule
+\end{xltabular}
+
+Its right-click menu has \ui{V° Edit the script here}, and \ui{V° Edit the script in the Script Editor}: a working file
+(\file{.py} or \file{.cs}) with completion and everything else, saved back into the Panel. A Panel that feeds a script
+component's \emph{script} input opens as that component's script: the editor knows the component's inputs as variables,
+and its \ui{Run} and \ui{Debug} compute the component in Grasshopper -- with its inputs, the editor's text taken into the
+Panel first --, not as a Rhino script, which has none. \keys{Shift+double-click}
+opens Grasshopper's own text box, without wrapping, in the monospace font, \key{Tab} as four spaces;
+\keys{Ctrl+double-click} its dialog.
+
+\section{After Ctrl+Alt+B stopped a Panel's script}\label{sec:panelstop}
+
+When \keys{Ctrl+Alt+B} stopped a component that runs a Panel's script, the Panel opens for editing at the line where it
+stopped: the line marked, and an explanation over it, top right: what happened, the run's data, the values then,
+the call stack. Click it to put it away. The Panel keeps the line marked, with a line about it along its bottom,
+until its text changes. When the Panel isn't on screen, the Script Editor shows it all.
+
+\shot{08_panel_edited_at_the_stop}{The script Panel open for editing at the stop: line 8 marked, and the explanation:
+  \emph{Stopped in 'Twist' at line 8, run 1 (Ctrl+Alt+B)}, the values \code{n = 12, angle = 5.0, i = 7}, and what to do.}{fig:panelstop}
+
+\section{Scripts from a component's script input}\label{sec:scriptinput}
+
+A script component's \emph{script} input can be fed by a Panel's text or by a file's path. Grasshopper then gives the
+component no editor of its own. miniVivisection opens the script in the Script Editor instead, as a file:
+
+\begin{description}
+  \item[A file's path] opens that file. Saving it recomputes the component.
+  \item[A Panel's text] opens as a working file. Saving writes the text back into the Panel, as an undo step, and the
+        component recomputes. If the Panel changed meanwhile, the save is refused: open it again.
+  \item[Text from anywhere else] opens as a copy to read.
+\end{description}
+
+Open it with \menu{right-click the component\>V° Edit the script input in the Script Editor}, or by double-clicking the
+component. After \keys{Ctrl+Alt+B} stopped such a component, its script opens by itself at the line where it stopped.
+
+\paragraph{Debugging it.} \ui{V° Debug the script input} in the component's menu runs it once in the debugger, pausing at
+its breakpoints, or at its first line when it has none. Under \emph{Always debug} every run does, as long as the
+file holds what Grasshopper runs (a Panel's working copy equal to its text).
+
+\section{A component with a script input}\label{sec:libraryinput}
+
+Grasshopper switches its own editor off for such a component. \textbf{Double-click it}, and its \emph{library} input's
+files (Python or C\#, up to 20) and its script open in the Script Editor, the script's tab in front. Its menu's
+\ui{Open Script Editor} does the same, and \ui{Export Script} saves its script to a file (Grasshopper grays both out
+for such a component). Any script component with a library input has \ui{V° Open the library's files in the Script
+Editor} in its menu.
+
+\section{Show as}\label{sec:showas}
+
+Every Panel's menu has \ui{V° Show as}, saved with the definition:
+
+\begin{xltabular}{\linewidth}{@{}P{0.28\linewidth}L@{}}
+\toprule
+\ui{Autodetect (code or Markdown)} (the default) & code when it is a Python or C\# script; rendered when it is plainly Markdown, that is two kinds of strong signs such as \textbf{bold}, \code{code}, links, lists, quotes or code fences, or one of them and a \code{\#} heading; else as Grasshopper shows it \\
+\ui{Python code}, \ui{C\# code} & any Panel of its own text shown and edited as code, also one nothing marks as a script \\
+\ui{Markdown (rendered)} & rendered (below) \\
+\ui{Plain text} & never code or Markdown: shown from the top left, as code is, in Grasshopper's font and wrapped as its \emph{Wrap Items} says (Grasshopper centers a Panel's text), with the same scroll bars \\
+\bottomrule
+\end{xltabular}
+
+\section{Markdown in Panels}\label{sec:panelmarkdown}
+
+A Markdown Panel shows headings, \textbf{bold}, \emph{italic}, \code{code}, links, lists, quotes, code blocks, tables
+(as fixed-width text) and rules, laid out in the Panel's width.
+
+\shot{09_markdown_panel_links}{Lesson GH~11: the lesson Panel and the \emph{Notes} Panel rendered as Markdown. The mouse
+  is over a link; its tooltip says where it goes and how to follow it.}{fig:panelmarkdown}
+
+\begin{itemize}
+  \item \textbf{Double-click a word}, and the Markdown source opens in the Panel's editor with the caret at that very place.
+        \key{Enter} goes on with a list or a quote. Click elsewhere and it is rendered again.
+  \item \ui{V° Edit the Markdown here} in its menu opens the source in the Panel too.
+        \ui{V° Edit the Markdown in the Script Editor} opens it in the Script Editor, which shows Markdown too; saving
+        writes it back into the Panel.
+  \item \textbf{Click a link} to follow it -- or \keys{Ctrl+click}, as \setting{Markdown links: follow with} says
+        (\cref{ch:links}). The pointer becomes a hand, and a tooltip says where it goes and how; a double-click still edits.
+  \item \textbf{Click a task box} (\code{- [ ]}) the same way: the task is checked or unchecked in the Panel's text, an
+        undo step. A Panel fed by another isn't changed: its text comes from upstream.
+\end{itemize}
+
+\paragraph{The look.} \setting{Markdown style for Grasshopper}: a Markdown style as for Rhino text (\see{sec:mdstyle}),
+its sizes in em of the Panel's font size -- \file{styles\textbackslash markdown_grasshopper.css} by default, with a line
+for the quote's bar and shaded code. A change of the file shows at once. V°Text draws Rhino text, so it takes the
+Rhino file's style instead.
+
+\paragraph{The parser.} \setting{Markdown parser}: \emph{Rhino} (the default) is Markdig, Rhino's own, as in the Script
+Editor's preview: CommonMark's rules, nested lists and quotes, task lists, footnotes, tables only with
+their header rule. \emph{miniVivisection} is the plug-in's simpler parser. The same parser serves \code{MarkdownText} and
+V°Text. Setting \setting{Markdown in Panels} off: Markdown Panels show their text as Grasshopper does.
+
+\section{Panels fed by another}\label{sec:fedpanels}
+
+A Panel whose input is connected shows its data, one item a line, the same way, when it opens like Markdown (a
+heading, a list) or starts with a script's marker line; \ui{V° Show as} in its menu decides otherwise. It isn't edited
+in place: its data comes from upstream.
+
+\begin{lesson}{lessons GH~9 to GH~12}
+\lessonfile{gh9_script_from_a_panel}: a script from a Panel, saved back. \lessonfile{gh10_script_from_a_file}: a script
+file, \keys{Ctrl+Alt+B} opens it at its line. \lessonfile{gh11_markdown_notes}: Markdown notes, editing where you
+double-click, links. \lessonfile{gh12_markdown_parser}: Markdig's task boxes, nested lists, footnotes.
+\end{lesson}

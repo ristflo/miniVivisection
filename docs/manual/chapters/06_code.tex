@@ -1,0 +1,98 @@
+\chapter{Values in the code}\label{ch:code}
+
+While the debugger is paused, the code itself shows what the script computed: in the tooltips, at the
+ends of the lines, and as a preview in Rhino of whatever is under the mouse. You read the values where
+you read the code, without opening the Variables tab or adding watches name by name.
+
+\section{Tooltips}\label{sec:tooltips}
+
+Hover a name in the code. The tooltip has three parts:
+
+\begin{description}
+  \item[Its value, as a line of code,] syntax-colored and compact: \code{count = 5},
+        \code{pts = [[0,0,0],[5,0,0],… +2]}, \code{p = (1,2,3)}, \code{node = Node(x=3,label='n1')},
+        \code{def scale(v,k=2)}. Long collections show their first items and how many more:
+        \code{many = [0,1,2,… +247]}.
+  \item[Facts, in gray,] for collections and Rhino geometry: \emph{250 items};
+        \emph{closed · degree 3 · length 31.4 · 12 control points}; \emph{solid · 6 faces · volume 1000};
+        \emph{closed · 482 vertices · 960 faces}. After a step, \emph{was 4} when the value changed.
+  \item[The editor's own text,] below a line: the type and its documentation.
+\end{description}
+
+Where a name has no value (not paused, not in scope) only the editor's own tooltip shows.
+
+\paragraph{Scope.} Names are read as Python sees them at the hovered line (\see{sec:frame}). A global
+\code{crv} and a function's local \code{crv} show their own values. A local of a function that isn't
+running shows nothing.
+
+\section{Links in the tooltip}\label{sec:tooltiplinks}
+
+Under the value, the tooltip offers what can be done with it:
+
+\begin{xltabular}{\linewidth}{@{}P{0.28\linewidth}L@{}}
+\toprule
+\ui{Watch in Rhino} & Adds it to \vn{Watch} (anything but plain numbers and text). \\
+\ui{Edit in Rhino}  & Turns it into Rhino objects you can edit (geometry that can be written back, \see{sec:editinrhino}). \\
+\ui{Bake}           & Copies it into the document (\see{sec:bake}). \\
+\ui{Tree}           & Opens the value's members in a small window (below). \\
+\ui{Watch rg.Point3d(…)} & Over a class called on the line, such as \code{Point3d} in
+  \code{pts.append(rg.Point3d(ri * math.cos(th), 0, h))}: the whole call, the value it makes, onto
+  \vn{Watch}, computed again at every pause. Offered only for classes: a watch of \code{pts.append(…)}
+  would append at every pause. For any other expression, select it and right-click \ui{Watch in Rhino}. \\
+\bottomrule
+\end{xltabular}
+
+\paragraph{The Tree window} opens at the mouse with the value's members, expandable like the Variables
+tab. It stays open while you step and reads the value again at every pause, keeping the rows you opened.
+It is grayed while the script runs, and closes when the run ends or with \key{Esc}.
+
+\section{Hover preview}\label{sec:hoverpreview}
+
+The geometry of the name under the mouse, such as \code{crv}, \code{crv.PointAtStart} or \code{curves[0]}, is
+drawn in yellow in Rhino until the mouse moves on. It stays while the mouse is on the tooltip, so you can
+read the values and click its links, and while the code's context menu is open, so \ui{Watch in Rhino}
+can take it from there. Setting: \setting{Hover preview}; command \code{miniVivisection HoverPreview=Off}.
+
+\section{Values at the ends of lines}\label{sec:inlinevalues}
+
+Each line of the paused function, from its start to the paused line, shows the values of the variables
+written on it, in gray after the line: \code{total = 6, k = 3}, as in VS~Code and PyCharm.
+
+After a step, values that changed are orange, and the tooltip says what they were before
+(\emph{was 5}). The comparison is within the same function, and per thread: stepping into another
+function starts afresh. Settings: \setting{Values at the ends of lines},
+\setting{What changed since the last pause}.
+
+\section{The editor's Watch tab evaluates expressions}\label{sec:watchtab}
+
+The Script Editor's own Watch tab only resolves plain variable names and shows anything else as an
+error. With miniVivisection it evaluates any Python expression in the paused frame: \code{1+2} shows
+\code{3}, \code{crv.PointAtStart} its point, \code{[c.PointAtEnd for c in curves]} a list to expand. A Python
+error shows as the row's value (\code{NameError: name 'x' is not defined}). This tab isn't drawn: drawing is
+\vn{Watch}'s job, and the two lists are separate. Setting: \setting{Expressions in the editor's Watch tab};
+command \code{miniVivisection WatchExpressions=Off}. C\# keeps plain names, and an outer frame chosen in the
+Call Stack tab keeps the editor's own lookup.
+
+\section{Live Variables and Watch tabs}
+
+After a value is written back from Rhino, after a \vn{Python} command, or after Claude changed
+something, the editor's own Variables and Watch tabs show the new values right away; expanded rows stay
+expanded. A moved curve's end point coordinates update while still paused.
+
+\section{Context menus while paused}\label{sec:contextmenus}
+
+Right-click a name in the code (the items act on the selection, or else on the name under the cursor),
+or a row in the Variables or Watch tab (the items act on that row's path):
+
+\begin{itemize}
+  \item \ui{Watch in Rhino}, and \ui{Watch in Rhino as ▸} with a chosen interpretation (\see{sec:interpretas});
+  \item \ui{Bake to Rhino};
+  \item \ui{Edit in Rhino}.
+\end{itemize}
+
+The menus show only what can be used right now. While paused, most of the code view's own items are
+disabled, since the script is read-only then.
+
+\begin{lesson}{lesson 02}
+\lessonfile{02_values_in_the_code.py}: tooltips, values at line ends, \emph{was}, the Tree; stepping with \key{F10}.
+\end{lesson}

@@ -1,0 +1,45 @@
+\chapter{Grasshopper while a component is paused}\label{ch:ghpaused}
+
+A paused script component is paused inside a Grasshopper solution (\see{sec:ghconcept}). Grasshopper itself
+ignores the mouse while its solution runs, and forbids recomputing anything until it ends. miniVivisection keeps
+the definition usable during the pause, and keeps its data honest.
+
+\section{The canvas works}
+
+While a component is paused you can pan, zoom, drag components, select, and hover for wire and parameter
+data, as when nothing runs.
+
+\section{Changes are computed at once, downstream}\label{sec:pauseddownstream}
+
+A slider moved, a wire changed or a Panel edited while a component is paused is \emph{computed at once with what
+is downstream of it}:
+
+\begin{itemize}
+  \item The paused component isn't run again. Its outputs show the data of its last finished run, and what is
+        downstream of it computes from that.
+  \item Other script components aren't run either: one would start a second debug run.
+  \item When the pause ends, everything is computed properly.
+\end{itemize}
+
+Setting: \setting{While paused: compute changes downstream}. Off: all of it waits for the pause to end
+(\see{sec:ghheld}).
+
+\section{What depends on the paused component is marked}\label{sec:pausedmarks}
+
+The data downstream of a paused component most probably isn't right any more: it comes from the run before.
+So it is marked meanwhile: an orange veil and a dashed border on each object, \emph{out of date? (paused
+upstream)} under it, and its wires dashed orange. Setting: \setting{While paused: mark what depends on the paused
+script}.
+
+\section{What waits, and what is refused}
+
+\begin{description}
+  \item[A new solution waits] for the pause to end: a paste, a component placed from the search box, an
+        \keys{Alt+drag} copy.
+  \item[Deleting is refused] until the pause ends, since the paused solution may still need the objects; \vn{Log}
+        says so. Adding is fine.
+\end{description}
+
+\begin{lesson}{lesson GH~2}
+\lessonfile{gh2_the_one_wrong_item}: Always debug, a breakpoint condition, the run badge, a slider moved while paused.
+\end{lesson}

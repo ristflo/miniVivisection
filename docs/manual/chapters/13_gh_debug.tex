@@ -1,0 +1,143 @@
+\chapter{Debugging script components}\label{ch:ghdebug}
+
+Rhino~8's Grasshopper script components have a script editor of their own, the same Script Editor with a
+compact layout. miniVivisection works there as in the Script Editor (Part~II), and adds what a component
+needs: it runs once per item or branch, inside a solution, mostly without a debugger
+(\see{sec:ghconcept}). This chapter covers Python~3 script components. The legacy GhPython (IronPython)
+component isn't covered.
+
+\section{Three modes}\label{sec:ghmodes}
+
+\setting{Grasshopper script components} (\menu{V°Settings\>Grasshopper}) decides how components run:
+
+\begin{xltabular}{\linewidth}{@{}P{0.24\linewidth}L@{}}
+\toprule
+\ui{Normal}          & Components run plainly. A component's breakpoints pause only when its solution was started from its script editor's \ui{Debug}, and \keys{Ctrl+Alt+B} leaves a component alone. \\
+\ui{Stop and record} (the default) & They run as plainly and fast, but \keys{Ctrl+Alt+B} stops a component that runs (one that hangs), and its editor opens at the line where it was, with an explanation and the values then. \\
+\ui{Always debug}    & Every recompute (a slider, an input) runs in the debugger, stops at the component's breakpoints, and \keys{Ctrl+Alt+B} can pause it. With hidden editors, this works even for components whose editor you never opened. \\
+\bottomrule
+\end{xltabular}
+
+\paragraph{The V° button.} Grasshopper's toolbar gets a \ui{V°} button on the right, next to the preview buttons.
+Each click goes to the next mode: \emph{Stop and record} (V° with a green Run badge) → \emph{Always debug} (V° with
+the Debug badge) → \emph{Normal} (V°, gray and faint) → \emph{Stop and record}. While \vn{Debug} is off,
+components run as under \emph{Normal}, and the button shows it. Setting: \setting{Grasshopper toolbar button}.
+
+\section{Run and Debug in the component's editor}\label{sec:ghrunbuttons}
+
+A component's script editor gets the same \ui{Run} and \ui{Debug} buttons (\see{sec:runbuttons}). \ui{Run} recomputes
+the component plainly, breakpoints ignored, except under \emph{Always debug}, which puts every solution in the
+debugger, Run's too. \ui{Debug} recomputes it in the debugger, breakpoint or not. The editor's status bar has
+buttons for the V pages (\see{sec:whereitshows}).
+
+\section{Ctrl+Alt+B on a component}\label{sec:ghbreak}
+
+\begin{description}
+  \item[Its editor open:] \keys{Ctrl+Alt+B} pauses a running component at its next line (its debugger lives
+        there). Continue, step and stop as usual.
+  \item[Its editor closed:] Under \emph{Stop and record}, or without hidden editors, \keys{Ctrl+Alt+B} stops a running
+        Python~3 component, its remaining runs and the solution too, then opens its editor at the line it was on,
+        with an overlay that explains it. Press \ui{Debug} to run it again in the debugger; \keys{Ctrl+Alt+B} then
+        pauses it. No breakpoint is set.
+\end{description}
+
+\keys{Ctrl+Alt+B} stops a component that runs plainly first, whatever else is in the debugger: that component is
+what holds Rhino.
+
+\section{Hidden editors}\label{sec:hiddeneditors}
+
+A component's debugger lives in its script editor. With \setting{Hidden editors for Grasshopper components} (on by
+default), \emph{Always debug} gives every Python~3 script component of the open definitions its editor, out of
+sight: one every two seconds, without taking the focus. Its recomputes then run in the debugger too: a breakpoint
+or \keys{Ctrl+Alt+B} \emph{pauses} it, and its editor comes up at that line.
+
+\begin{itemize}
+  \item Opening its editor yourself shows it; closed again, it is hidden again.
+  \item Switching to \emph{Normal}, or the option off, closes the hidden ones; a deleted component's goes with it.
+  \item Hidden editors stay out of the taskbar and \keys{Alt+Tab} until they come up.
+  \item Costs: each one is a Script Editor window (at most 24), and every run is in the debugger, which is slower.
+  \item A definition's very first solution, right when it is opened, runs before its editors are there.
+\end{itemize}
+
+\section{Editors follow the definition}\label{sec:closeeditors}
+
+Open another definition, or switch the canvas to another open one, and the script editors of the definition you leave
+close first -- as their close buttons would, so Grasshopper may still ask about changes not applied. The editors on the
+screen do; hidden ones (above) stay with their components, and the editor of a script \emph{paused} in the debugger
+stays open (closing it would end the pause; the command line says so). \setting{Close script editors when the
+definition changes} (on by default) switches it off.
+
+\section{Which run is paused}\label{sec:runbadge}
+
+While a script component is paused, a badge at the top of its code shows the run:
+\emph{Grasshopper: 'Py3' run 4 · \{0;3\}[2] · x \{0;3\}[2], y \{0\}}: the component, the run number, its branch or
+item, and every input's path. \vn{Log}'s pause line and \vn{Python}'s status line say the same; in \vn{Python},
+\code{ghenv.Component.RunCount} is the run number.
+
+\shot{06_paused_run_badge}{Lesson GH~5: \emph{Spacing} paused at its error, line 6 (\emph{float division by zero}).
+  The badge names the run: \emph{Grasshopper: 'Spacing' run 1 · \{0\} · pts \{0\}}.}{fig:runbadge}
+
+Conditions and log messages know the run too: \code{gh_run}, \code{gh_branch} and \code{gh_item}
+(\see{sec:conditions}).
+
+\section{Which branch failed}\label{sec:failingruns}
+
+When runs fail, a remark on the component names them: run number, branch \code{\{0;3\}}, item \code{\{0;3\}[2]}, the
+line. The data named is each input's own, as Grasshopper had it for that run. The component's right-click menu
+then offers:
+
+\begin{description}
+  \item[V° Copy failing branches (n), V° Copy failing items (n):] One path per line: paste it into a Panel, and feed
+        Tree Branch's \emph{Path}, or V°Edit's \emph{Index}, to isolate exactly that data.
+  \item[{V° Debug failing run N -{}- data \{0;3\}[2], line L:}] Its editor opens, a one-time breakpoint is set at the
+        error line for that run only, with the condition \code{gh_item == "\{0;3\}[2]"} (\code{gh_branch} for a
+        component that takes branches): the same data, wherever it is in the order now. The component recomputes in
+        the debugger. Offered when no other run had the same data.
+  \item[{V° Debug failing run N -{}- run number, line L:}] The same, with \code{gh_run == N}: the same run number.
+  \item[V° Debug this component:] Recomputes it in the debugger, pausing at its first line.
+\end{description}
+
+\shot{05_which_branch_failed}{Lesson GH~1: \emph{Divide} fails for some of its 12 runs. Its menu names the failing
+  run by its data, \emph{\{0;2\}[0]}, and by number, and copies the failing branches and items.}{fig:failingruns}
+
+\section{Runtime errors and wiring}\label{sec:rewiring}
+
+Under \emph{Always debug}, the debugger stops at a runtime error in a component, as it does in the Script Editor,
+with the values and the call stack of that moment.
+
+A runtime error right after wires were connected or disconnected, a \keys{Ctrl+drag} that takes an input away for
+example, doesn't pause, so the editor doesn't come up in the middle of the wiring. The component shows the
+error, \vn{Log} says why, and recomputing it pauses at the error as usual.
+
+\section{Recomputes held back}\label{sec:ghheld}
+
+While a component's script is paused, Grasshopper must not recompute anything: it would show
+\emph{Grasshopper breakpoint: … expired during a solution}. Whatever asks for that meanwhile, a slider, a save,
+an edit, is done right after the solution ends; \vn{Log} says so. With
+\setting{While paused: compute changes downstream}, changes are computed at once instead (\cref{ch:ghpaused}).
+
+\section{async:true in a component}\label{sec:ghasync}
+
+Grasshopper runs a component on Rhino's UI thread, so a long-running component freezes Rhino's views and the
+canvas, and a breakpoint in one of its threads can't pause (the freeze guard skips it, \see{sec:freezeguard}).
+Add \code{\# async:true} to its script, the line after \code{\#! python 3}:
+
+\begin{itemize}
+  \item Its runs, plain ones and in the debugger, go to a thread of their own, as a Script Editor script's would.
+        Rhino's views and Grasshopper's canvas stay usable while it computes.
+  \item Its threads pause, step and show in \vn{Threads}.
+  \item The definition holds still meanwhile: changes recompute when it is done; deleting waits.
+  \item Its script mustn't use Rhino's UI or document where they need the UI thread.
+\end{itemize}
+
+Setting: \setting{async:true runs off the UI thread}.
+
+\paragraph{ghpythonlib.parallel.} \code{parallel.run} computes its first item on the component's own thread: a
+breakpoint in the worker function pauses for that one (lesson GH~7).
+
+\begin{lesson}{lessons GH~1 to GH~3, GH~5 to GH~8}
+\lessonfile{gh1_which_branch_failed}: failing runs. \lessonfile{gh2_the_one_wrong_item}: Always debug, a condition,
+the badge. \lessonfile{gh3_stop_a_hang}: \keys{Ctrl+Alt+B} with the editor closed. \lessonfile{gh5_runtime_error}: the
+debugger at a runtime error. \lessonfile{gh6_threads_in_a_component}, \lessonfile{gh7_parallel_run}: threads.
+\lessonfile{gh8_long_running}: \keys{Ctrl+Alt+B} pauses a long-running component, a fix in \vn{Python}, it runs on.
+\end{lesson}

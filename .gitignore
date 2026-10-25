@@ -1,0 +1,22 @@
+# Build output (each project's bin/ and obj/; the .gha builds into the .rhp's bin/)
+bin/
+obj/
+.vs/
+*.user
+
+# The build counter (Version.props): local, counted up by every build
+build-number.txt
+
+# Publishing: the SFTP account (tools/publish_webpages.py) and the public snapshot's work folder
+tools/publish.local.json
+publish-public/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+
+# Rhino's by-products next to a .3dm
+*.3dmbak
+*.rhl

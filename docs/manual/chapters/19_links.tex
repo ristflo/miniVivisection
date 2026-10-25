@@ -1,0 +1,103 @@
+\chapter{Links in Markdown}\label{ch:links}
+
+Links make notes into a guide. A Panel's note can lead to the component it talks about; Markdown text in a model can
+open the Grasshopper definition that made it and go to a component there, and that definition's notes can lead back.
+Links work the same in Panels, in \code{MarkdownText}, and in baked V°Text.
+
+\section{Targets}
+
+A link is \code{[text](target)}, the target one of:
+
+\begin{xltabular}{\linewidth}{@{}P{0.27\linewidth}L@{}}
+\toprule
+\code{gh:Name}         & a Grasshopper object by its nickname (or name, or instance id; a group by its name too): the canvas
+                         glides to center it, and a red circle marks it for a moment. The active definition first, then the
+                         other open ones. \\
+\code{ghview:Name}     & a named view of the Grasshopper canvas (\menu{View\>Named Views}), restored. \\
+\code{rhino:Name}      & a Rhino object by its name (or id): the view zooms so it takes about a tenth of the view, its
+                         surroundings in sight, and a red circle marks it. \\
+\code{rhinoview:Name}  & a named view of Rhino's, restored in the active viewport; or, when there is none of that name, the
+                         viewport with that title (\code{rhinoview:Perspective}) made the active one. \\
+\code{script:file.py}  & a script (\file{.py}, \file{.cs}) or a Markdown file (\file{.md}) opened in the Script Editor, not run. \\
+\code{protect:revert}  & the protected original put back: in Rhino \code{ProtectModel}'s Revert (\see{sec:protectmodel}), in a Panel its definition's V°Protect's -- asked first. \\
+\code{https://…}, \code{mailto:…}, \code{file:…} & the browser, or the app for it. \\
+\bottomrule
+\end{xltabular}
+
+\begin{figure}[htbp]
+  \centering
+  \begin{minipage}[t]{0.485\linewidth}
+    \tikz\node[inner sep=0pt, draw=mvbluemid, line width=0.6pt]{\includegraphics[width=0.99\linewidth]{10_link_followed_in_grasshopper}};
+    \caption{\code{gh:Ring} followed: the canvas centered on \emph{Ring}, a red circle marking it.}\label{fig:linkgh}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.485\linewidth}
+    \tikz\node[inner sep=0pt, draw=mvbluemid, line width=0.6pt]{\includegraphics[width=0.99\linewidth]{15_link_followed_in_rhino}};
+    \caption{\code{rhino:Circle} followed: the view zoomed so the circle takes about a tenth of it.}\label{fig:linkrhino}
+  \end{minipage}
+\end{figure}
+
+How much of the view a Rhino object takes is a setting: \setting{Links to Rhino objects: their size in the view (\%)},
+10 by default; 100 fills the view.
+
+\section{Into another file, and back}\label{sec:crossfile}
+
+Put the file before the name, with \code{\#}:
+
+\begin{itemize}
+  \item \code{gh:grasshopper/gh11_markdown_notes.gh\#Ring} opens that definition in Grasshopper when it isn't open (starting
+        Grasshopper when it isn't running), puts it on the canvas and goes to \emph{Ring}. \code{ghview:file.gh\#View} likewise.
+  \item \code{rhino:../00_overview.3dm\#Logo} opens that model in Rhino when it isn't the one open (Rhino asks to save
+        yours first) and zooms to the objects named \emph{Logo}. \code{rhinoview:file.3dm\#View} likewise.
+  \item The file alone, \code{gh:file.gh}, just opens it.
+\end{itemize}
+
+A relative path is from the file holding the link: the \file{.3dm} for Markdown text in Rhino, the \file{.gh} for a Panel. So
+save that file first. The examples link both ways: \file{00_overview.3dm} into GH~11, GH~11 into \file{00_overview.3dm}.
+
+\paragraph{A file without a scheme} is a link too: \code{[next lesson](gh3_stop_a_hang.gh)} opens that definition, or shows it
+when it is open; \code{[the model](../00_overview.3dm)} that model; \code{[lesson 01](../01_watch_geometry.py)} that script in the
+Script Editor. The same as \code{gh:}, \code{rhino:} and \code{script:} with the file alone. A full path
+(\code{C:\bs models\bs a.gh}) works as well.
+
+\paragraph{Names with spaces:} \code{[the twist](<gh:My Twist>)} or \code{gh:My\%20Twist}.
+
+\section{Following a link}
+
+\textbf{Click} the link -- in Rhino and in a Panel shown as Markdown alike. \setting{Markdown links: follow
+with} (one setting for both) chooses:
+
+\begin{description}
+  \item[Click (the default):] A plain click follows it, once the double-click time has passed without a second click.
+  \item[Ctrl+click:] A click with \keys{Ctrl} held follows it at once; a plain click selects, as on any object.
+  \item[Off:] Links aren't followed.
+\end{description}
+
+A \textbf{double-click} always edits -- on a link too: in Rhino the Markdown dialog opens (\see{sec:mdedit}), in a
+Panel its source. Over a link, a hint by the mouse says where it goes and how to follow it -- \emph{click}, \emph{Ctrl+click},
+or, when following is off, where to switch it on (\cref{fig:linkhint}); in a Panel the pointer becomes a hand
+(\cref{fig:panelmarkdown}).
+
+A target that isn't found is reported on Rhino's command line.
+
+\shot{13_markdown_text_link_hint}{The Markdown text example: the mouse over a link into Grasshopper. The hint says
+  where it goes and how to follow it.}{fig:linkhint}
+
+\begin{caution}[Safety]
+A link that opens a file asks first, unless the file is near the linking one (its folder, or the one above). A
+\code{file:} link always asks. While a script is paused or a Grasshopper component computes, no link opens a file, and \code{protect:revert}
+doesn't revert a Rhino file.
+\end{caution}
+
+\section{Their look}
+
+Links are blue: the Markdown style's \code{a} says so (\code{color: \#0066CC}; a name such as \code{RoyalBlue},
+\code{\#RRGGBB}, \code{\#RGB} or \code{rgb(r, g, b)}; \see{sec:mdstyle}), while \setting{Markdown links in color} is on. A link's
+words and the \textbf{line under them} are in the link color. The line is as long as the link's words,
+\code{text-decoration-thickness} high (10\,\% of the text height), its top \code{text-underline-offset} under the
+baseline (15\,\%, an underline's place; about 30\,\% clears the descenders of g, p, y); \code{text-decoration: none}
+leaves it out. In Rhino the line is
+a solid hatch, one under each line of the link -- where Rhino wraps it, and at a hard line break in it; it belongs to the text: it moves, edits and bakes with it (V°Text: in \emph{Decorators}). A
+Rhino text object has one color, so the plug-in \textbf{draws} the link's letters over it, filled in the link color --
+drawn, not objects: a click on a link's word still picks just the text, and a change of the color shows at once. Not
+while the text is selected (its highlight shows), nor after its words were changed in Rhino until it is edited again;
+without the plug-in the words show in the text's color. Colors off: the line in the text's color (by its layer).

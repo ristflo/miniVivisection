@@ -1,0 +1,30 @@
+% The title page: design 17 of title_designs.pdf -- the outlined V° in the typographic layout --
+% with "Vivisection" in the manual's blue.
+\begin{titlepage}
+\thispagestyle{empty}
+\begin{tikzpicture}[remember picture, overlay, x=1mm, y=1mm]
+  \begin{scope}[shift={(current page.south west)}]
+    % the header: a label, the version, a rule
+    \node[anchor=south west, inner sep=0pt] at (24,270) {\sffamily\small\bfseries\textls[180]{MANUAL}};
+    \node[anchor=south east, inner sep=0pt] at (186,270) {\sffamily\small Version \mvversion};
+    \draw[black, line width=0.5pt] (24,266) -- (186,266);
+    % the title
+    \node[anchor=north west, inner sep=0pt] at (23,252) {\fontsize{58}{60}\selectfont{\mvlight\color{black}mini}{\mvhead\color{mvblue}Vivisection}};
+    \node[anchor=north west, inner sep=0pt, text width=162mm, align=left] at (24.5,222)
+      {\rmfamily\itshape\fontsize{20}{26}\selectfont See your script's data in Rhino\\while you debug};
+    \draw[black, line width=2.5pt] (24.5,196) -- (54.5,196);
+    \node[anchor=north west, inner sep=0pt, text width=100mm] at (24.5,188) {\rmfamily\large A plug-in for the Script Editor\\
+      and Grasshopper of Rhino~8};
+    % the V° mark, outlined
+    \node[anchor=south east, inner sep=0pt, text=black] at (188,64) {\vlogo\fontsize{250}{250}\selectfont\outlined{1.2}{V°}};
+    % the footer: three columns under a rule
+    \draw[black, line width=0.5pt] (24,58) -- (186,58);
+    \node[anchor=north west, inner sep=0pt, text width=50mm] at (24,53) {\sffamily\footnotesize\bfseries Rhino 8\\\mdseries\color{black!65}Script Editor\\Grasshopper};
+    \node[anchor=north west, inner sep=0pt, text width=50mm] at (80,53) {\sffamily\footnotesize\bfseries Version \mvversion\\\mdseries\color{black!65}build \mvbuild\\experimental};
+    \node[anchor=north west, inner sep=0pt, text width=50mm] at (136,53) {\sffamily\footnotesize\bfseries \mvdate\\\mdseries\color{black!65}formerly\\ScriptEditorWatchViz};
+    \node[anchor=south west, inner sep=0pt, text width=162mm, align=left] at (24,18)
+      {\sffamily\scriptsize\color{black!55}Experimental. miniVivisection relies on internal code of Rhino~8's Script Editor;
+       a Rhino update can break parts of it.};
+  \end{scope}
+\end{tikzpicture}
+\end{titlepage}

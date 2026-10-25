@@ -1,0 +1,56 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- miniVivisection's Grasshopper part: V Edit and script Panels shown as code; a .gha
+         next to miniVivisection.rhp, which tells Grasshopper where it is (GrasshopperLink).
+         It doesn't reference the .rhp: settings and the Script Editor are reached by
+         reflection, when the .rhp is loaded. Rhino 8. -->
+    <TargetFramework>net7.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <TargetExt>.gha</TargetExt>
+    <NoWarn>NU1701</NoWarn>
+    <RootNamespace>MiniVivisection.GH</RootNamespace>
+    <AssemblyName>miniVivisection.GH</AssemblyName>
+    <!-- Builds before the .rhp (its ProjectReference): it counts the build number. -->
+    <MvCountBuilds>true</MvCountBuilds>
+    <Title>miniVivisection (Grasshopper)</Title>
+    <Company>miniVivisection Authors</Company>
+    <Description>V Edit: edit Grasshopper geometry in Rhino and feed the changes back. V Text: text as Rhino text.</Description>
+    <!-- Next to the .rhp, in the plug-in's own output folder. -->
+    <OutputPath>..\miniVivisection\bin\$(Configuration)\net7.0\</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+  <Import Project="..\..\Version.props" />
+  <ItemGroup>
+    <Compile Include="..\miniVivisection\VersionInfo.cs" Link="VersionInfo.cs" />
+    <!-- Script Panels' languages and colors (ScriptPanels), checked in the .rhp's checks. -->
+    <Compile Include="..\miniVivisection\ScriptTokens.cs" Link="ScriptTokens.cs" />
+    <Compile Include="..\miniVivisection\MarkdownBlocks.cs" Link="MarkdownBlocks.cs" />
+    <!-- Text as Rhino objects: V Text, and the .rhp's MarkdownText. -->
+    <Compile Include="..\miniVivisection\RhinoTextLayout.cs" Link="RhinoTextLayout.cs" />
+    <Compile Include="..\miniVivisection\MarkdownLinks.cs" Link="MarkdownLinks.cs" />
+    <!-- How Markdown looks (the default styles inside the .gha too: without the .rhp). -->
+    <Compile Include="..\miniVivisection\MarkdownStyle.cs" Link="MarkdownStyle.cs" />
+    <Compile Include="..\miniVivisection\MarkdownFields.cs" Link="MarkdownFields.cs" />
+    <!-- The help components' icons: the toolbar's (tools/make_toolbar.py) -->
+    <EmbeddedResource Include="..\miniVivisection\toolbar\icons\ghexamples_24.png" LogicalName="ghexamples_24.png" />
+    <EmbeddedResource Include="..\miniVivisection\toolbar\icons\manual_24.png" LogicalName="manual_24.png" />
+    <EmbeddedResource Include="..\miniVivisection\toolbar\icons\settings_24.png" LogicalName="settings_24.png" />
+    <EmbeddedResource Include="..\miniVivisection\styles\markdown_rhino.css" LogicalName="markdown_rhino.css" />
+    <EmbeddedResource Include="..\miniVivisection\styles\markdown_grasshopper.css" LogicalName="markdown_grasshopper.css" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Grasshopper" Version="8.36.26272.13001-rc" ExcludeAssets="runtime" />
+    <!-- Patches for script Panels (ScriptPanels). 0Harmony.dll comes with the .rhp, in the same
+         folder (and is loaded by it): not copied from here. -->
+    <PackageReference Include="Lib.Harmony" Version="2.4.2" ExcludeAssets="runtime" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Rhino's Markdig (the Script Editor's Markdown preview): Markdown in Panels (MarkdownMarkdig). -->
+    <Reference Include="Markdig.Signed">
+      <HintPath>C:\Program Files\Rhino 8\System\Markdig.Signed.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+</Project>
