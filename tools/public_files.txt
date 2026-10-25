@@ -24,8 +24,8 @@
 + docs/manual/*
 + docs/screenshots/*
 
-# The web pages, with the packages they offer, and their artwork (generated with ChatGPT; the
-# rights are the author's); the package's parts
+# The web pages, with the packages they offer, and their artwork, used and not (generated with
+# ChatGPT and Gemini; the rights are the author's: web/sources/README.md); the package's parts
 + web/pages/*
 + web/sources/*
 + packaging/*

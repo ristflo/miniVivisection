@@ -56,7 +56,7 @@ miniVivisection/
 │   └── notes/                   plans, reviews, research, prompts (private)
 ├── web/
 │   ├── pages/                   https://restweiss.de/miniVivisection: eight designs, the chooser, packages
-│   └── sources/                 the pages' artwork (generated with ChatGPT Pro; the rights are the author's)
+│   └── sources/                 the pages' artwork, and in not-used/ the drafts kept (README.md: which is which)
 ├── packaging/                   Yak: manifest.yml, icon.png, misc/ (README.md, the removal tool)
 └── tools/                       make_*.py (build things), publish_*.py (upload things), examples_overview.py,
                                  public_files.txt; publish.local.json (local, the SFTP account)
