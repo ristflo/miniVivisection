@@ -464,9 +464,12 @@ namespace MiniVivisection
                         bestText = o;
                     }
                 }
-                else if (o.Geometry is Curve curve && bestText == null)
+                else if ((o.Geometry is Curve || o.Geometry is Hatch) && bestText == null)
                 {
-                    var distance = Distance(curve, viewport, at);
+                    // A hatch (a line, a frame, a task box, a link's bar): its outline's edges
+                    var distance = o.Geometry is Hatch hatch
+                        ? (hatch.Get3dCurves(true) ?? new Curve[0]).Concat(hatch.Get3dCurves(false) ?? new Curve[0]).Select(c => Distance(c, viewport, at)).DefaultIfEmpty(double.MaxValue).Min()
+                        : Distance((Curve)o.Geometry, viewport, at);
                     if (distance < bestDistance)
                     {
                         bestDistance = distance;

@@ -49,10 +49,10 @@ code blocks = "in a frame, in Consolas"
 | Markdown | Rhino object |
 |----------|--------------|
 | text | Text, rich text |
-| rules | Line |
-| task boxes | Polyline |
-| quote bars | Text: a `|` on each line |
-| code blocks | Text in a frame |
+| rules | Hatch, as thick as a link's line |
+| task boxes | Hatch: a square, a check mark |
+| quote bars | Text: a bar on each line |
+| code blocks | Text in a frame (a hatch) |
 
 ## Links
 
@@ -164,11 +164,16 @@ def _protect(doc):
         raise RuntimeError(problem)
 
 
+# The V° letters' height (the V's foot to the °'s top) as a part of the logo's side -- as placed
+# by hand in examples/00_overview.3dm (2026-11-01): 9.966 on the 20 square, centred in it
+LOGO_LETTERS_HEIGHT = 0.4983
+
+
 def _logo(doc, corner, side):
     """The V° logo's outlines, top left at corner, side long -- as the package's icon
-    (tools/make_yak.py: a bold Segoe UI V° on a rounded square, 32 units, corners 7, the text
-    19 units, its baseline 23 units down, its middle 15 units in): the square's outline and the
-    letters' outlines, curves named Logo (the link rhino:Logo names them), on the layer Link
+    (tools/make_yak.py: a bold Segoe UI V° on a rounded square, 32 units, corners 7): the
+    square's outline and the letters' outlines, LOGO_LETTERS_HEIGHT of the side high and centred
+    in the square, curves named Logo (the link rhino:Logo names them), on the layer Link
     targets. Their bounding box."""
     unit = side / 32.0
     attributes = doc.CreateDefaultAttributes()
@@ -179,16 +184,22 @@ def _logo(doc, corner, side):
                                         Rhino.Geometry.Interval(0, side), Rhino.Geometry.Interval(-side, 0)).ToNurbsCurve()
     rounded = Rhino.Geometry.Curve.CreateFilletCornersCurve(square, 7 * unit, tolerance, doc.ModelAngleToleranceRadians) or square
     curves = [rounded]
-    # The letters: a bold Segoe UI text, its capitals' height about 0.7 of the font size
-    plane = Rhino.Geometry.Plane(Rhino.Geometry.Point3d(corner.X + 15 * unit, corner.Y - 23 * unit, corner.Z), Rhino.Geometry.Vector3d.XAxis, Rhino.Geometry.Vector3d.YAxis)
+    # The letters: a bold Segoe UI text's outlines, fitted to their height and centred (CreateCurves
+    # takes the dimension style's text height, not the text's: the outlines are scaled instead)
     style = doc.DimStyles.Current
-    text = Rhino.Geometry.TextEntity.Create('V\u00b0', plane, style, False, 0, 0)
+    text = Rhino.Geometry.TextEntity.Create('V\u00b0', Rhino.Geometry.Plane.WorldXY, style, False, 0, 0)
     text.Font = Rhino.DocObjects.Font('Segoe UI', Rhino.DocObjects.Font.FontWeight.Bold, Rhino.DocObjects.Font.FontStyle.Upright, False, False)
-    text.DimensionScale = 1
-    text.TextHeight = 19 * unit * 0.7
-    text.TextHorizontalAlignment = Rhino.DocObjects.TextHorizontalAlignment.Center
-    text.TextVerticalAlignment = Rhino.DocObjects.TextVerticalAlignment.Bottom
-    curves += list(text.CreateCurves(style, False, 1.0, 0.0) or [])
+    letters = list(text.CreateCurves(style, False, 1.0, 0.0) or [])
+    if letters:
+        fit = Rhino.Geometry.BoundingBox.Empty
+        for curve in letters:
+            fit.Union(curve.GetBoundingBox(True))
+        centre = Rhino.Geometry.Point3d(corner.X + side / 2, corner.Y - side / 2, corner.Z)
+        scale = Rhino.Geometry.Transform.Scale(fit.Center, LOGO_LETTERS_HEIGHT * side / (fit.Max.Y - fit.Min.Y))
+        move = Rhino.Geometry.Transform.Translation(centre - fit.Center)
+        for curve in letters:
+            curve.Transform(move * scale)
+        curves += letters
     box = Rhino.Geometry.BoundingBox.Empty
     for curve in curves:
         doc.Objects.AddCurve(curve, attributes)
@@ -206,7 +217,7 @@ def make(doc, path=PATH, protect=True):
     plane = Rhino.Geometry.Plane(Rhino.Geometry.Point3d(80, 0, 0), Rhino.Geometry.Vector3d.XAxis, Rhino.Geometry.Vector3d.YAxis)
     ids = create(doc, MARKDOWN, frame(plane=plane))
     box = _on_layer(doc, ids)
-    # The V° logo the links name, right of the example, its top left at (170, 0, 0)
+    # The V° logo the links name, right of the example, its top left at (170, 0, 0), 20 wide
     box.Union(_logo(doc, Rhino.Geometry.Point3d(170, 0, 0), 20.0))
     _named_view(doc, box, 'MarkdownText')
     everything = Rhino.Geometry.BoundingBox(overview_box.Min, overview_box.Max)

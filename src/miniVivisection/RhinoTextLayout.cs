@@ -20,7 +20,8 @@ namespace MiniVivisection
     /// Rhino's rich text has no colors of its own; in a document MarkdownLinkLetters draws them),
     /// lists with bullets, numbers or task boxes (drawn: a square, a check mark), quotes with a
     /// bar ('|' on each line), code blocks
-    /// framed, tables as a grid of cells, rules as lines. Each piece knows its block, the
+    /// framed, tables as a grid of cells, rules as lines. The lines -- rules, frames, the grid,
+    /// task boxes and check marks -- are solid hatches as thick as the links' bars. Each piece knows its block, the
     /// block's source lines, and -- a text -- its characters with their places in the source
     /// and its links: what MarkdownText needs to edit a part, take changes made to it in Rhino
     /// back into the Markdown, and follow a link.
@@ -116,7 +117,7 @@ namespace MiniVivisection
             return Point3d.Origin;
         }
 
-        /// <summary>A piece's kind: 0 a text, 1 a curve, 2 a hatch (a link's bar), 3 another.</summary>
+        /// <summary>A piece's kind: 0 a text, 1 a curve, 2 a hatch (a link's bar, a line, a frame, a task box), 3 another.</summary>
         public static int KindOf(GeometryBase geometry) => geometry is TextEntity ? 0 : geometry is Curve ? 1 : geometry is Hatch ? 2 : 3;
 
         // A text's content: its rich text, and its characters with their source offsets and links
@@ -145,7 +146,7 @@ namespace MiniVivisection
         private readonly MarkdownStyle _css; // how Markdown looks: sizes, fonts, colors, characters
         private readonly string _codeFace, _preFace; // `code` and code blocks' fonts
         private readonly Color _linkColor; // the links' bars and letters (Color.Empty: the text's, no letters)
-        private readonly double _linkLine; // the links' bars' height, in text heights
+        private readonly double _linkLine; // the links' bars' height, in text heights -- every line's thickness too (Stroke)
         private readonly double _linkGap;  // their tops under the baseline, in text heights
         private readonly bool _underline;  // the links' bars at all
         private readonly bool _letters;    // the links' letters filled too (Letters)
@@ -391,21 +392,17 @@ namespace MiniVivisection
         }
 
         // A task's box at a list item's marker (x, y: its text's top left): a square with sharp
-        // corners, side long, centered on the capitals, a check mark in it when done -- curves, so
-        // every box is alike whatever the font. Each keeps the box's place in the source: a click
-        // checks it (MarkdownTextMouse).
+        // corners, side long, centered on the capitals, a check mark in it when done -- strokes
+        // (Stroke), so every box is alike whatever the font. Each keeps the box's place in the
+        // source: a click checks it (MarkdownTextMouse).
         private void TaskBox(double x, double y, bool done, int line, int column, double side, Color color)
         {
             var bottom = y - H * 0.5 - side / 2;
             Point3d At(double u, double v) => new Point3d(x + u * side, bottom + v * side, 0);
-            var square = new PolylineCurve(new[] { At(0, 0), At(1, 0), At(1, 1), At(0, 1), At(0, 0) });
-            Pieces.Add(new Piece { Geometry = square, Color = color, Block = _block, FirstLine = _first, LastLine = _last, TaskLine = line, TaskColumn = column, TaskDone = done });
+            Stroke(new[] { At(0, 0), At(1, 0), At(1, 1), At(0, 1) }, true, color, (line, column, done));
             if (done)
-            {
-                var check = new PolylineCurve(new[] { At(0.2, 0.52), At(0.42, 0.26), At(0.8, 0.76) });
-                Pieces.Add(new Piece { Geometry = check, Color = color, Block = _block, FirstLine = _first, LastLine = _last, TaskLine = line, TaskColumn = column, TaskDone = done });
-            }
-            _right = Math.Max(_right, x + side);
+                Stroke(new[] { At(0.2, 0.52), At(0.42, 0.26), At(0.8, 0.76) }, false, color, (line, column, done));
+            _right = Math.Max(_right, x + side + H * _linkLine / 2);
         }
 
         // A quote's bar: mark on each of its lines (bold or not), as many as fit in its text's
@@ -834,14 +831,65 @@ namespace MiniVivisection
         }
 
         private void Line(double x1, double y1, double x2, double y2, Color color = default) =>
-            Pieces.Add(new Piece { Geometry = new LineCurve(new Point3d(x1, y1, 0), new Point3d(x2, y2, 0)), Color = color, Block = _block, FirstLine = _first, LastLine = _last });
+            Stroke(new[] { new Point3d(x1, y1, 0), new Point3d(x2, y2, 0) }, false, color);
 
         private void Rectangle(double x1, double y1, double x2, double y2) =>
+            Stroke(new[] { new Point3d(x1, y1, 0), new Point3d(x2, y1, 0), new Point3d(x2, y2, 0), new Point3d(x1, y2, 0) }, true, Color.Empty);
+
+        // A line, a frame, a task's box or check mark: a solid hatch along points (closed: around
+        // them, a hole inside), as thick as the links' bars (the style's a text-decoration-thickness
+        // of the text height), centred on them, its corners mitred -- as thick in every view and print
+        private void Stroke(Point3d[] points, bool closed, Color color, (int Line, int Column, bool Done)? task = null)
+        {
+            var half = H * _linkLine / 2;
+            var loops = closed
+                ? new[] { Offset(points, half, true), Offset(points, -half, true) }
+                : new[] { Offset(points, half, false).Concat(Offset(points, -half, false).Reverse()).ToArray() };
+            Hatch[] hatches;
+            try
+            {
+                hatches = Hatch.Create(loops.Select(l => (Curve)new PolylineCurve(l.Concat(new[] { l[0] }))), SolidPattern(), 0, 1, Math.Max(H * 1e-4, 1e-9));
+            }
+            catch (Exception)
+            {
+                return;
+            }
+            if (hatches == null || hatches.Length == 0)
+                return;
             Pieces.Add(new Piece
             {
-                Geometry = new PolylineCurve(new[] { new Point3d(x1, y1, 0), new Point3d(x2, y1, 0), new Point3d(x2, y2, 0), new Point3d(x1, y2, 0), new Point3d(x1, y1, 0) }),
-                Color = Color.Empty, Block = _block, FirstLine = _first, LastLine = _last,
+                Geometry = hatches[0], Color = color, Block = _block, FirstLine = _first, LastLine = _last,
+                TaskLine = task?.Line ?? -1, TaskColumn = task?.Column ?? 0, TaskDone = task?.Done == true,
             });
+        }
+
+        // The polyline's points moved d to its left (negative: to its right), its corners mitred
+        // (closed: the last point joined to the first)
+        private static Point3d[] Offset(Point3d[] points, double d, bool closed)
+        {
+            var n = points.Length;
+            Vector3d? Left(int a, int b)
+            {
+                var along = points[b] - points[a];
+                return along.Unitize() ? new Vector3d(-along.Y, along.X, 0) : (Vector3d?)null;
+            }
+            var result = new Point3d[n];
+            for (var i = 0; i < n; i++)
+            {
+                var before = i > 0 ? Left(i - 1, i) : closed ? Left(n - 1, 0) : null;
+                var after = i < n - 1 ? Left(i, i + 1) : closed ? Left(n - 1, 0) : null;
+                Vector3d shift;
+                if (before == null || after == null)
+                    shift = (before ?? after ?? Vector3d.Zero) * d;
+                else
+                {
+                    var miter = before.Value + after.Value;
+                    shift = miter.Unitize() ? miter * (d / Math.Max(miter * before.Value, 0.2)) : before.Value * d;
+                }
+                result[i] = points[i] + shift;
+            }
+            return result;
+        }
 
         // --- rich text --------------------------------------------------------------------------
 

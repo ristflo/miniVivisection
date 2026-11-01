@@ -38,6 +38,10 @@ tables                      & a grid of cells, the header row bold \\
 \bottomrule
 \end{xltabular}
 
+Every line -- the headings', a rule, a frame, the table's grid, a task box, a check mark -- is a solid hatch, as
+thick as the links' line (\code{text-decoration-thickness}, 10\,\% of the text height): the same in every view and
+on paper.
+
 The whole text is one group. How each element looks -- its size, font, color and spacing, the bullets, the task
 boxes, the quote's bar, the links -- comes from the file's Markdown style (\see{sec:mdstyle}).
 
@@ -97,7 +101,7 @@ How Markdown looks is a \textbf{Markdown style}: a small part of CSS. A rule nam
 paragraph), its font, weight, style and color, the space before and after it, the bullet of each list level
 (\code{list-style-type}, one character a level), the task boxes (\code{checked: drawn} or a character, their
 \code{size}), the quote's bar (\code{bar: "|"}, \code{line} or \code{none}), the code blocks' frame, the tables' grid,
-and the links' color and line (\code{text-decoration-thickness}, \code{text-underline-offset}). \code{body}'s font and
+and the links' color and line (\code{text-decoration-thickness} -- every line's thickness too --, \code{text-underline-offset}). \code{body}'s font and
 color go for everything. No classes, no nesting; what isn't understood is left out and said in \vn{Log}. The default,
 \file{styles\textbackslash markdown_rhino.css} next to the plug-in, lists all it can say, with a comment on each line.
 

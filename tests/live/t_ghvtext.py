@@ -108,8 +108,8 @@ def test():
         lt.note('text heights in pt: %s (%s)' % (heights, rhino.ModelUnitSystem))
         lt.check('10 pt paragraphs, an 18 pt heading', (10.0 in heights, 18.0 in heights), (True, True))
         plain_texts = [t.PlainText for t, c in texts(v_md)]
-        boxes = [g for g, c in pieces(v_md) if isinstance(g, Rhino.Geometry.PolylineCurve) and g.IsClosed and g.PointCount == 5]
-        lt.check('the Markdown laid out: heading, the task box drawn (a square, no glyph)', (any('V Text' in p for p in plain_texts), len(boxes) >= 1, any('\u2611' in p for p in plain_texts)), (True, True, False))
+        boxes = [g for g, c in pieces(v_md) if isinstance(g, Rhino.Geometry.Hatch) and len(g.Get3dCurves(False) or []) == 1]
+        lt.check('the Markdown laid out: heading, the task box drawn (a square hatch with a hole, no glyph)', (any('V Text' in p for p in plain_texts), len(boxes) >= 1, any('\u2611' in p for p in plain_texts)), (True, True, False))
         # The Panel's task box clicked (ScriptPanels.ToggleTask): unchecked in its text, then checked again
         panels = lt.assembly('miniVivisection.GH').GetType('MiniVivisection.GH.ScriptPanels')
         toggle = lambda: panels.GetMethod('ToggleTask', STATIC).Invoke(None, [md, 5, 3])

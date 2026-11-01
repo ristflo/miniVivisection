@@ -69,6 +69,10 @@ namespace MiniVivisection.GH
         // drawn here (a square), or a character (a Mark)
         private readonly List<(RectangleF Box, int Line, int Column, bool Done, bool Drawn, Color Color)> _tasks = new List<(RectangleF, int, int, bool, bool, Color)>();
 
+        // The lines' thickness -- rules, frames, task boxes, check marks --, as the links' bars (the
+        // style's a text-decoration-thickness of the base font's capitals' height), in the layout's units
+        private float _stroke = 1;
+
         /// <summary>A task box under the mouse, as LinkAt has it: task:line:column:done (0-based,
         /// done 1 when checked) -- a click checks or unchecks it (ScriptPanels).</summary>
         public const string TaskScheme = "task:";
@@ -237,6 +241,7 @@ namespace MiniVivisection.GH
             var line = baseFont.GetHeight(g);
             var em = spacing > 0 ? line * baseFamily.GetEmHeight(baseFont.Style) / spacing : line / 1.2f; // the font size, in the layout's units
             float Em(string element, string property, double fallback) => em * (float)css.Length(element, property, fallback);
+            _stroke = em * 0.7f * (float)css.Length("a", "text-decoration-thickness", RhinoTextLayout.BarHeight);
 
             // A block's font: its family, size and weight as the style says (the Panel's font's style else)
             Font BlockFont(string element, double scale, bool bold, bool italic)
@@ -489,6 +494,7 @@ namespace MiniVivisection.GH
             using (var transform = g.Transform)
                 scale = Math.Abs(transform.Elements[0]);
             var pixel = scale > 0 ? 1f / scale : 1f;
+            var stroke = Math.Max(_stroke, pixel);
             foreach (var mark in _marks)
             {
                 var bounds = mark.Bounds;
@@ -502,8 +508,8 @@ namespace MiniVivisection.GH
                             g.FillRectangle(fill, r);
                         break;
                     case MarkKind.CodeFrame:
-                        using (var pen = new Pen(Color.FromArgb(120, Of(mark.Color)), pixel))
-                            g.DrawRectangle(pen, r.X, r.Y, r.Width - pixel, r.Height);
+                        using (var pen = new Pen(Color.FromArgb(120, Of(mark.Color)), stroke) { LineJoin = LineJoin.Miter })
+                            g.DrawRectangle(pen, r.X + stroke / 2, r.Y + stroke / 2, r.Width - stroke, r.Height - stroke);
                         break;
                     case MarkKind.QuoteBar:
                         using (var bar = new SolidBrush(Color.FromArgb(110, Of(mark.Color))))
@@ -511,8 +517,8 @@ namespace MiniVivisection.GH
                         break;
                     case MarkKind.Rule:
                     case MarkKind.HeadingRule:
-                        using (var pen = new Pen(Color.FromArgb(mark.Kind == MarkKind.Rule ? 120 : 60, Of(mark.Color))))
-                            g.DrawLine(pen, r.Left, r.Top, r.Right, r.Top);
+                        using (var line = new SolidBrush(Color.FromArgb(mark.Kind == MarkKind.Rule ? 120 : 60, Of(mark.Color))))
+                            g.FillRectangle(line, r.Left, r.Top, r.Width, stroke);
                         break;
                     case MarkKind.Bullet:
                         using (var brush = new SolidBrush(Of(mark.Color)))
@@ -520,13 +526,13 @@ namespace MiniVivisection.GH
                         break;
                 }
             }
-            // The drawn task boxes: square, sharp corners; a check mark in it when done -- strokes as a glyph's, at least a pixel
+            // The drawn task boxes: square, sharp corners; a check mark in it when done -- as thick as the links' bars, at least a pixel
             foreach (var (box, _, _, done, drawn, color) in _tasks)
             {
                 var r = new RectangleF(X(box.X), Y(box.Y), box.Width, box.Height);
                 if (!drawn || r.Bottom < clip.Top || r.Top > clip.Bottom)
                     continue;
-                using var pen = new Pen(Of(color), Math.Max(pixel, box.Width * 0.09f)) { LineJoin = LineJoin.Miter };
+                using var pen = new Pen(Of(color), stroke) { LineJoin = LineJoin.Miter };
                 g.DrawRectangle(pen, r.X, r.Y, r.Width, r.Height);
                 if (done)
                 {

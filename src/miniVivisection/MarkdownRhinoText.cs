@@ -135,6 +135,8 @@ namespace MiniVivisection
                 attributes.ObjectColor = placed.Color;
                 attributes.ColorSource = ObjectColorSource.ColorFromObject;
             }
+            else if (placed.Geometry is Hatch && attributes.ColorSource == ObjectColorSource.ColorFromObject)
+                attributes.ColorSource = ObjectColorSource.ColorFromLayer; // a line now, where a link's bar was (updated in place)
             return attributes;
         }
 

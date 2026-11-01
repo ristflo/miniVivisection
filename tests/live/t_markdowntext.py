@@ -22,10 +22,19 @@ def test():
     lt.note('%d objects' % len(ids))
     objects = [doc.Objects.FindId(i) for i in ids]
     texts = [o for o in objects if isinstance(o.Geometry, Rhino.Geometry.TextEntity)]
-    lines = [o for o in objects if isinstance(o.Geometry, Rhino.Geometry.LineCurve)]
+    # Lines, frames, task boxes and check marks: solid hatches as thick as the links' bars (10 % of
+    # the text height: the frame's 1.0); a frame or a box a hatch with a hole
     task_key = 'minivivisection.markdown.task'
-    frames = [o for o in objects if isinstance(o.Geometry, Rhino.Geometry.PolylineCurve) and o.Attributes.GetUserString(task_key) is None]
+    holed = lambda o: len(o.Geometry.Get3dCurves(False) or []) > 0
+    drawn = [o for o in objects if isinstance(o.Geometry, Rhino.Geometry.Hatch) and o.Attributes.GetUserString(task_key) is None
+             and o.Attributes.ColorSource != Rhino.DocObjects.ObjectColorSource.ColorFromObject]  # not a link's bar (the link color)
+    lines = [o for o in drawn if not holed(o)]
+    frames = [o for o in drawn if holed(o)]
     lt.check('made: texts, lines, the code block\'s frame', (len(texts) > 15, len(lines) > 5, len(frames)), (True, True, 1))
+    across = [o.Geometry.GetBoundingBox(True) for o in lines]
+    across = [b.Max.Y - b.Min.Y for b in across if b.Max.X - b.Min.X > b.Max.Y - b.Min.Y]
+    lt.note('the horizontal lines: %s thick' % sorted(set(round(t, 4) for t in across)))
+    lt.check('the lines 10 % of the text height thick', len(across) > 3 and all(abs(t - 0.10) < 0.002 for t in across), True)
     plain = [t.Geometry.PlainText for t in texts]
     lt.check('the heading', any('Markdown text in Rhino' in p for p in plain), True)
     lt.check('spaces kept where the style changes', (any('run MarkdownText on it' in p for p in plain), any('the MarkdownText command from' in p for p in plain)), (True, True))
@@ -33,7 +42,7 @@ def test():
     lt.check('code in Consolas', any('Consolas' in t.Geometry.RichText for t in texts), True)
     # Task boxes drawn (no glyphs: a square each, a check mark in the done one), each knowing its place in the Markdown
     boxes = [o for o in objects if o.Attributes.GetUserString(task_key) is not None]
-    squares = [o for o in boxes if o.Geometry.IsClosed]
+    squares = [o for o in boxes if holed(o)]
     lt.check('the task boxes: two squares, one check mark, no glyphs', (len(squares), len(boxes) - len(squares), any(box in p for p in plain for box in ('\u2611', '\u2610'))), (2, 1, False))
     if squares:
         square = squares[0].Geometry.GetBoundingBox(True)
@@ -50,7 +59,7 @@ def test():
     # Links: no underline in the rich text; a bar under each -- a solid hatch, 10 % of the text
     # high (the setting's default), under the descenders, in the link color -- and their letters
     # drawn filled in the link color over the text (MarkdownLinkLetters: no objects)
-    bars = [o for o in objects if isinstance(o.Geometry, Rhino.Geometry.Hatch)]
+    bars = [o for o in objects if isinstance(o.Geometry, Rhino.Geometry.Hatch) and o not in drawn and o.Attributes.GetUserString(task_key) is None]
     letter_of = lambda part: list(lt.plugin_type('MarkdownLinkLetters').GetMethod('LettersOf', flags).Invoke(None, [doc, part]))
     flags = System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static
     letters = [h for t in texts for h in letter_of(t)]
@@ -131,7 +140,7 @@ def test():
     lt.check('task: checked', builder.GetMethod('ToggleTask', flags).Invoke(None, [doc, open_box]), None)
     source = doc.Objects.FindId(open_box.Id).Attributes.GetUserString('minivivisection.markdown')
     marks = [o for o in doc.Objects if o.Attributes.GetUserString(task_key) is not None]
-    lt.check('task: its Markdown, both boxes checked now', ('- [x] An open task' in source, len([o for o in marks if not o.Geometry.IsClosed])), (True, 2))
+    lt.check('task: its Markdown, both boxes checked now', ('- [x] An open task' in source, len([o for o in marks if not holed(o)])), (True, 2))
     doc.Undo()
     yield 1
     source = doc.Objects.FindId(open_box.Id).Attributes.GetUserString('minivivisection.markdown')

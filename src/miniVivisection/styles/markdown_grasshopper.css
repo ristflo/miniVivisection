@@ -1,4 +1,4 @@
-/* miniVivisection default Markdown style for Grasshopper -- checksum 98667810e8ee65d2 -- read-only: Save as makes your own */
+/* miniVivisection default Markdown style for Grasshopper -- checksum 962976796254aefc -- read-only: Save as makes your own */
 
 /*
   How Markdown is drawn in Grasshopper's Panels shown as Markdown (V Text draws Rhino
@@ -10,7 +10,7 @@
   Unknown elements, properties and values are reported (V Log), and left out.
 
   Lengths: em -- the Panel's font size; a plain number is em too; 120% is 1.2em.
-  A link's line: percent of the capitals' height.
+  A link's line (and every line's thickness): percent of the capitals' height.
   Colors: a name (RoyalBlue), #RRGGBB, #RGB or rgb(r, g, b); none: the Panel's text color.
   Characters: in quotes -- "-", or "\2022" for the character with that hexadecimal code.
 */
@@ -65,7 +65,7 @@ code { font-family: Consolas; background: shade; }   /* `code` in a line */
 a {                              /* links (V Settings, "Markdown links in color" off: in the text's color) */
   color: rgb(26, 77, 143);       /* their words and the line under them */
   text-decoration: underline;    /* the line under their words: underline or none */
-  text-decoration-thickness: 10%;  /* its thickness, of the capitals' height */
+  text-decoration-thickness: 10%;  /* its thickness, of the capitals' height -- every line's too: rules, frames, task boxes, check marks */
   text-underline-offset: 15%;    /* its top under the baseline, of the capitals' height */
 }
 
