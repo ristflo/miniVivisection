@@ -1,5 +1,5 @@
 // #! csharp
-// Test script for the experimental MiniVivisection plug-in, C# (see README.md).
+// Test script for the miniVivisection plug-in, C# (see docs/Developer_Guide.md).
 //
 // 1. Open this file in Rhino's Script Editor, set a breakpoint on the marked line,
 //    and debug (F5).

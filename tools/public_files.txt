@@ -19,8 +19,8 @@
 # The manuals and the public notes
 + docs/miniVivisection_Manual.md
 + docs/miniVivisection_Manual.pdf
-+ docs/miniVivisection_Highlights.md
 + docs/Project_Structure_and_Naming.md
++ docs/Developer_Guide.md
 + docs/manual/*
 + docs/screenshots/*
 

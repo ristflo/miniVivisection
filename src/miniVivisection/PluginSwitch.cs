@@ -66,7 +66,7 @@ namespace MiniVivisection
                     TextColor = Eto.Drawing.Color.FromArgb(150, 150, 150),
                     VerticalAlignment = VerticalAlignment.Center,
                     ToolTip = MiniVivisectionPlugin.ProductName + " " + MiniVivisectionPlugin.FullVersion +
-                        " (experimental). Settings: the gear in the left panel, or Tools > Options.",
+                        " (beta). Settings: the gear in the left panel, or Tools > Options.",
                 });
                 group.Items.Add(ai);
                 group.Items.Add(debug);
@@ -84,7 +84,8 @@ namespace MiniVivisection
                 if (!s_reported)
                 {
                     s_reported = true;
-                    UserLog.Warning("Can't add the AI and Debug switches to the Script Editor's top bar: {0} (the Options page has them too)", ex.Message);
+                    MiniVivisectionSettings.TopBarFailed = true;
+                    UserLog.Warning("Can't add the AI and Debug switches to the Script Editor's top bar: {0} -- V Settings and Tools > Options > miniVivisection show them instead (General: Debugging features on; Claude: AI features on)", ex.Message);
                 }
             }
         }

@@ -108,4 +108,4 @@ GH 3, GH 8 and GH 10 are saved with their **Run** toggle off -- set it back to F
 - **The script starts with `#! python2`:** most features are for Python 3 only.
 - **A breakpoint in a worker thread doesn't pause:** the script runs on Rhino's own thread, which would freeze. Add `# async:true` after `#! python 3` (lesson 14); the Terminal says so too.
 - **No miniVivisection folder in Examples:** V°Settings > "Lessons in the Examples tab", and V°Debug ON.
-- **More help:** `miniVivisection_Manual.pdf` in this folder (all features in short), and the **V°Log** page in the editor's left panel: what happened, in plain words.
+- **More help:** the manual -- `miniVivisection_Manual.md` in this folder, V°Help in the editor, or **Manual** on the miniVivisection toolbar (the PDF) -- and the **V°Log** page in the editor's left panel: what happened, in plain words.

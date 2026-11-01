@@ -50,6 +50,171 @@ namespace MiniVivisection.GH
         /// <summary>A path as the archive keeps it: full, Windows separators.</summary>
         public static string Key(string path) => System.IO.Path.GetFullPath(path.Trim().Trim('"'));
 
+        // --- what may be stored, and where -------------------------------------------------------------
+
+        // The files and archives the user picked in this session (a dialog, or typed): full paths
+        private static readonly HashSet<string> s_picked = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>A file or an archive the user picked (in a dialog, or typed in the command): it may be
+        /// stored, or used, wherever it is -- in this session.</summary>
+        public static void Pick(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                return;
+            lock (s_picked)
+                s_picked.Add(Key(path));
+        }
+
+        /// <summary>Whether the user picked <paramref name="path"/> in this session.</summary>
+        public static bool Picked(string path)
+        {
+            try
+            {
+                lock (s_picked)
+                    return s_picked.Contains(Key(path));
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        /// <summary>Whether <paramref name="path"/> is beside the file <paramref name="file"/> (a definition, a
+        /// model): in its folder, or a folder in it.</summary>
+        public static bool Beside(string path, string file)
+        {
+            if (string.IsNullOrEmpty(path) || string.IsNullOrEmpty(file))
+                return false;
+            var folder = System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(file));
+            return !string.IsNullOrEmpty(folder) && Key(path).StartsWith(folder.TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>Whether <paramref name="path"/> is on another computer: a UNC path (\\host\share), or a
+        /// drive mapped to one. Only the path is looked at -- the computer isn't contacted.</summary>
+        public static bool OnNetwork(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                return false;
+            path = path.Trim().Trim('"');
+            if (path.StartsWith(@"\\", StringComparison.Ordinal) || path.StartsWith("//", StringComparison.Ordinal))
+                return true;
+            try
+            {
+                var root = System.IO.Path.GetPathRoot(System.IO.Path.GetFullPath(path));
+                return !string.IsNullOrEmpty(root) && new DriveInfo(root).DriveType == DriveType.Network;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        /// <summary>Why <paramref name="path"/>, a file to store, isn't stored now -- or null: stored are files
+        /// the user picked in this session, and files beside <paramref name="owner"/> (the definition, the
+        /// model). A file a definition or model names elsewhere (it may come from anyone) isn't read.</summary>
+        public static string StoreRefusal(string path, string owner)
+        {
+            if (Picked(path) || Beside(path, owner) || (owner != null && string.Equals(Key(path), Key(owner), StringComparison.OrdinalIgnoreCase)))
+                return null;
+            return "not stored: " + Key(path) + " -- not next to the file, and not added in this session (add it again)";
+        }
+
+        /// <summary>Why the archive <paramref name="archive"/> isn't used now -- or null: one on another computer
+        /// only when the user chose it in this session, or it is beside <paramref name="owner"/> (where that
+        /// was opened from). Not even looked for: a path on a share is contacted just to look.</summary>
+        public static string ArchiveRefusal(string archive, string owner)
+        {
+            if (archive == null || !OnNetwork(archive) || Picked(archive) || Beside(archive, owner))
+                return null;
+            return "The archive " + archive + " is on another computer: choose it again to use it.";
+        }
+
+        // --- a file's MD5, known by its size and time ------------------------------------------------------
+
+        // Each file's MD5 as worked out last, with its size and last write time then ("": unreadable)
+        private static readonly Dictionary<string, (long Size, DateTime Time, string Md5)> s_md5s =
+            new Dictionary<string, (long, DateTime, string)>(StringComparer.OrdinalIgnoreCase);
+        private static readonly HashSet<string> s_hashing = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>A file's MD5 -- worked out again only when its size or last write time changed. With
+        /// <paramref name="later"/>, never on this thread: null while it is worked out on a worker, which
+        /// calls <paramref name="later"/> when done; "" when it can't be read.</summary>
+        private static string KnownMd5(string key, Action later)
+        {
+            var info = new FileInfo(key);
+            var (size, time) = (info.Length, info.LastWriteTimeUtc);
+            lock (s_md5s)
+            {
+                if (s_md5s.TryGetValue(key, out var known) && known.Size == size && known.Time == time)
+                    return known.Md5;
+                if (later != null && !s_hashing.Add(key))
+                    return null; // a worker has it
+            }
+            if (later == null)
+            {
+                var md5 = Md5Of(key);
+                lock (s_md5s)
+                    s_md5s[key] = (size, time, md5);
+                return md5;
+            }
+            System.Threading.Tasks.Task.Run(() =>
+            {
+                string md5;
+                try
+                {
+                    md5 = Md5Of(key);
+                }
+                catch (Exception)
+                {
+                    md5 = "";
+                }
+                lock (s_md5s)
+                {
+                    s_hashing.Remove(key);
+                    s_md5s[key] = (size, time, md5);
+                }
+                try
+                {
+                    later();
+                }
+                catch (Exception)
+                {
+                    // the caller's
+                }
+            });
+            return null;
+        }
+
+        // A file against its archived entry: "original", "changed", "missing"; "checking" while its MD5 is
+        // worked out (later), "unreadable"
+        private static string StateOf(Entry entry, string key, Action later)
+        {
+            if (!File.Exists(key))
+                return "missing";
+            var md5 = KnownMd5(key, later);
+            return md5 == null ? "checking" : md5.Length == 0 ? "unreadable" : md5 == entry.Md5 ? "original" : "changed";
+        }
+
+        // Each archive's list as read last, with its size and last write time then
+        private static readonly Dictionary<string, (long Size, DateTime Time, List<Entry> Entries)> s_lists =
+            new Dictionary<string, (long, DateTime, List<Entry>)>(StringComparer.OrdinalIgnoreCase);
+
+        private static List<Entry> KnownList(string archive)
+        {
+            var info = new FileInfo(archive);
+            if (!info.Exists)
+                return new List<Entry>();
+            lock (s_lists)
+            {
+                if (s_lists.TryGetValue(info.FullName, out var known) && known.Size == info.Length && known.Time == info.LastWriteTimeUtc)
+                    return known.Entries;
+            }
+            var entries = Read(archive);
+            lock (s_lists)
+                s_lists[info.FullName] = (info.Length, info.LastWriteTimeUtc, entries);
+            return entries;
+        }
+
         /// <summary>The archive's list; empty when there's no archive (or no list in it).</summary>
         public static List<Entry> Read(string archive)
         {
@@ -197,8 +362,8 @@ namespace MiniVivisection.GH
 
         private static ZipArchive OpenBytes(byte[] zipBytes) => new ZipArchive(new MemoryStream(zipBytes ?? new byte[0], false), ZipArchiveMode.Read);
 
-        /// <summary>Check, against an archive in memory.</summary>
-        public static (string State, Entry Entry) Check(byte[] zipBytes, string path)
+        /// <summary>Check, against an archive in memory. <paramref name="later"/>: as for the archive on disk.</summary>
+        public static (string State, Entry Entry) Check(byte[] zipBytes, string path, Action later = null)
         {
             if (zipBytes == null || zipBytes.Length == 0)
                 return (null, null);
@@ -208,9 +373,10 @@ namespace MiniVivisection.GH
                 entry = ReadList(zip).FirstOrDefault(e => string.Equals(e.Path, key, StringComparison.OrdinalIgnoreCase));
             if (entry == null)
                 return (null, null);
-            if (!File.Exists(key))
-                return ("missing", entry);
-            return (Md5Of(key) == entry.Md5 ? "original" : "changed", entry);
+            var state = StateOf(entry, key, later);
+            if (later == null && state == "unreadable")
+                throw new IOException("can't read " + key);
+            return (state, entry);
         }
 
         /// <summary>The files an archive in memory has.</summary>
@@ -223,16 +389,19 @@ namespace MiniVivisection.GH
         }
 
         /// <summary>A file on disk against the archive: "original", "changed", "missing", or null when the
-        /// archive doesn't have it; the archived entry.</summary>
-        public static (string State, Entry Entry) Check(string archive, string path)
+        /// archive doesn't have it; the archived entry. The file's MD5 is worked out again only when its size
+        /// or time changed; with <paramref name="later"/> not on this thread -- "checking" meanwhile, and
+        /// <paramref name="later"/> called (on a worker) once it is known ("unreadable": it can't be read).</summary>
+        public static (string State, Entry Entry) Check(string archive, string path, Action later = null)
         {
             var key = Key(path);
-            var entry = Read(archive).FirstOrDefault(e => string.Equals(e.Path, key, StringComparison.OrdinalIgnoreCase));
+            var entry = KnownList(archive).FirstOrDefault(e => string.Equals(e.Path, key, StringComparison.OrdinalIgnoreCase));
             if (entry == null)
                 return (null, null);
-            if (!File.Exists(key))
-                return ("missing", entry);
-            return (Md5Of(key) == entry.Md5 ? "original" : "changed", entry);
+            var state = StateOf(entry, key, later);
+            if (later == null && state == "unreadable")
+                throw new IOException("can't read " + key);
+            return (state, entry);
         }
 
         /// <summary>The archived copy of <paramref name="path"/>, written over the file on disk (or to

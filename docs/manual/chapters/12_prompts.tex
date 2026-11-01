@@ -124,6 +124,7 @@ code when it is short.
 \code{/debug [question]}   & (while paused) Claude inspects the paused frame \\
 \code{/replace <instruction>} & an instruction for the selected code; the answer, one code block, replaces the selection, undoable with \keys{Ctrl+Z} \\
 \code{/run}, \code{/deny}  & answer a request to run code \\
+\code{/auto on|off}        & run Claude's code without asking from now on (\setting{Claude may run Python}: \emph{On}), or ask again \\
 \code{/pending}, \code{/apply}, \code{/reject} & edits waiting: show, apply, drop them \\
 \code{/undo [force]}       & the script as it was before Claude's last changes; only while it is as Claude left it, \code{force} also after you changed it \\
 \code{/history}            & this chat's messages \\
@@ -141,8 +142,9 @@ code when it is short.
 \begin{description}
   \item[Running code asks first.] Code Claude wants to run in Rhino can change the script, the model or files.
         With \setting{Claude may run Python} on \emph{Ask} (the default), the code is shown in the tab, with
-        \ui{Run} and \ui{Deny} buttons above the chat and a \code{> } prompt, while Claude's answer goes on: click a
-        button, or type \code{/run} or \code{/deny}. No answer within two minutes denies it. Plain expressions, a name,
+        \ui{Run}, \ui{Always} and \ui{Deny} buttons above the chat and a \code{> } prompt, while Claude's answer goes on: click a
+        button, or type \code{/run}, \code{/auto on} or \code{/deny}. \ui{Always} runs it and switches the setting to \emph{On};
+        \code{/auto off} asks again. No answer within two minutes denies it. Plain expressions, a name,
         an attribute, an index, are read without asking. \emph{Off}: never; \emph{On}: without asking.
   \item[A running script isn't changed.] While a run holds the script -- running or paused in the debugger, or
         stopped at a runtime error until \ui{Stop} -- the run keeps the code it started with. Claude's edits are queued

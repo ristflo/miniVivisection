@@ -27,7 +27,7 @@ All work happens in the private repository. After a release (`tools/make_release
 
 ```text
 miniVivisection/
-├── README.md                    the developer guide: build, test, release, how the code works
+├── README.md                    for users: what it does, install, where the manual is
 ├── LICENSE                      MIT (also in the package, as misc/LICENSE.txt)
 ├── THIRD-PARTY-NOTICES.txt      Harmony, System.Text.Json
 ├── AGENTS.md                    rules for AI assistants (private)
@@ -50,19 +50,44 @@ miniVivisection/
 ├── examples/                    the lessons (shipped): NN_*.py, grasshopper/ghN_*.gh, 00_overview.3dm, the guide
 ├── docs/
 │   ├── miniVivisection_Manual.md / .pdf   the manuals that ship (V°Help opens the Markdown)
+│   ├── Developer_Guide.md       build, test, release, the feature notes, how the code works
 │   ├── manual/                  the LaTeX manual (chapters, generated/, screenshots in ../screenshots)
 │   ├── screenshots/
 │   ├── naming/                  the V° mark's samples
 │   └── notes/                   plans, reviews, research, prompts (private)
 ├── web/
-│   ├── pages/                   https://restweiss.de/miniVivisection: eight designs, the chooser, packages
+│   ├── pages/                   https://restweiss.de/miniVivisection: eight designs, the chooser, the Impressum and
+│   │                            privacy page, screenshots/ (shared), downloads/ (not in git: make_release.py fills it)
 │   └── sources/                 the pages' artwork, and in not-used/ the drafts kept (README.md: which is which)
 ├── packaging/                   Yak: manifest.yml, icon.png, misc/ (README.md, the removal tool)
 └── tools/                       make_*.py (build things), publish_*.py (upload things), examples_overview.py,
                                  public_files.txt; publish.local.json (local, the SFTP account)
 ```
 
-What is built goes into `bin/` folders, never into git: `src/miniVivisection/bin/<Configuration>/net7.0` (the `.rhp`, the `.gha`, and everything that ships next to them) and `bin/yak` at the root (the packages). The packages that are released are kept in git where the pages offer them (`web/pages/*/minivivisection-*.yak`), in both repositories.
+What is built goes into `bin/` folders, not into git: `src/miniVivisection/bin/<Configuration>/net7.0` (the `.rhp`, the `.gha`, and everything that ships next to them) and `bin/yak` at the root (the packages). The packages are not in git: a release puts the package, with the manual's PDF and the removal tool, into `web/pages/downloads/` (git-ignored), and the package itself is on McNeel's server. Up to 0.2.0-beta.370 the pages' folders held them in git.
+
+### Generated and committed
+
+Some generated files are in git, because the build, the package or the pages need them as they are. Don't edit them by hand: run their tool.
+
+| File(s) | Made by | Run it when |
+|---|---|---|
+| `docs/miniVivisection_Manual.pdf`, `docs/manual/miniVivisection_Manual.pdf` | `tools/make_manual_latex.py` | a chapter, a setting or the version changes |
+| `docs/manual/title_designs.pdf` | `tools/make_manual_latex.py --titles` | the title designs change |
+| `examples/00_Examples_Guide.pdf` | `tools/make_manual_pdf.py` | `examples/00_Examples_Guide.md` changes |
+| `examples/00_overview.3dm` | `tools/make_rhino_examples.py` (`python tests/live/run_live.py make_examples`) | the Rhino example changes |
+| `examples/grasshopper/*.gh`, `gh10_spiral.py` | `tools/make_gh_examples.py` (`make_examples`; checked by `t_ghexamples`) | a Grasshopper lesson changes |
+| `src/miniVivisection/toolbar/miniVivisection.rui`, `toolbar/icons/*.png` | `tools/make_toolbar.py` | a toolbar button changes |
+| `packaging/icon.png` | `tools/make_yak.py --icon` | the icon changes |
+| `src/miniVivisection/styles/*.css` (their first line) | `tools/stamp_styles.py` | a default style changes |
+| `docs/screenshots/*.png` | `tests/live/shots_rhino.py`, `shots_gh.py`, then `tools/compose_screenshots.py` | the UI they show changes |
+| `web/pages/screenshots/*.png` | `tools/make_release.py` (copies from `docs/screenshots`) | a release |
+| the build facts in `web/pages/**/index.html` | `tools/make_release.py` (`page_facts`: rewrites them in the hand-written pages) | a release |
+| `web/pages/*/hero.jpg` | by hand, from `web/sources/<page>/` | a new picture |
+| `web/pages/*/fonts/*.woff2` | downloaded once (Latin subset, SIL OFL; the licence beside them) | a page takes another font |
+| `docs/naming/V_Name_Samples.pdf`, `docs/naming/previews/*.png` | `docs/naming/make_name_samples.py` | the V° mark's samples change |
+
+Not in git, made for each release: `bin/yak/*.yak` (`tools/make_yak.py`), `web/pages/downloads/` (`tools/make_release.py`), `docs/manual/generated/` (`tools/make_manual_latex.py`).
 
 ## Names
 

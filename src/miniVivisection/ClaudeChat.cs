@@ -68,6 +68,7 @@ namespace MiniVivisection
             "  /history                the messages of this chat\n" +
             "  /allow on|off           let Claude use RhinoAI's commands and scripts (run_command, run_python, ...), without asking\n" +
             "  /run, /deny             run or refuse the code Claude asks to run (\"Claude may run Python\": Ask)\n" +
+            "  /auto on|off            run Claude's code without asking from now on, or ask again\n" +
             "  /new                    start a new chat\n" +
             "  /clear                  clear this view\n" +
             "  /help                   this list\n";
@@ -91,7 +92,7 @@ namespace MiniVivisection
         private DateTime _started;
         private readonly List<(string What, string Old, string New, bool WhileRunning, Uri Script)> _pending = new List<(string, string, string, bool, Uri)>();
         private UITimer _idleWait; // changes queued during a run: until the editor holds the script no more
-        private TaskCompletionSource<bool> _approval; // code Claude asked to run, waiting for /run or /deny
+        private readonly CodeQuestion _question; // code Claude asks to run: Run, Always, Deny
         private readonly List<string> _history = new List<string>();
         private string _sessionKey;
 
@@ -106,7 +107,8 @@ namespace MiniVivisection
             _gate.Changed = before => Ui(() => _undoText = _undoText ?? before);
             _gate.Applied = () => Ui(() => _afterText = _access.ScriptText);
             _gate.Queue = Queue; // the tools call it on the UI thread
-            _gate.AskToRun = AskToRun;
+            _question = new CodeQuestion(Write, () => { Prompt(); _view.FocusInput(); }, Ui);
+            _gate.AskToRun = (what, code) => _question.Ask(what, code, "python");
             _view = new TerminalView(editor, wrap: true)
             {
                 MultilineInput = true,
@@ -141,7 +143,7 @@ namespace MiniVivisection
                 hook.EndedForTools -= ended;
                 if (_mcpUrl != null)
                     McpServer.Instance.Unregister(_mcpUrl);
-                _approval?.TrySetResult(false);
+                _question.Withdraw();
                 _idleWait?.Stop();
                 if (_runner.Busy)
                     _runner.Stop();
@@ -149,8 +151,8 @@ namespace MiniVivisection
             var chat = Python2Notice.Above(_view, new Python2Notice(editor,
                 "The script being debugged is IronPython 2 (#! python2). Claude's Python tools run Python 3 and can't read or change its variables; " +
                 "Claude still sees the code, the breakpoints and the debugger's variable list (get_debug_state)."));
-            Content = new TableLayout { Rows = { new TableRow(MakeAnswerBar()), new TableRow(chat) { ScaleHeight = true } } };
-            Write("Claude Code in the Script Editor (experimental). It can read the script, the selection, the Terminal and the debugger, " +
+            Content = new TableLayout { Rows = { new TableRow(_question.MakeBar()), new TableRow(chat) { ScaleHeight = true } } };
+            Write("Claude Code in the Script Editor (miniVivisection). It can read the script, the selection, the Terminal and the debugger, " +
                   "run Python in the paused frame, edit the script and -- with RhinoAI installed -- work in Rhino.\n" + Help + "\n");
             Prompt();
         }
@@ -164,7 +166,7 @@ namespace MiniVivisection
         }
 
         // Typed while Claude still answers: its question's answer, or what only shows something.
-        private static readonly HashSet<string> s_whileAnswering = new HashSet<string> { "/run", "/deny", "/help", "/clear", "/pending", "/history" };
+        private static readonly HashSet<string> s_whileAnswering = new HashSet<string> { "/run", "/deny", "/auto", "/help", "/clear", "/pending", "/history" };
 
         /// <summary>A message, or one of the commands (Help).</summary>
         private void Submit(string input)
@@ -175,8 +177,8 @@ namespace MiniVivisection
             var rest = command == null ? text : (space < 0 ? "" : text.Substring(space + 1).Trim());
             if (_runner.Busy && text.Length > 0 && (command == null || !s_whileAnswering.Contains(command)))
             {
-                Write(_approval != null
-                    ? "Claude waits for /run or /deny; the rest when it's done (Ctrl+C stops it).\n"
+                Write(_question.Waiting
+                    ? "Claude waits for Run, Always or Deny (/run, /auto on, /deny); the rest when it's done (Ctrl+C stops it).\n"
                     : "Claude is still answering -- the rest when it's done (Ctrl+C stops it).\n");
                 Prompt();
                 return;
@@ -221,7 +223,13 @@ namespace MiniVivisection
                     break;
                 case "/run":
                 case "/deny":
-                    Answer(command == "/run");
+                    _question.Answer(command == "/run");
+                    break;
+                case "/auto":
+                    if (rest == "on" || rest == "off")
+                        _question.Auto(rest == "on");
+                    else
+                        Write("Claude may run Python: " + MiniVivisectionSettings.ClaudeRunCode + " (/auto on|off).\n");
                     break;
                 case "/allow":
                     if (rest == "on" || rest == "off")
@@ -732,81 +740,6 @@ namespace MiniVivisection
         }
 
         private string _lastRhinoAiNote;
-
-        /// <summary>EditGate.AskToRun: the code in the tab, and /run or /deny (2 minutes).</summary>
-        private Task<bool> AskToRun(string what, string code)
-        {
-            var answer = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-            Ui(() =>
-            {
-                // One question at a time: an earlier one still open is withdrawn -- said, so
-                // that Run isn't read as an answer to the code shown above
-                if (_approval != null && _approval.TrySetResult(false))
-                    Write("[the question above is withdrawn: not run -- Claude asks again]\n");
-                _approval = answer;
-                var shown = (code ?? "").TrimEnd();
-                Write(string.Format("[Claude asks to run code: {0}]\n```python\n{1}\n```\nRun or Deny above, or type /run or /deny (2 minutes).\n", what, shown));
-                // The bar names the code too (its first line), so Run means this code and no other
-                var firstLine = shown.Split('\n').Select(l => l.Trim()).FirstOrDefault(l => l.Length > 0) ?? "";
-                ShowAnswerBar(what + (firstLine.Length > 0 ? ": " + (firstLine.Length > 60 ? firstLine.Substring(0, 60) + "…" : firstLine) : ""));
-                Prompt(); // to answer now, while Claude's answer goes on above it
-                _view.FocusInput();
-                UserLog.Info("Claude asks to run code ({0}): /run or /deny in V Claude.", what);
-            });
-            Task.Delay(TimeSpan.FromMinutes(2)).ContinueWith(_ =>
-            {
-                if (answer.TrySetResult(false))
-                    Ui(() =>
-                    {
-                        Write("[not run: no answer within 2 minutes]\n");
-                        if (_approval == answer)
-                        {
-                            _approval = null;
-                            _answerBar.Visible = false;
-                        }
-                    });
-            }, TaskScheduler.Default);
-            return answer.Task;
-        }
-
-        // --- the question's answer: buttons above the chat, or /run and /deny -------------------
-
-        private Panel _answerBar;
-        private Label _answerQuestion;
-
-        /// <summary>Above the chat, shown only while Claude asks to run code: what it asks, and Run
-        /// and Deny buttons -- the same as typing /run or /deny.</summary>
-        private Control MakeAnswerBar()
-        {
-            _answerQuestion = new Label { VerticalAlignment = VerticalAlignment.Center, Wrap = WrapMode.Word };
-            var run = new Button { Text = "Run", ToolTip = "Run the code Claude asks to run (/run)", MinimumSize = new Size(70, 0) };
-            var deny = new Button { Text = "Deny", ToolTip = "Don't run it (/deny)", MinimumSize = new Size(70, 0) };
-            run.Click += (s, e) => Answer(true);
-            deny.Click += (s, e) => Answer(false);
-            var row = new TableLayout { Spacing = new Size(8, 0), Rows = { new TableRow(new TableCell(_answerQuestion, true), run, deny) } };
-            _answerBar = new Panel { Content = row, Padding = new Padding(8, 5), Visible = false, BackgroundColor = Color.FromArgb(255, 244, 206) };
-            return _answerBar;
-        }
-
-        private void ShowAnswerBar(string what)
-        {
-            _answerQuestion.Text = "Claude asks to run code: " + what + ".";
-            _answerQuestion.TextColor = Color.FromArgb(60, 45, 0);
-            _answerBar.Visible = true;
-        }
-
-        /// <summary>The answer to Claude's question -- a button, or /run and /deny (UI thread).</summary>
-        private void Answer(bool run)
-        {
-            var waiting = _approval;
-            _approval = null;
-            _answerBar.Visible = false;
-            if (waiting == null || !waiting.TrySetResult(run))
-                Write("No code is waiting to run.\n");
-            else
-                Write(run ? "Running it.\n" : "Refused.\n");
-            _view.FocusInput();
-        }
 
         private static string ShortToolName(string name)
         {

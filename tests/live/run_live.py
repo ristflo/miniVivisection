@@ -426,24 +426,28 @@ def main(argv):
         print('Test Rhino on the hidden desktop %s: never on screen' % HIDDEN_DESKTOP_NAME)
     if DESKTOP.lower() == 'vscode':
         # VS Code's window with this repository open: its title names the repository's folder
-        repository = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', '..'))
+        repository = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))  # tests/live -> the repository
         DESKTOP = 'vscode:' + os.path.basename(repository)
     AREA = target_area()
     if DESKTOP:
         print('Test Rhino windows on virtual desktop: %s' % DESKTOP)
     if AREA is not None:
         print('Test Rhino windows on display %d, work area %s' % (DISPLAY, AREA))
-    if rhino_running():
-        # Its windows would mix with the test's (and it holds the plug-in): the tests wait
-        print('A Rhino is running -- the tests start when it is closed.', flush=True)
-        while rhino_running():
-            time.sleep(2)
     wanted = argv[1:]
     # t_*_real.py use the real Claude Code (they cost a little): only when named
     tests = sorted(t for t in glob.glob(os.path.join(HERE, 't_*.py')) if not t.endswith('_real.py'))
     if wanted:
         # any script named here, also one that isn't a test (shots_rhino, shots_gh: the screenshots)
-        tests = [os.path.join(HERE, name + '.py') for name in wanted if os.path.exists(os.path.join(HERE, name + '.py'))]
+        unknown = [name for name in wanted if not os.path.exists(os.path.join(HERE, name + '.py'))]
+        if unknown:
+            print('No such test: %s (tests/live/<name>.py)' % ', '.join(unknown))
+            return 2
+        tests = [os.path.join(HERE, name + '.py') for name in wanted]
+    if rhino_running():
+        # Its windows would mix with the test's (and it holds the plug-in): the tests wait
+        print('A Rhino is running -- the tests start when it is closed.', flush=True)
+        while rhino_running():
+            time.sleep(2)
     failed = 0
     for path in tests:
         timeout = 600 if path.endswith('_real.py') else 300

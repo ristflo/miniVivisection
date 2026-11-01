@@ -28,6 +28,11 @@ Select what you mean, then ask: “explain these”, “add a loft between these
         wires; \textbf{Markdown notes} next to what it built; an image of the canvas.
 \end{description}
 
+\paragraph{A script Claude writes asks you first.} A script component runs its code when the definition computes, so
+the script Claude wants to write is shown in the chat with \ui{Run}, \ui{Always} and \ui{Deny}, as running Python in the
+Script Editor is (\see{sec:claude}): the same setting, \setting{Claude may run Python}. On \emph{Off}, Claude shows the
+code in its answer instead; on \emph{On}, or after \ui{Always}, it writes it without asking.
+
 Claude checks its work, the components' messages, the data, the canvas image, before it answers. Without RhinoAI,
 Claude can read and set values and write scripts and notes, but not place, wire or delete components: it says what to
 do instead.
@@ -48,7 +53,8 @@ definition. There is one conversation per definition, continued when you come ba
 \subsection{Commands}
 
 \code{/explain} (the selected components, or the whole definition), \code{/fix} (the components with errors or warnings),
-\code{/undo}, \code{/history}, \code{/allow on|off} (RhinoAI's commands and scripts), \code{/new}, \code{/clear}, \code{/help}.
+\code{/undo}, \code{/history}, \code{/allow on|off} (RhinoAI's commands and scripts), \code{/run}, \code{/deny}, \code{/auto on|off}
+(a script Claude asks to write), \code{/new}, \code{/clear}, \code{/help}.
 \key{Tab} completes them.
 
 \paragraph{Read only.} With \setting{Claude may change the definition} on \emph{Read only}, Claude reads and explains, and proposes

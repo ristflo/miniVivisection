@@ -69,7 +69,7 @@ namespace MiniVivisection
             if (editor == null)
             {
                 Content = _view;
-                _view.Write("Python prompt for Grasshopper (experimental, miniVivisection). While a Grasshopper Python component is paused, code runs in its paused frame.\n" +
+                _view.Write("Python prompt for Grasshopper (miniVivisection). While a Grasshopper Python component is paused, code runs in its paused frame.\n" +
                             (MiniVivisectionSettings.GhPythonHelpers ? "ghdoc() is the open definition, ghselected() the selected objects, ghcanvas() the canvas, ghfind('name') objects by nickname.\n" : "") +
                             "show(value, ...) draws in Rhino, hide(name), clear(), bake(value); help(show) for more.\n");
             }
@@ -77,7 +77,7 @@ namespace MiniVivisection
             {
                 Content = Python2Notice.Above(_view, new Python2Notice(editor,
                     "This tab runs Python 3. The script being debugged is IronPython 2 (#! python2): its variables can't be read or changed from here."));
-                _view.Write("Python prompt (experimental, miniVivisection). While the debugger is paused, code runs in the paused frame.\n" +
+                _view.Write("Python prompt (miniVivisection). While the debugger is paused, code runs in the paused frame.\n" +
                             "Commands: show(value, ...) draws in Rhino, hide(name), clear(), bake(value), watch('expr'), edit('expr'); help(show) for more.\n");
             }
             UpdateStatus();

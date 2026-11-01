@@ -50,7 +50,7 @@ PERSONAL = [
     (re.compile((r'\b%s\b' % USER).encode(), re.I), "the account's user name"),
 ]
 EMAILS = re.compile(rb'[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}')
-EMAILS_OK = (b'noreply@anthropic.com', b'users.noreply.github.com', b'me@x.org')  # Claude's co-author line, GitHub's noreply, a test's text
+EMAILS_OK = (b'noreply@anthropic.com', b'users.noreply.github.com', b'me@x.org', b'minivivisection@restweiss.de')  # Claude's co-author line, GitHub's noreply, a test's text, the pages' Impressum
 
 
 def git(*args, cwd=HERE, binary=False):

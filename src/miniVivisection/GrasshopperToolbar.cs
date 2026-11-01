@@ -169,9 +169,9 @@ namespace MiniVivisection
         }
 
         private static string Explain(string mode) =>
-            mode == "Always debug" ? "Always debug -- every recompute of a component whose script editor is open (or hidden) runs in the debugger: its breakpoints pause, and Ctrl+Alt+B pauses it." :
-            mode == "Normal" ? "Normal -- they run plainly, in the debugger only when started from their editor's Debug; Ctrl+Alt+B leaves them alone." :
-            "Stop and record -- they run plainly; Ctrl+Alt+B stops one that runs (hangs), and its editor opens at the line where it was.";
+            mode == "Always debug" ? "Always debug -- every recompute of a component whose script editor is open (or hidden) runs in the debugger: its breakpoints pause, and " + GrasshopperRuns.Hotkey() + " pauses it." :
+            mode == "Normal" ? "Normal -- they run plainly, in the debugger only when started from their editor's Debug; " + GrasshopperRuns.Hotkey() + " leaves them alone." :
+            "Stop and record -- they run plainly; " + GrasshopperRuns.Hotkey() + " stops one that runs (hangs), and its editor opens at the line where it was.";
 
         private static void ShowState()
         {

@@ -5,7 +5,8 @@
 #   it, the component recomputes;
 # - opened again, the editor shows the Panel's text -- also after the Panel changed while the
 #   editor had changes not saved, which are then kept in a file of their own (and said);
-# - a script file (GH 10): an edit not saved goes into the file when the Script Editor is closed.
+# - a script file (GH 10), the user's own: an edit not saved stays in the editor's tab when the
+#   Script Editor is closed -- the file isn't written (review 2026-10-27, M4; t_ghinputpath_unsaved).
 import glob
 import os
 import shutil
@@ -134,9 +135,10 @@ def test():
     System.Activator.CreateInstance(access, [window]).SetScriptText(before.rstrip('\n') + '\n# edited, then closed\n')
     yield 1
     window.Close()
-    yield lt.wait_for(lambda: '# edited, then closed' in open(spiral_file, encoding='utf-8').read(), 10)
+    yield 3
     with open(spiral_file, encoding='utf-8') as f:
-        lt.check('closed: the edit is in the file', '# edited, then closed' in f.read(), True)
+        lt.check('closed: the file not written (the user\'s own)', '# edited, then closed' in f.read(), False)
+    lt.check('closed: the edit still in the editor\'s tab', '# edited, then closed' in (shown(window) or ''), True)
     doc.Enabled = False
     doc.IsModified = False
 

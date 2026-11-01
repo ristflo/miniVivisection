@@ -7,8 +7,8 @@ using Rhino.PlugIns;
 namespace MiniVivisection
 {
     /// <summary>
-    /// Experimental: while the Rhino Script Editor's debugger is paused, draws what
-    /// its V Watch tab holds in the viewports and keeps Rhino usable. See README.md.
+    /// While the Rhino Script Editor's debugger is paused, draws what
+    /// its V Watch tab holds in the viewports and keeps Rhino usable. See docs/Developer_Guide.md.
     /// </summary>
     public class MiniVivisectionPlugin : PlugIn
     {
@@ -110,7 +110,7 @@ namespace MiniVivisection
             Safely("StepTracking.TryInstall", () => StepTracking.TryInstall());
             Safely("HoverValues.TryInstall", () => HoverValues.TryInstall(Hook));
             // Always on the command line: shows which build runs.
-            RhinoApp.WriteLine("miniVivisection {0} loaded (experimental). Settings: Tools > Options > miniVivisection.", FullVersion);
+            RhinoApp.WriteLine("miniVivisection {0} loaded (beta). Settings: Tools > Options > miniVivisection.", FullVersion);
             Log.Info(LogArea.Startup, "loaded: {0}; detailed log {1}", FullVersion, Log.FilePath);
             UserLog.Info("miniVivisection {0} loaded.", FullVersion);
             return LoadReturnCode.Success;

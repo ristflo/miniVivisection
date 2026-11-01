@@ -671,7 +671,7 @@ namespace MiniVivisection
                     var inputScript = GrasshopperInputScripts.UsesInputScript(__instance);
                     AddRemark(__instance, "miniVivisection: stopped by " + Hotkey() + " in run " + run?.Run + (string.IsNullOrEmpty(run?.Item ?? run?.Branch) ? "" : " (" + (run?.Item ?? run?.Branch) + ")") + " at line " + stopped.Line +
                         (inputScript
-                            ? ". Its script opens at that line (a Panel's in the Panel); a script from its input can't run in the debugger yet."
+                            ? ". Its script opens at that line (a Panel's in the Panel); \"Debug the script input\" in its menu runs it in the debugger."
                             : ". Its editor opens at that line; Debug runs it again in the debugger."));
                     var record = new StoppedRuns.Record
                     {
@@ -728,7 +728,7 @@ namespace MiniVivisection
 
         internal static string NickName(object component) => component.GetType().GetProperty("NickName")?.GetValue(component) as string ?? "script";
 
-        private static string Hotkey() => MiniVivisectionSettings.BreakHotkey == "Off" ? "Break now" : MiniVivisectionSettings.BreakHotkey;
+        internal static string Hotkey() => MiniVivisectionSettings.BreakHotkey == "Off" ? "Break now" : MiniVivisectionSettings.BreakHotkey;
 
         // --- which run is paused ----------------------------------------------------------------
 

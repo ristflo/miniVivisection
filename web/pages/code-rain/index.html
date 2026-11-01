@@ -10,14 +10,14 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="miniVivisection — see your Rhino script's data while you debug">
 <meta property="og:description" content="miniVivisection: see inside your running scripts. A debugger extension for Rhino 8's Script Editor and Grasshopper.">
-<meta property="og:image" content="https://restweiss.de/miniVivisection/code-rain/hero.jpg?b=370">
+<meta property="og:image" content="https://restweiss.de/miniVivisection/code-rain/hero.jpg?b=389">
 <meta property="og:url" content="https://restweiss.de/miniVivisection/code-rain/">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%270%200%2032%2032%27%3E%3Crect%20width=%2732%27%20height=%2732%27%20rx=%277%27%20fill=%27%23040805%27/%3E%3Ctext%20x=%2715%27%20y=%2723%27%20font-family=%27Segoe%20UI,Arial,sans-serif%27%20font-size=%2719%27%20font-weight=%27700%27%20text-anchor=%27middle%27%20fill=%27%2339ff6e%27%3EV%C2%B0%3C/text%3E%3C/svg%3E">
 <style>
   /* Code rain: a hacker's den at night, green phosphor on black, scanlines, a faint rain of glyphs; by day a paper terminal. */
+  /* The fonts come from this server (SIL Open Font License, fonts/OFL-*.txt): no request goes to another host. */
+  @font-face { font-family: 'JetBrains Mono'; font-style: italic; font-weight: 400; font-display: swap; src: url("fonts/jetbrains-mono-400-italic.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+  @font-face { font-family: 'JetBrains Mono'; font-style: normal; font-weight: 400 700; font-display: swap; src: url("fonts/jetbrains-mono-400-700.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
 
   :root {
     --bg: #f2f6ef;             /* the paper terminal: a printout by day */
@@ -198,7 +198,7 @@
       <a href="#grasshopper">Grasshopper</a>
       <a href="#screenshots">Screenshots</a>
       <a href="#download">Download</a>
-      <a href="miniVivisection_Manual.pdf">Manual</a>
+      <a href="../downloads/miniVivisection_Manual.pdf">Manual</a>
     </nav>
   </div>
 </header>
@@ -215,14 +215,14 @@
           running script. Values show up right in the code, breakpoints get conditions, and Rhino stays usable the whole time.
         </p>
         <div class="actions">
-          <a class="btn primary" href="minivivisection-0.2.0-beta.370-rh8_36-win.yak" download>&#8595;&ensp;Download 0.2.0 &middot; build 370</a>
-          <a class="btn ghost" href="miniVivisection_Manual.pdf">Read the manual</a>
+          <a class="btn primary" href="../downloads/minivivisection-0.2.0-beta.389-rh8_36-win.yak" download>&#8595;&ensp;Download 0.2.0 &middot; build 389</a>
+          <a class="btn ghost" href="../downloads/miniVivisection_Manual.pdf">Read the manual</a>
         </div>
-        <div class="meta">Built 2026-10-25 22:53 UTC+3 &middot; 7.1 MB &middot; Windows &middot; Rhino 8 &middot; experimental</div>
+        <div class="meta">Built 2026-11-01 15:29 UTC+3 &middot; 4.8 MB &middot; Windows &middot; Rhino 8 &middot; beta</div>
       </div>
       <figure class="viewer">
         <div class="frame">
-          <img src="hero.jpg?b=370" width="1672" height="941" alt="A rhinoceros made of falling green code stands in a dark den of monitors; green glyphs rain down the screens around it, and a figure at a desk looks on.">
+          <img src="hero.jpg?b=389" width="1672" height="941" alt="A rhinoceros made of falling green code stands in a dark den of monitors; green glyphs rain down the screens around it, and a figure at a desk looks on.">
         </div>
       </figure>
     </div>
@@ -336,8 +336,8 @@
                 <li>The editor comes up at that line, and you continue or step on.</li>
               </ul>
             </li>
-            <li>Recomputes asked for while a script is paused wait until the solution ends: no "expired during a solution" dialog.</li>
-            <li><strong>The canvas while paused:</strong> pan, drag and hover; deleting waits until the pause ends.</li>
+            <li>A change elsewhere while a script is paused is computed at once with what is downstream of it; what depends on the paused component is marked, and everything is computed properly when the pause ends. No "expired during a solution" dialog.</li>
+            <li><strong>The canvas while paused:</strong> pan, drag and hover; deleting is refused until the pause ends.</li>
             <li><strong>Wiring doesn't pause:</strong> an error right after you connect or disconnect wires shows on the component, the editor stays closed.</li>
             <li><strong>Editors follow the definition:</strong> open or switch to another definition, and the script editors of the one you leave close.</li>
           </ul>
@@ -396,14 +396,14 @@
         <p>Rhino 8, its Script Editor and Grasshopper with miniVivisection 0.2.0. Click a picture for its full size.</p>
       </div>
       <div class="shots">
-        <figure><a href="screenshots/01_watch_values_in_rhino.png?b=370"><img src="screenshots/01_watch_values_in_rhino.png?b=370" width="960" height="600" loading="lazy" alt="Rhino's Top view with a magenta bow-tie outline and the name dots outline and corners; over it the Script Editor paused at a breakpoint, its V°Watch tab listing outline and corners."></a><figcaption><strong>V°Watch:</strong> a paused script's outline drawn in Rhino: a bow tie, not the rectangle it meant.</figcaption></figure>
-        <figure><a href="screenshots/03_python_in_the_paused_frame.png?b=370"><img src="screenshots/03_python_in_the_paused_frame.png?b=370" width="960" height="600" loading="lazy" alt="The Script Editor's V°Python tab: the swapped corners printed, a fixed outline built and shown; in Rhino an orange rectangle named fixed over the bow tie."></a><figcaption><strong>V°Python:</strong> in the paused frame: the fix tried on the live data, and drawn in Rhino.</figcaption></figure>
-        <figure><a href="screenshots/04_stop_and_record.png?b=370"><img src="screenshots/04_stop_and_record.png?b=370" width="960" height="600" loading="lazy" alt="The Script Editor opened at line 12 of grow_spiral.py, a script with an endless loop that RunPythonScript ran and Ctrl+Alt+B stopped; an overlay says Stopped at line 12 and lists the values of points and turn at that moment."></a><figcaption><strong>Stop and record:</strong> a script from the command line stopped with Ctrl+Alt+B, opened at its line, with its values.</figcaption></figure>
-        <figure><a href="screenshots/05_which_branch_failed.png?b=370"><img src="screenshots/05_which_branch_failed.png?b=370" width="960" height="600" loading="lazy" alt="Grasshopper: a red Divide component and its right-click menu with miniVivisection's items, Debug failing run 7 -- data {0;2}[0], line 4, and Copy failing branches."></a><figcaption><strong>Which branch failed:</strong> the failing component names its runs; its menu debugs exactly one.</figcaption></figure>
-        <figure><a href="screenshots/09_markdown_panel_links.png?b=370"><img src="screenshots/09_markdown_panel_links.png?b=370" width="960" height="600" loading="lazy" alt="Grasshopper Panels rendered as Markdown with headings, lists and links; a tooltip over a link reads Grasshopper: go to Ring -- click."></a><figcaption><strong>Markdown in Panels:</strong> with links to components, views and the Rhino model; a tooltip says where each goes.</figcaption></figure>
-        <figure><a href="screenshots/11_v_edit.png?b=370"><img src="screenshots/11_v_edit.png?b=370" width="960" height="600" loading="lazy" alt="Rhino's Perspective view with a red lofted surface and one blue profile curve marked by the name dot V°Edit [1]; over it the Grasshopper window with the V°Edit component between Profiles and Loft, showing 1 in Rhino."></a><figcaption><strong>V°Edit:</strong> a Grasshopper profile edited in Rhino; the loft follows, and the edit is saved with the definition.</figcaption></figure>
-        <figure><a href="screenshots/12_v_text.png?b=370"><img src="screenshots/12_v_text.png?b=370" width="960" height="600" loading="lazy" alt="Rhino's Top view with a Markdown note and a Python script drawn as text; a Grasshopper window with the two Panels feeding V°Text components."></a><figcaption><strong>V°Text:</strong> Panels as Rhino text: Markdown laid out, a script with line numbers and syntax colors.</figcaption></figure>
-        <figure><a href="screenshots/14_markdown_text_dialog.png?b=370"><img src="screenshots/14_markdown_text_dialog.png?b=370" width="960" height="600" loading="lazy" alt="Markdown text in Rhino with the MarkdownText dialog over it: the nested list in black at the caret, the rest of the Markdown gray, width, size and font below."></a><figcaption><strong>MarkdownText:</strong> Markdown as Rhino text; double-click a part and its section opens, the rest in gray.</figcaption></figure>
+        <figure><a href="../screenshots/01_watch_values_in_rhino.png?b=389"><img src="../screenshots/01_watch_values_in_rhino.png?b=389" width="960" height="600" loading="lazy" alt="Rhino's Top view with a magenta bow-tie outline and the name dots outline and corners; over it the Script Editor paused at a breakpoint, its V°Watch tab listing outline and corners."></a><figcaption><strong>V°Watch:</strong> a paused script's outline drawn in Rhino: a bow tie, not the rectangle it meant.</figcaption></figure>
+        <figure><a href="../screenshots/03_python_in_the_paused_frame.png?b=389"><img src="../screenshots/03_python_in_the_paused_frame.png?b=389" width="960" height="600" loading="lazy" alt="The Script Editor's V°Python tab: the swapped corners printed, a fixed outline built and shown; in Rhino an orange rectangle named fixed over the bow tie."></a><figcaption><strong>V°Python:</strong> in the paused frame: the fix tried on the live data, and drawn in Rhino.</figcaption></figure>
+        <figure><a href="../screenshots/04_stop_and_record.png?b=389"><img src="../screenshots/04_stop_and_record.png?b=389" width="960" height="600" loading="lazy" alt="The Script Editor opened at line 12 of grow_spiral.py, a script with an endless loop that RunPythonScript ran and Ctrl+Alt+B stopped; an overlay says Stopped at line 12 and lists the values of points and turn at that moment."></a><figcaption><strong>Stop and record:</strong> a script from the command line stopped with Ctrl+Alt+B, opened at its line, with its values.</figcaption></figure>
+        <figure><a href="../screenshots/05_which_branch_failed.png?b=389"><img src="../screenshots/05_which_branch_failed.png?b=389" width="960" height="600" loading="lazy" alt="Grasshopper: a red Divide component and its right-click menu with miniVivisection's items, Debug failing run 7 -- data {0;2}[0], line 4, and Copy failing branches."></a><figcaption><strong>Which branch failed:</strong> the failing component names its runs; its menu debugs exactly one.</figcaption></figure>
+        <figure><a href="../screenshots/09_markdown_panel_links.png?b=389"><img src="../screenshots/09_markdown_panel_links.png?b=389" width="960" height="600" loading="lazy" alt="Grasshopper Panels rendered as Markdown with headings, lists and links; a tooltip over a link reads Grasshopper: go to Ring -- click."></a><figcaption><strong>Markdown in Panels:</strong> with links to components, views and the Rhino model; a tooltip says where each goes.</figcaption></figure>
+        <figure><a href="../screenshots/11_v_edit.png?b=389"><img src="../screenshots/11_v_edit.png?b=389" width="960" height="600" loading="lazy" alt="Rhino's Perspective view with a red lofted surface and one blue profile curve marked by the name dot V°Edit [1]; over it the Grasshopper window with the V°Edit component between Profiles and Loft, showing 1 in Rhino."></a><figcaption><strong>V°Edit:</strong> a Grasshopper profile edited in Rhino; the loft follows, and the edit is saved with the definition.</figcaption></figure>
+        <figure><a href="../screenshots/12_v_text.png?b=389"><img src="../screenshots/12_v_text.png?b=389" width="960" height="600" loading="lazy" alt="Rhino's Top view with a Markdown note and a Python script drawn as text; a Grasshopper window with the two Panels feeding V°Text components."></a><figcaption><strong>V°Text:</strong> Panels as Rhino text: Markdown laid out, a script with line numbers and syntax colors.</figcaption></figure>
+        <figure><a href="../screenshots/14_markdown_text_dialog.png?b=389"><img src="../screenshots/14_markdown_text_dialog.png?b=389" width="960" height="600" loading="lazy" alt="Markdown text in Rhino with the MarkdownText dialog over it: the nested list in black at the caret, the rest of the Markdown gray, width, size and font below."></a><figcaption><strong>MarkdownText:</strong> Markdown as Rhino text; double-click a part and its section opens, the rest in gray.</figcaption></figure>
       </div>
     </div>
   </section>
@@ -417,28 +417,28 @@
       </div>
       <div class="download">
         <div class="card">
-          <a class="btn primary" href="minivivisection-0.2.0-beta.370-rh8_36-win.yak" download>&#8595;&ensp;Download (7.1 MB)</a>
+          <a class="btn primary" href="../downloads/minivivisection-0.2.0-beta.389-rh8_36-win.yak" download>&#8595;&ensp;Download (4.8 MB)</a>
           <table class="spec">
-            <tr><td>Version</td><td>0.2.0, build 370 (experimental)</td></tr>
-            <tr><td>Built</td><td>2026-10-25 22:53 UTC+3</td></tr>
-            <tr><td>Size</td><td>7.1 MB, 62 files</td></tr>
+            <tr><td>Version</td><td>0.2.0, build 389 (beta)</td></tr>
+            <tr><td>Built</td><td>2026-11-01 15:29 UTC+3</td></tr>
+            <tr><td>Size</td><td>4.8 MB, 61 files</td></tr>
             <tr><td>Contains</td><td><code>miniVivisection.rhp</code> (the plug-in), <code>miniVivisection.GH.gha</code> (the Grasshopper plug-in: V°Edit, V°Text, Panels as code and Markdown, links), 17 example lessons, 12 Grasshopper lessons and a Rhino example with Markdown text, the examples guide (PDF), the manual (PDF and Markdown), a feature test script, the license (MIT)</td></tr>
             <tr><td>Requires</td><td>Windows, Rhino 8.36 or later (tested with 8.37) on .NET Core (Rhino 8's default), not .NET Framework; Python 3 scripts in the Script Editor</td></tr>
             <tr><td>Optional</td><td>Claude Code (the <code>claude</code> command) for V°Claude; McNeel's RhinoAI for Claude in the Rhino model (offered for install)</td></tr>
           </table>
-          <a href="miniVivisection_Manual.pdf">The manual (PDF)</a>
+          <a href="../downloads/miniVivisection_Manual.pdf">The manual (PDF)</a>
         </div>
         <div class="card">
           <h3>Install</h3>
           <ol class="steps">
-            <li>Installed miniVivisection from a zip before? Close Rhino and double-click <a href="../miniVivisection_Remove_Old_Install.cmd" download>the removal tool</a> (one file, <code>miniVivisection_Remove_Old_Install.cmd</code>; if Windows says it protected your PC: <em>More info</em>, <em>Run anyway</em>). It shows what it found, asks, and removes the old copy's registration and Grasshopper link, so Rhino doesn't find the plug-in twice; it keeps a backup.</li>
+            <li>Installed miniVivisection from a zip before? Close Rhino and double-click <a href="../downloads/miniVivisection_Remove_Old_Install.cmd" download>the removal tool</a> (one file, <code>miniVivisection_Remove_Old_Install.cmd</code>; if Windows says it protected your PC: <em>More info</em>, <em>Run anyway</em>). It shows what it found, asks, and removes the old copy's registration and Grasshopper link, so Rhino doesn't find the plug-in twice; it keeps a backup.</li>
             <li>In Rhino 8: command <em>PackageManager</em>, search for <em>miniVivisection</em>, tick <em>Include pre-releases</em> (it's a beta), <em>Install</em>. Or drag the downloaded <code>.yak</code> file onto Rhino 8's window. Then restart Rhino.</li>
             <li>Open the Script Editor: its top bar now shows <em>miniVivisection 0.2.0</em> with the V°AI and V°Debug switches and V°Help.</li>
             <li>V°Edit and V°Text are on Grasshopper's <em>miniVivisection</em> tab. If Grasshopper was already open, restart it.</li>
             <li>Try the lessons: Script Editor &gt; Examples &gt; miniVivisection. Grasshopper lessons: <code>%LOCALAPPDATA%\miniVivisection\lessons\grasshopper</code>.</li>
             <li>Updates: <em>PackageManager</em> offers newer builds, however miniVivisection was installed (keep <em>Include pre-releases</em> ticked). To remove it: <em>PackageManager</em>, <em>Installed</em>, miniVivisection, <em>Uninstall</em>.</li>
           </ol>
-          <div class="note">Experimental software: it hooks into the Script Editor's internals, which can change with Rhino updates. Every feature can be turned off in V°Settings, or all at once with V°Debug.</div>
+          <div class="note">Beta: miniVivisection relies on internal code of Rhino 8's Script Editor; a Rhino update can break parts of it. Every feature can be turned off in V°Settings, or all at once with V°Debug.</div>
         </div>
       </div>
     </div>
@@ -447,8 +447,10 @@
 
 <footer>
   <div class="wrap">
-    <span>miniVivisection 0.2.0 &middot; <a href="miniVivisection_Manual.pdf">the manual (PDF)</a> &middot; <a href="https://github.com/ristflo/miniVivisection">the source (GitHub)</a></span>
-    <span>Not affiliated with Robert McNeel &amp; Associates. Rhino and Grasshopper are trademarks of their owners.</span>
+    <span>miniVivisection 0.2.0 &middot; <a href="../downloads/miniVivisection_Manual.pdf">the manual (PDF)</a> &middot; <a href="https://github.com/ristflo/miniVivisection">the source (GitHub)</a></span>
+    <span>Not affiliated with Robert McNeel &amp; Associates. Rhino and Grasshopper are trademarks of their owners. The rhinoceros pictures were made with AI image generators.</span>
+    <span><a href="../impressum.html">Impressum</a> &middot; <a href="../datenschutz.html">Datenschutz / Privacy</a></span>
+    <span class="fonts">Fonts: <a href="fonts/OFL-JetBrainsMono.txt">JetBrains Mono</a> (SIL Open Font License)</span>
   </div>
 </footer>
 

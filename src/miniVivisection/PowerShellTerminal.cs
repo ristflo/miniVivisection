@@ -145,7 +145,7 @@ namespace MiniVivisection
                 _shell = shell;
                 _exitCode = null;
                 UserLog.Info("{0} started ({1}).", _shellName, exe);
-                Write(_shellName + " (experimental, miniVivisection) -- " + exe + "\n" +
+                Write(_shellName + " (miniVivisection) -- " + exe + "\n" +
                       "No console: programs that wait for keyboard input block the prompt; Ctrl+C ends the process.\n");
                 Send("[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false); $OutputEncoding = [Console]::OutputEncoding; " +
                      "$ProgressPreference = 'SilentlyContinue'; if ($PSStyle) { $PSStyle.OutputRendering = 'PlainText' }; " + MarkerCommand);

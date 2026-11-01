@@ -785,7 +785,7 @@ namespace MiniVivisection
                         if (rce is Window started)
                             s_debugStarted.AddOrUpdate(started, null);
                         debug.Execute();
-                        UserLog.Info("{0}: {1} runs in the debugger, the Script Editor out of sight until it pauses (Ctrl+Alt+B, a breakpoint).", via, title);
+                        UserLog.Info("{0}: {1} runs in the debugger, the Script Editor out of sight until it pauses ({2}, a breakpoint).", via, title, GrasshopperRuns.Hotkey());
                     }
                     else if (DateTime.Now - started > TimeSpan.FromSeconds(15)) // a minimized editor may load slower
                     {

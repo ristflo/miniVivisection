@@ -22,9 +22,12 @@ namespace MiniVivisection.GH
     /// definition: the other files as a zip in memory, the definition as itself (see Protect).
     ///
     /// Setup (the start): the files -- those added in the menu, or, with none, the definition's own
-    /// file -- are hashed and their copies stored (added; a changed file replaced) whenever the
-    /// component solves (placed, opened, a setting changed, Store now). The Protect button under it
-    /// saves the definition and keeps it as the original.
+    /// file -- are hashed and their copies stored (added; a changed file replaced) when the user says
+    /// so in this session: placed, Store now, files added, a setting changed -- never when a definition
+    /// is opened or just recomputes (it may come from anyone, and name any file). Stored are only files
+    /// beside the definition and files picked in this session; an archive on another computer only
+    /// when chosen in this session or beside the definition (FileArchive.StoreRefusal, ArchiveRefusal).
+    /// The Protect button under it saves the definition and keeps it as the original.
     ///
     /// Protect: drawn as a Grasshopper Button (ProtectAttributes) -- in front "original" or "modified",
     /// the component green or red: the definition's file on disk against its original, and the open
@@ -49,6 +52,7 @@ namespace MiniVivisection.GH
         private Timer _timer;              // protect mode: the state looked at again
         private (DateTime Time, long Size, string State) _disk; // the definition's file, as looked at last
         private List<string> _log = new List<string>();
+        private bool _storeNow = true;     // the next solution stores: placed (not read: opened, pasted), Store now, a setting changed
         internal string DiskState = "?";   // "original", "changed", "missing", "not archived", "not saved", "no archive"
         internal bool OpenModified;
         private List<(string Name, string State)> _others = new List<(string, string)>(); // the other files, protect mode
@@ -162,24 +166,46 @@ namespace MiniVivisection.GH
                     : "Set where the originals go: an archive, or the definition itself (the menu).");
                 return;
             }
-            try
+            // Stored only when the user said so -- not when the definition is opened, nor at a recompute
+            var store = _storeNow;
+            _storeNow = false;
+            if (store)
             {
-                if (_inItself)
+                if (!_inItself && FileArchive.ArchiveRefusal(Archive, DefinitionPath) is string refusal)
                 {
-                    // The other files in the component (the definition itself: when Protect saves it)
-                    var others = OtherFiles;
-                    var (zip, log, _) = FileArchive.Store(_keptZip, others);
-                    _keptZip = others.Count == 0 ? null : zip;
-                    _log = log;
-                    _log.Add("the definition itself: kept when you press Protect");
+                    _log = new List<string>();
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, refusal + " (Archive > Choose...)");
+                    return;
                 }
-                else
-                    _log = FileArchive.Store(Archive, Files).Log;
+                try
+                {
+                    if (_inItself)
+                    {
+                        // The other files in the component (the definition itself: when Protect saves it)
+                        var (others, refused) = Storable(OtherFiles);
+                        var (zip, log, _) = FileArchive.Store(_keptZip, others);
+                        _keptZip = OtherFiles.Count == 0 ? null : zip;
+                        _log = log;
+                        _log.AddRange(refused);
+                        _log.Add("the definition itself: kept when you press Protect");
+                    }
+                    else
+                    {
+                        var (files, refused) = Storable(Files);
+                        _log = FileArchive.Store(Archive, files).Log;
+                        _log.AddRange(refused);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _log = new List<string>();
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Keeping the originals (" + Where + "): " + ex.Message);
+                    return;
+                }
             }
-            catch (Exception ex)
+            if (_log.Count == 0)
             {
-                _log = new List<string>();
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Keeping the originals (" + Where + "): " + ex.Message);
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Nothing stored yet: Store now (its menu) stores the files' originals (" + Where + "); Protect saves the definition and keeps it.");
                 return;
             }
             // The balloon: what was stored, by file name
@@ -188,7 +214,7 @@ namespace MiniVivisection.GH
                 : _log.FirstOrDefault() ?? "archive " + Archive);
             foreach (var line in _log.Skip(1).Take(12))
             {
-                var problem = line.StartsWith("missing") || line.StartsWith("can't") || line.StartsWith("not a path");
+                var problem = line.StartsWith("missing") || line.StartsWith("can't") || line.StartsWith("not a path") || line.StartsWith("not stored");
                 AddRuntimeMessage(problem ? GH_RuntimeMessageLevel.Warning : GH_RuntimeMessageLevel.Remark, Short(line));
             }
             if (_log.Count > 13)
@@ -198,6 +224,23 @@ namespace MiniVivisection.GH
             var self = DefinitionPath;
             if (!_inItself && self != null && !Files.Any(p => SamePath(p, self)))
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "The definition itself is stored when you press Protect.");
+        }
+
+        /// <summary>The files that may be stored -- beside the definition, or picked in this session -- and a
+        /// log line for each other one (FileArchive.StoreRefusal).</summary>
+        private (List<string> Files, List<string> Refused) Storable(IEnumerable<string> files)
+        {
+            var self = DefinitionPath;
+            var allowed = new List<string>();
+            var refused = new List<string>();
+            foreach (var file in files)
+            {
+                if (FileArchive.StoreRefusal(file, self) is string refusal)
+                    refused.Add(refusal);
+                else
+                    allowed.Add(file);
+            }
+            return (allowed, refused);
         }
 
         /// <summary>A log line with the file's name instead of its full path: "added: notes.txt (...)".</summary>
@@ -220,8 +263,10 @@ namespace MiniVivisection.GH
             var level = text == "modified" ? GH_RuntimeMessageLevel.Warning : GH_RuntimeMessageLevel.Remark;
             AddRuntimeMessage(level, "The definition on disk: " + (DiskState == "original" ? "the original" : DiskState) + ".");
             AddRuntimeMessage(level, "The open definition: " + (OpenModified ? "changed, not saved" : "unchanged") + ".");
+            if (!_inItself && FileArchive.ArchiveRefusal(Archive, DefinitionPath) is string refusal)
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, refusal + " (back to setup: Archive > Choose...)");
             foreach (var (name, state) in _others)
-                AddRuntimeMessage(state == "original" ? GH_RuntimeMessageLevel.Remark : GH_RuntimeMessageLevel.Warning, name + ": " + (state == "original" ? "the original" : state) + ".");
+                AddRuntimeMessage(state == "original" || state == "checking" ? GH_RuntimeMessageLevel.Remark : GH_RuntimeMessageLevel.Warning, name + ": " + (state == "original" ? "the original" : state) + ".");
             if (text == "modified")
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Click Revert to put the original back.");
         }
@@ -280,9 +325,11 @@ namespace MiniVivisection.GH
             var path = doc.FilePath;
             try
             {
+                if (!_inItself && FileArchive.ArchiveRefusal(Archive, path) is string refusal)
+                    throw new InvalidOperationException(refusal);
                 if (_inItself)
                 {
-                    _keptZip = OtherFiles.Count == 0 ? null : FileArchive.Store(_keptZip, OtherFiles).Zip;
+                    _keptZip = OtherFiles.Count == 0 ? null : FileArchive.Store(_keptZip, Storable(OtherFiles).Files).Zip;
                     // Saved without the original: those bytes are the original; then with it
                     _original = null;
                     _fingerprint = null;
@@ -297,7 +344,7 @@ namespace MiniVivisection.GH
                 {
                     if (!new GH_DocumentIO(doc).SaveQuiet(path))
                         throw new IOException("the definition couldn't be saved");
-                    FileArchive.Store(Archive, Files.Concat(new[] { path }).Distinct(StringComparer.OrdinalIgnoreCase).ToList());
+                    FileArchive.Store(Archive, Storable(Files).Files.Concat(new[] { path }).Distinct(StringComparer.OrdinalIgnoreCase).ToList());
                 }
             }
             catch (Exception ex)
@@ -335,7 +382,7 @@ namespace MiniVivisection.GH
             var archive = Archive;
             if (path == null)
                 DiskState = "not saved";
-            else if (_inItself ? _fingerprint == null : archive == null || !File.Exists(archive))
+            else if (_inItself ? _fingerprint == null : archive == null || FileArchive.ArchiveRefusal(archive, path) != null || !File.Exists(archive))
                 DiskState = _inItself ? "not kept" : "no archive";
             else if (!File.Exists(path))
                 DiskState = "missing";
@@ -359,12 +406,20 @@ namespace MiniVivisection.GH
                 }
                 DiskState = _disk.State;
             }
+            // The other files: each hashed again only when its size or time changed, and not here but on a
+            // worker (Checked); one on another computer that the user didn't add isn't contacted
             var others = new List<(string, string)>();
+            var archived = !_inItself && path != null && DiskState != "no archive";
             foreach (var file in OtherFiles)
             {
+                if (FileArchive.OnNetwork(file) && FileArchive.StoreRefusal(file, path) != null)
+                {
+                    others.Add((Path.GetFileName(file), "not looked at (on another computer)"));
+                    continue;
+                }
                 try
                 {
-                    var state = _inItself ? FileArchive.Check(_keptZip, file).State : archive != null && File.Exists(archive) ? FileArchive.Check(archive, file).State : null;
+                    var state = _inItself ? FileArchive.Check(_keptZip, file, Checked).State : archived ? FileArchive.Check(archive, file, Checked).State : null;
                     others.Add((Path.GetFileName(file), state ?? "not kept"));
                 }
                 catch (Exception)
@@ -375,6 +430,17 @@ namespace MiniVivisection.GH
             _others = others;
             return before != (DiskState, OpenModified, string.Join("|", _others));
         }
+
+        // A file's hash worked out (on a worker): the state looked at again, on the UI thread
+        private void Checked() => Rhino.RhinoApp.InvokeOnUiThread(new Action(() =>
+        {
+            if (_protected && OnPingDocument() is GH_Document doc && Instances.DocumentServer.Contains(doc) && Look())
+            {
+                ShowState();
+                Attributes?.ExpireLayout();
+                Instances.InvalidateCanvas();
+            }
+        }));
 
         internal bool NeedsRevert => _protected && (OpenModified || DiskState == "changed" || DiskState == "missing");
 
@@ -399,48 +465,66 @@ namespace MiniVivisection.GH
             var protect = doc?.Objects.OfType<ProtectComponent>().FirstOrDefault(p => p.IsProtected);
             if (protect == null)
                 return "This definition has no " + GhNames.Of("Protect") + " protecting it.";
+            if (Waits() is string waiting)
+                return "The link reverts the definition: not while " + waiting + ". Continue or Stop it first.";
             protect.Look();
             if (!protect.NeedsRevert)
                 return "The definition is the original already.";
-            protect.Revert();
+            protect.Revert(ask: true);
             return null;
         }
+
+        // Why the definition can't be opened again now -- a script paused, a component computing: the
+        // definition holding them would go -- or null; what MarkdownLinks asks before a link opens a file
+        private static string Waits() => MiniVivisection.MarkdownLinks.FileLinkWaits();
 
         internal void Revert() => Revert(ask: true);
 
         /// <summary>A click on Revert: asked first; the original over the file on disk when that isn't the
-        /// original; the definition opened again from the file (after this click is done).</summary>
+        /// original; the definition opened again from the file (after this click is done). Not while a
+        /// script is paused or a component computes. Why it wasn't reverted (said, when asked), or null.</summary>
         /// <param name="ask">False for the tests: no question.</param>
-        internal void Revert(bool ask)
+        internal string Revert(bool ask)
         {
             var doc = OnPingDocument();
             var path = DefinitionPath;
             if (doc == null || path == null || !CanKeep)
-                return;
+                return "Save the definition first: protecting needs its file.";
+            if (Waits() is string waiting)
+            {
+                var said = "Revert opens the definition again: not while " + waiting + ". Continue or Stop it first.";
+                if (ask)
+                    MessageBox.Show(Instances.DocumentEditor, said, GhNames.Of("Protect"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return said;
+            }
             Look();
             var disk = DiskState;
             var what = (disk == "changed" || disk == "missing" ? "The file on disk isn't the original: the original is written over it. " : "") +
                        (OpenModified ? "Your changes to the open definition are dropped. " : "") +
                        "The definition is then opened again from its file.";
             if (ask && MessageBox.Show(Instances.DocumentEditor, what + "\n\nRevert to the original?", GhNames.Of("Protect"), MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
-                return;
+                return null;
             try
             {
                 if (disk == "changed" || disk == "missing")
                 {
                     if (_inItself)
                         WriteOriginal(path);
+                    else if (FileArchive.ArchiveRefusal(Archive, path) is string refusal)
+                        throw new InvalidOperationException(refusal);
                     else if (!FileArchive.Restore(Archive, path))
                         throw new InvalidOperationException("the archive has no copy of " + path);
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show(Instances.DocumentEditor, "Not reverted: " + ex.Message, GhNames.Of("Protect"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
+                if (ask)
+                    MessageBox.Show(Instances.DocumentEditor, "Not reverted: " + ex.Message, GhNames.Of("Protect"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return "Not reverted: " + ex.Message;
             }
             // Out of this component's own mouse click first: its definition goes
             Instances.DocumentEditor.BeginInvoke(new Action(() => Reopen(doc, path)));
+            return null;
         }
 
         /// <summary>In itself: the original written to <paramref name="path"/> -- its bytes (the definition as
@@ -545,10 +629,18 @@ namespace MiniVivisection.GH
 
         // --- the menu: the settings ---------------------------------------------------------------------
 
+        // A setting changed in the menu: the files stored again (the user's word)
         private void Change(string what, Action change)
         {
             RecordUndoEvent(what);
             change();
+            StoreNow();
+        }
+
+        /// <summary>The menu's Store now (and a setting changed): the files' originals stored at once.</summary>
+        internal void StoreNow()
+        {
+            _storeNow = true;
             ExpireSolution(true);
         }
 
@@ -559,7 +651,7 @@ namespace MiniVivisection.GH
             if (_protected)
             {
                 Menu_AppendItem(menu, "Revert to the original", (s, e) => Revert(), NeedsRevert);
-                Menu_AppendItem(menu, "Back to setup", (s, e) => Unprotect()).ToolTipText = "Its files and where their originals go can be changed again; they are stored at each solution.";
+                Menu_AppendItem(menu, "Back to setup", (s, e) => Unprotect()).ToolTipText = "Its files and where their originals go can be changed again; Store now stores them.";
                 Menu_AppendItem(menu, "Originals: " + Where, null, false);
                 return;
             }
@@ -594,7 +686,7 @@ namespace MiniVivisection.GH
                 if (!string.IsNullOrWhiteSpace(_archiveSetting))
                     archiveItem.DropDownItems.Add(new ToolStripMenuItem("Next to the definition (the default)", null, (s, e) => Change("Archive", () => _archiveSetting = null)));
             }
-            Menu_AppendItem(menu, "Store now", (s, e) => ExpireSolution(true), CanKeep).ToolTipText = "Stores the files' originals again (added, replaced, unchanged).";
+            Menu_AppendItem(menu, "Store now", (s, e) => StoreNow(), CanKeep).ToolTipText = "Stores the files' originals (added, replaced, unchanged): those next to the definition, and those added in this session.";
             Menu_AppendItem(menu, "Protect", (s, e) => Protect(), CanKeep).ToolTipText = "Saves the definition, keeps it as the original, and shows from now on whether it still is.";
         }
 
@@ -608,6 +700,7 @@ namespace MiniVivisection.GH
                 {
                     foreach (var name in dialog.FileNames)
                     {
+                        FileArchive.Pick(name); // picked: stored wherever it is
                         if (!_files.Any(f => Resolve(f) != null && SamePath(Resolve(f), name)))
                             _files.Add(Path.GetFullPath(name));
                     }
@@ -628,18 +721,25 @@ namespace MiniVivisection.GH
                    })
             {
                 if (dialog.ShowDialog(Instances.DocumentEditor) == DialogResult.OK)
+                {
+                    FileArchive.Pick(dialog.FileName); // chosen: used also on another computer
                     Change("Archive", () => _archiveSetting = Path.GetFullPath(dialog.FileName));
+                }
             }
         }
 
-        /// <summary>For the tests: the menu's settings without its dialogs.</summary>
+        /// <summary>For the tests: the menu's settings without its dialogs -- picked, as there -- and stored.</summary>
         internal void SetForTests(IEnumerable<string> files, string archive, bool inItself = false)
         {
             _files.Clear();
             _files.AddRange(files ?? Enumerable.Empty<string>());
             _archiveSetting = archive;
             _inItself = inItself;
-            ExpireSolution(true);
+            foreach (var file in Files)
+                FileArchive.Pick(file);
+            if (!string.IsNullOrWhiteSpace(archive) && Archive != null)
+                FileArchive.Pick(Archive);
+            StoreNow();
         }
 
         // --- saved with the definition -------------------------------------------------------------------
@@ -686,6 +786,7 @@ namespace MiniVivisection.GH
             var fingerprint = "";
             _fingerprint = reader.TryGetString("MiniVivisectionFingerprint", ref fingerprint) && fingerprint.Length > 0 ? fingerprint : null;
             _disk = default;
+            _storeNow = false; // read (opened, an undo): nothing stored until the user says so
             return base.Read(reader);
         }
     }

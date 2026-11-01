@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <!-- miniVivisection's Rhino plug-in: a companion to Rhino 8's Script Editor debugger.
-         See README.md at the repository's root. Rhino 8 (net7.0). -->
+         See docs/Developer_Guide.md. Rhino 8 (net7.0). -->
     <TargetFramework>net7.0</TargetFramework>
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <TargetExt>.rhp</TargetExt>
@@ -57,9 +57,9 @@
     <None Include="..\..\docs\miniVivisection_Manual.md" Link="miniVivisection_Manual.md" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\docs\miniVivisection_Manual.pdf" Link="miniVivisection_Manual.pdf" CopyToOutputDirectory="PreserveNewest" />
     <!-- The examples (one feature, one bug each), in examples\ next to the .rhp, with the manual. -->
-    <None Include="..\..\examples\**\*" Exclude="..\..\examples\**\__pycache__\**;..\..\examples\**\*.3dmbak;..\..\examples\**\*.rhl" LinkBase="examples" CopyToOutputDirectory="PreserveNewest" />
+    <!-- By type, not examples\**\*: a stray file there would ship in every package for good. -->
+    <None Include="..\..\examples\**\*.py;..\..\examples\**\*.gh;..\..\examples\**\*.3dm;..\..\examples\**\*.md;..\..\examples\**\*.pdf" Exclude="..\..\examples\**\__pycache__\**" LinkBase="examples" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\docs\miniVivisection_Manual.md" Link="examples\miniVivisection_Manual.md" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\..\docs\miniVivisection_Manual.pdf" Link="examples\miniVivisection_Manual.pdf" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

@@ -60,9 +60,11 @@ A script component's \emph{script} input can be fed by a Panel's text or by a fi
 component no editor of its own. miniVivisection opens the script in the Script Editor instead, as a file:
 
 \begin{description}
-  \item[A file's path] opens that file. Saving it, or closing the Script Editor, recomputes the component.
+  \item[A file's path] opens that file. Saving it recomputes the component. It is your file: closing the Script Editor
+        doesn't write it (your changes stay in its tab), and \ui{Run} or \ui{Debug} with changes not saved asks first.
   \item[A Panel's text] opens as a working file. Saving, or closing the Script Editor, writes the text back into the Panel,
-        as an undo step, and the component recomputes. If the Panel changed meanwhile, the save is refused: open it again.
+        as an undo step, and the component recomputes. If the Panel changed meanwhile, the save is refused: open it again;
+        your save is then kept in a file of its own (\vn{Log} names it).
   \item[Text from anywhere else] opens as a copy to read.
 \end{description}
 
@@ -74,6 +76,14 @@ component, its script opens by itself at the line where it stopped.
 \paragraph{Debugging it.} \ui{V° Debug the script input} in the component's menu runs it once in the debugger, pausing at
 its breakpoints, or at its first line when it has none. Under \emph{Always debug} every run does, as long as the
 file holds what Grasshopper runs (a Panel's working copy equal to its text).
+
+\paragraph{Paused.} When such a run pauses -- at a breakpoint, a step, \keys{Ctrl+Alt+B} or an error -- the Script Editor
+showing the script comes up: shown again if you closed it, restored if it was minimized, in front of Grasshopper. A
+component's own script editor comes up the same way when its script pauses. A Panel's script is shown on the Panel as
+well: the breakpoints of its working file in the Script Editor appear as red dots by the line numbers (hollow when turned
+off), and while it is paused the line is marked, scrolled into view, with \emph{Paused at the breakpoint on line 3} along
+the Panel's bottom, until the run continues. Double-click the Panel then to bring the Script Editor up: Continue and the
+steps are there.
 
 \section{A component with a script input}\label{sec:libraryinput}
 

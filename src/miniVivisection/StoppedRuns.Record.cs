@@ -215,10 +215,10 @@ namespace MiniVivisection
             record.Values.Where(v => v != null && v.Length >= 2 && !s_scopeNames.Contains(v[0])).ToList();
 
         /// <summary>Always debug is on, but a script from a component's input (a Panel, a file)
-        /// can't run in the debugger yet: why Ctrl+Alt+B stopped it rather than paused it.</summary>
+        /// runs plainly: why Ctrl+Alt+B stopped it rather than paused it.</summary>
         private static string AlwaysDebugNote(string hotkey) =>
-            "Always debug is on, but a script from a Panel or a file can't run in the debugger yet: it runs plainly, so " + hotkey +
-            " stops it instead of pausing it, and its breakpoints don't pause.";
+            "Always debug is on, but a script from a Panel or a file runs plainly, so " + hotkey +
+            " stops it instead of pausing it; its breakpoints pause in a run started with \"Debug the script input\" (the component's menu).";
 
         /// <summary>The code view's part: the line in view, marked, and the overlay (top right)
         /// explaining it -- built from text nodes, so nothing in the record is read as HTML.</summary>

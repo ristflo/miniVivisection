@@ -131,11 +131,14 @@ It says the state on the command line, then offers what can be done.
   \item[In setup,] the files kept -- none set: the Rhino file itself; \emph{AddFiles}, \emph{ClearFiles} -- and where
         their originals go: \emph{OriginalsIn=Archive}, by default \file{(the file's name).protect.zip} next to it
         (\emph{Archive} chooses another), or \emph{OriginalsIn=File}, in the file itself. \emph{Store} stores the
-        files' originals now. Everything is kept in the file's document strings.
+        files' originals now -- as V°Protect, only files next to the model or added in this session, and an archive on
+        another computer only when chosen in this session or next to the model. Everything is kept in the file's
+        document strings.
   \item[Protect] saves the file and keeps it as the original. From then on it is \emph{original} while the file on
         disk is the original and the open model has no changes, \emph{modified} when either isn't so.
-  \item[Revert] (asked first) closes the model, its changes dropped, writes the original over the file when that
-        changed, and opens it again. \emph{BackToSetup}: not protected any more; the originals stay.
+  \item[Revert] (asked first), once the command has ended, closes the model, its changes dropped, writes the original
+        over the file when that changed, and opens it again. When the model can't be closed, nothing is written.
+        \emph{BackToSetup}: not protected any more; the originals stay.
 \end{description}
 
 \paragraph{In itself.} A file can't hold its own bytes. So \emph{Protect} saves it once without its original -- those

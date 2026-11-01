@@ -16,7 +16,7 @@ namespace MiniVivisection
         {
             ("/replace", true, null), ("/fix", true, null), ("/explain", true, null), ("/debug", true, null), ("/why", true, null),
             ("/pending", false, null), ("/apply", false, null), ("/reject", false, null), ("/undo", true, new[] { "force" }),
-            ("/history", false, null), ("/allow", true, new[] { "on", "off" }), ("/run", false, null), ("/deny", false, null),
+            ("/history", false, null), ("/allow", true, new[] { "on", "off" }), ("/run", false, null), ("/deny", false, null), ("/auto", true, new[] { "on", "off" }),
             ("/new", false, null), ("/clear", false, null), ("/help", false, null),
         };
 

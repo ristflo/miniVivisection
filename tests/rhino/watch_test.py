@@ -1,6 +1,6 @@
 #! python 3
 """
-Test script for the experimental MiniVivisection plug-in (see README.md).
+Test script for the miniVivisection plug-in (see docs/Developer_Guide.md).
 
 1. Open this file in Rhino's Script Editor (ScriptEditor command).
 2. Set a breakpoint on the line marked below and start debugging (F5).

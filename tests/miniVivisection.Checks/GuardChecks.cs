@@ -105,7 +105,7 @@ namespace MiniVivisection
             Check("an empty input: / and every command", C("").Item1, "/");
             Check("no such command: as it is", C("/zz"), ("/zz", ""));
             Check("a message: not completed", C("hello").Item1, null);
-            Check("every command", string.Join(" ", SlashCommands.Names), "/replace /fix /explain /debug /why /pending /apply /reject /undo /history /allow /run /deny /new /clear /help");
+            Check("every command", string.Join(" ", SlashCommands.Names), "/replace /fix /explain /debug /why /pending /apply /reject /undo /history /allow /run /deny /auto /new /clear /help");
         }
 
         private static void CodeApprovalChecks()

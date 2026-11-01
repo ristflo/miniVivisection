@@ -169,7 +169,7 @@ namespace MiniVivisection
         /// collapsible groups; a single tab without the tab strip.</summary>
         private Control Build()
         {
-            var tabs = MiniVivisectionSettings.All.Where(s => !s.Hidden).GroupBy(s => s.Tab).ToList();
+            var tabs = MiniVivisectionSettings.All.Where(MiniVivisectionSettings.Shown).GroupBy(s => s.Tab).ToList();
             if (tabs.Count == 1)
                 return Page(tabs[0]);
             var control = new TabControl();

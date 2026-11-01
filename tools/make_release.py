@@ -3,12 +3,13 @@ its Grasshopper part, their dependencies, the manual, the examples, the license)
 from Rhino's Package Manager (the same file is on McNeel's server, a pre-release) or by dragging
 it onto Rhino 8's window -- minivivisection-<version>-beta.<N>-rh8_36-win.yak --
 and the tool that removes an older zip install first, miniVivisection_Remove_Old_Install.cmd
-(packaging/misc: one file to double-click). The package goes into each web page's folder
-(web/pages/*) with the manual's PDF, the page's older packages and zips
-removed; the tool once, one folder up (web/pages/, https://restweiss.de/miniVivisection/: one
-address for all pages and for beta testers), which the pages link as ../. Then it rewrites the
-build facts in each page's index.html (package name, version and build, ?b=<build>, built time,
-size in MB, file count: see page_facts) and checks that every download link resolves.
+(packaging/misc: one file to double-click). The package, the manual's PDF and the tool go into
+web/pages/downloads/ (not in git; https://restweiss.de/miniVivisection/downloads/: one address
+for all pages and for beta testers, which the pages link as ../downloads/), the older packages
+there removed; the pages' screenshots (web/pages/screenshots/, linked as ../screenshots/) are
+refreshed from docs/screenshots. Then it rewrites the build facts in each page's index.html
+(package name, version and build, ?b=<build>, built time, size in MB, file count: see
+page_facts) and checks that every download link resolves.
 
 The package of a build is made once: run again (for a new manual PDF, say), it reuses
 bin/yak's package of this build instead of zipping the same files anew into other bytes. A version
@@ -25,6 +26,7 @@ Build Release first (dotnet build -c Release): the build number is read from the
     python tools/make_release.py
     python tools/make_release.py --rebuild    # zip this build's package anew
     python tools/make_release.py --no-push    # pages only; print the push command
+    python tools/make_release.py --check      # only check the pages' download links; changes nothing
 """
 import datetime
 import glob
@@ -40,6 +42,8 @@ import urllib.request
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BUILD = os.path.join(HERE, 'src', 'miniVivisection', 'bin', 'Release', 'net7.0')
 PAGES = os.path.join(HERE, 'web', 'pages')
+DOWNLOADS = os.path.join(PAGES, 'downloads')
+SCREENSHOTS = os.path.join(PAGES, 'screenshots')
 SKIP_DIRS = {'__pycache__'}
 SKIP_FILES = ('.3dmbak', '.rhl', '.pyc')
 
@@ -106,17 +110,18 @@ def update_pages(facts):
 
 
 def check_pages():
-    """Every package, zip and removal tool a page links to is in its folder, and it links to a package."""
+    """Every package, PDF, removal tool and screenshot a page (or the chooser) links to is there,
+    and each links to a package."""
     bad = 0
-    for page in sorted(glob.glob(os.path.join(PAGES, '*', 'index.html'))):
+    for page in sorted(glob.glob(os.path.join(PAGES, '*', 'index.html'))) + [os.path.join(PAGES, 'index.html')]:
         folder = os.path.dirname(page)
         html = open(page, encoding='utf-8').read()
-        hrefs = set(re.findall(r'href="(%s|(?:\.\./)?miniVivisection_[^"/]+\.(?:zip|cmd))"' % YAK_NAME, html))
+        hrefs = set(re.findall(r'(?:href|src)="((?:\.\./)?(?:downloads|screenshots)/[^"?#]+)', html))
         if not any(h.endswith('.yak') for h in hrefs):
             print('  ! %s links to no package' % page)
             bad += 1
         for href in sorted(hrefs):
-            if not os.path.isfile(os.path.join(folder, href)):
+            if not os.path.isfile(os.path.join(folder, *href.split('/'))):
                 print('  ! %s links to %s, which is missing' % (page, href))
                 bad += 1
     if bad:
@@ -137,6 +142,9 @@ def published(ver):
 
 
 def main():
+    if '--check' in sys.argv:
+        check_pages()
+        return
     import make_yak  # here: make_yak imports this module
     ver = make_yak.package_version(stable=False)
     made = glob.glob(os.path.join(make_yak.OUT, 'minivivisection-%s-*.yak' % ver))
@@ -163,15 +171,16 @@ def main():
     print('%s: %d files, %.1f MB, built %s' % (name, count, size / 1048576, built.strftime('%Y-%m-%d %H:%M')))
     remover = os.path.join(HERE, 'packaging', 'misc', REMOVER)
     manual = os.path.join(HERE, 'docs', 'miniVivisection_Manual.pdf')
-    for page in sorted(glob.glob(os.path.join(PAGES, '*', 'index.html'))):
-        folder = os.path.dirname(page)
-        for old in glob.glob(os.path.join(folder, 'miniVivisection_*.zip')) + glob.glob(os.path.join(folder, 'minivivisection-*.yak')) + glob.glob(os.path.join(folder, REMOVER)):
-            os.remove(old)  # the tool sits one folder up now
-        shutil.copy2(target, os.path.join(folder, name))
-        shutil.copy2(manual, os.path.join(folder, 'miniVivisection_Manual.pdf'))
-        print('  ->', folder)
-    shutil.copy2(remover, os.path.join(PAGES, REMOVER))
-    print('  ->', os.path.join(PAGES, REMOVER))
+    os.makedirs(DOWNLOADS, exist_ok=True)
+    for old in glob.glob(os.path.join(DOWNLOADS, 'minivivisection-*.yak')) + glob.glob(os.path.join(DOWNLOADS, 'miniVivisection_*.zip')):
+        os.remove(old)
+    for source in (target, manual, remover):
+        shutil.copy2(source, DOWNLOADS)
+        print('  ->', os.path.join(DOWNLOADS, os.path.basename(source)))
+    for shot in sorted(os.listdir(SCREENSHOTS)):  # the ones the pages show, as the manual has them now
+        source = os.path.join(HERE, 'docs', 'screenshots', shot)
+        if os.path.isfile(source):
+            shutil.copy2(source, os.path.join(SCREENSHOTS, shot))
     update_pages(page_facts(version(), build_number(), name, built, size, count))
     check_pages()
     if server is None:

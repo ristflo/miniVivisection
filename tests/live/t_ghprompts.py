@@ -225,7 +225,7 @@ def test():
         lt.check('read only: no g1 placing, no run_python', 'mcp__rhino__g1_place_component' in disallowed_ro and 'mcp__rhino__run_python' in disallowed_ro, True)
         lt.check('read only: the graph and the view still', 'mcp__rhino__g1_get_canvas_graph' in allowed_ro and 'mcp__rhino__get_viewport_image' in allowed_ro, True)
         lt.check('read only: told so', 'Read only' in result.Item3, True)
-    tools = list(lt.static_call('GrasshopperBridge', 'Tools', True, True))
+    tools = list(lt.static_call('GrasshopperBridge', 'Tools', True, True, None))
     lt.check('read-only tool list', sorted(t.Name for t in tools), ['gh_capture_canvas', 'gh_get_data', 'gh_get_script', 'gh_get_selection'])
 
     # the settings tab

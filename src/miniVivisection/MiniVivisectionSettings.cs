@@ -37,7 +37,8 @@ namespace MiniVivisection
             public string[] Choices = new string[0];
             /// <summary>Takes effect for Script Editor windows opened afterwards.</summary>
             public bool NewWindows;
-            /// <summary>Not on the Settings and Options pages (the V AI and V Debug switches: the top bar).</summary>
+            /// <summary>Not on the Settings and Options pages (the V AI and V Debug switches: the top bar),
+            /// unless the top bar couldn't take them (<see cref="TopBarFailed"/>).</summary>
             public bool Hidden;
             /// <summary>The settings view's tab: <see cref="GeneralTab"/>, <see cref="RhinoTab"/> or <see cref="GrasshopperTab"/>.</summary>
             public string Tab = GeneralTab;
@@ -139,7 +140,7 @@ namespace MiniVivisection
             Path("ClaudePath", ClaudeGroup, "Claude Code (claude.exe)", "Claude Code's executable. Empty: found automatically (MINIVIVISECTION_CLAUDE, the PATH, the usual install folders).", ""),
             Path("RhinoMcpRouterPath", ClaudeGroup, "RhinoAI's MCP router", "rhino-mcp-router.exe. Empty: found automatically (MINIVIVISECTION_RHINO_MCP, RhinoAI's folders).", ""),
             Bool("OfferRhinoAi", ClaudeGroup, "Offer to install RhinoAI", "When Rhino has started and RhinoAI (Claude working in the Rhino model) isn't installed, offer to install it (Rhino's package Rhino-MCP-Platform). Once per Rhino session, while the V AI switch is on.", true),
-            Choice("ClaudeRunCode", ClaudeGroup, "Claude may run Python", "Code Claude wants to run in Rhino (it can change the script, the model, files). Ask: runs after /run. Off: never. On: without asking. Reading a value is always allowed.", "Ask", "Off", "Ask", "On"),
+            Choice("ClaudeRunCode", ClaudeGroup, "Claude may run Python", "Code Claude wants to run: Python in Rhino, and the scripts it writes into Grasshopper script components (they run when the definition computes); it can change the script, the model, files. Ask: runs after Run (/run); Always (/auto on) switches this to On. Off: never. On: without asking. Reading a value is always allowed.", "Ask", "Off", "Ask", "On"),
             Bool("ClaudeStartRhinoAi", ClaudeGroup, "Start RhinoAI's server for Claude", "Before each message, start RhinoAI's MCP server in this Rhino when it isn't running (RhinoAI's MCPStart). It listens on localhost without a token: any program on this computer can then use RhinoAI's tools. Off: Claude works in the model only while you've started it yourself.", false),
             Bool("ClaudeDebuggerControl", ClaudeGroup, "Claude may control the debugger", "Breakpoints, continue, step, stop and start debugging. Each step is shown in V Claude.", true),
             Int("ClaudeStepTimeout", ClaudeGroup, "Wait for a step (s)", "How long Claude's continue/step waits for the next pause before it answers \"still running\".", 30),
@@ -393,6 +394,13 @@ namespace MiniVivisection
         /// SCRIPTEDITORWATCHVIZ_<paramref name="name"/>); null when neither is set.</summary>
         public static string Environment(string name) =>
             System.Environment.GetEnvironmentVariable("MINIVIVISECTION_" + name) ?? System.Environment.GetEnvironmentVariable("SCRIPTEDITORWATCHVIZ_" + name);
+
+        /// <summary>The V AI and V Debug switches couldn't be added to the Script Editor's top bar
+        /// (PluginSwitch): the settings pages show them instead, so they can still be turned back on.</summary>
+        public static bool TopBarFailed;
+
+        /// <summary>Shown on the Settings and Options pages.</summary>
+        public static bool Shown(Setting setting) => !setting.Hidden || TopBarFailed;
 
         public static Setting Find(string key) => All.First(s => s.Key == key);
 

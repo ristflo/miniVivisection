@@ -47,6 +47,32 @@ namespace MiniVivisection
                 Check("a deleted file: missing", FileArchive.Check(archive, a).State, "missing");
                 Check("and restored", FileArchive.Restore(archive, a) && File.ReadAllText(a) == "first, changed", true);
                 Check("the archive itself isn't stored", FileArchive.Store(archive, new[] { archive }).Log.Any(l => l.StartsWith("skipped")), true);
+
+                // Checked off the caller's thread: "checking" until the worker has the hash, then known
+                // (by size and time) without hashing again
+                var big = Path.Combine(root, "one", "big.bin");
+                File.WriteAllBytes(big, new byte[1 << 20]);
+                FileArchive.Store(archive, new[] { big });
+                File.SetLastWriteTimeUtc(big, File.GetLastWriteTimeUtc(big).AddSeconds(1)); // its hash not known for this time
+                var done = new System.Threading.ManualResetEventSlim();
+                Check("checked later: checking, at first", FileArchive.Check(archive, big, () => done.Set()).State, "checking");
+                Check("the worker is done", done.Wait(10000), true);
+                Check("then known: original", FileArchive.Check(archive, big, () => { }).State, "original");
+
+                // What may be stored: next to the file, or picked in this session; an archive on another computer only when chosen
+                var definition = Path.Combine(root, "one", "def.gh");
+                Check("a file next to the definition: stored", FileArchive.StoreRefusal(a, definition), null);
+                Check("in a folder next to it: stored", FileArchive.StoreRefusal(Path.Combine(root, "one", "sub", "x.txt"), definition), null);
+                Check("a file elsewhere (..\\): not stored", FileArchive.StoreRefusal(b, definition)?.StartsWith("not stored"), true);
+                FileArchive.Pick(b);
+                Check("picked in this session: stored", FileArchive.StoreRefusal(b, definition), null);
+                Check("a UNC path is on another computer", FileArchive.OnNetwork(@"\\host\share\a.zip"), true);
+                Check("a local path isn't", FileArchive.OnNetwork(archive), false);
+                Check("an archive on a share: refused", FileArchive.ArchiveRefusal(@"\\host\share\a.zip", definition) != null, true);
+                Check("a local archive anywhere: used", FileArchive.ArchiveRefusal(archive, definition), null);
+                Check("next to a definition on the share: used", FileArchive.ArchiveRefusal(@"\\host\share\a.zip", @"\\host\share\def.gh"), null);
+                FileArchive.Pick(@"\\host\share\b.zip");
+                Check("chosen in this session: used", FileArchive.ArchiveRefusal(@"\\host\share\b.zip", definition), null);
             }
             finally
             {

@@ -121,6 +121,22 @@ namespace MiniVivisection
         private static List<string> OtherFiles(RhinoDoc doc, Settings settings) =>
             Files(doc, settings).Where(f => ModelPath(doc) == null || !SamePath(f, ModelPath(doc))).ToList();
 
+        // The files that may be stored -- beside the model, or added in this session (FileArchive.StoreRefusal:
+        // a model may come from anyone, and name any file) -- and a log line for each other one
+        private static (List<string> Files, List<string> Refused) Storable(RhinoDoc doc, IEnumerable<string> files)
+        {
+            var allowed = new List<string>();
+            var refused = new List<string>();
+            foreach (var file in files)
+            {
+                if (FileArchive.StoreRefusal(file, ModelPath(doc)) is string refusal)
+                    refused.Add(refusal);
+                else
+                    allowed.Add(file);
+            }
+            return (allowed, refused);
+        }
+
         /// <summary>The archive: as set, or "(file).protect.zip" next to the file; null in the file itself, or unsaved.</summary>
         public static string Archive(RhinoDoc doc, Settings settings)
         {
@@ -157,13 +173,20 @@ namespace MiniVivisection
             {
                 var others = OtherFiles(doc, settings);
                 var kept = Kept(doc);
-                var (zip, log, _) = FileArchive.Store(kept, others);
+                var (allowed, refused) = Storable(doc, others);
+                var (zip, log, _) = FileArchive.Store(kept, allowed);
                 doc.Strings.SetString(KeptKey, others.Count == 0 ? "" : Convert.ToBase64String(zip));
+                log.AddRange(refused);
                 log.Add("the file itself: kept when it is protected");
                 return log;
             }
+            if (FileArchive.ArchiveRefusal(Archive(doc, settings), ModelPath(doc)) is string refusal)
+                return new List<string> { refusal + " (Archive)" };
             Write(doc, settings);
-            return FileArchive.Store(Archive(doc, settings), Files(doc, settings)).Log;
+            var (files, notStored) = Storable(doc, Files(doc, settings));
+            var stored = FileArchive.Store(Archive(doc, settings), files).Log;
+            stored.AddRange(notStored);
+            return stored;
         }
 
         private static byte[] Kept(RhinoDoc doc) => Bytes(doc.Strings.GetValue(KeptKey));
@@ -223,10 +246,12 @@ namespace MiniVivisection
                 // The fields as the original shows them: protected, not modified
                 s_forced = new MarkdownFields.State { IsProtected = true, Disk = "original" };
                 MarkdownRhinoText.RefreshFields(doc, keepModified: false);
+                if (!settings.InItself && FileArchive.ArchiveRefusal(Archive(doc, settings), path) is string refusal)
+                    throw new InvalidOperationException(refusal);
                 if (settings.InItself)
                 {
                     var others = OtherFiles(doc, settings);
-                    doc.Strings.SetString(KeptKey, others.Count == 0 ? "" : Convert.ToBase64String(FileArchive.Store(Kept(doc), others).Zip));
+                    doc.Strings.SetString(KeptKey, others.Count == 0 ? "" : Convert.ToBase64String(FileArchive.Store(Kept(doc), Storable(doc, others).Files).Zip));
                     // Saved without the original: those bytes are the original; then with it
                     doc.Strings.Delete(OriginalKey);
                     doc.Strings.Delete(FingerprintKey);
@@ -240,7 +265,7 @@ namespace MiniVivisection
                 else
                 {
                     Save(doc, path);
-                    FileArchive.Store(Archive(doc, settings), Files(doc, settings).Concat(new[] { path }).Distinct(StringComparer.OrdinalIgnoreCase).ToList());
+                    FileArchive.Store(Archive(doc, settings), Storable(doc, Files(doc, settings)).Files.Concat(new[] { path }).Distinct(StringComparer.OrdinalIgnoreCase).ToList());
                 }
             }
             catch (Exception ex)
@@ -315,7 +340,7 @@ namespace MiniVivisection
             var fingerprint = doc.Strings.GetValue(FingerprintKey);
             if (path == null)
                 status.Disk = "not saved";
-            else if (settings.InItself ? string.IsNullOrEmpty(fingerprint) : archive == null || !File.Exists(archive))
+            else if (settings.InItself ? string.IsNullOrEmpty(fingerprint) : archive == null || FileArchive.ArchiveRefusal(archive, path) != null || !File.Exists(archive))
                 status.Disk = settings.InItself ? "not kept" : "no archive";
             else if (!File.Exists(path))
                 status.Disk = "missing";
@@ -344,11 +369,20 @@ namespace MiniVivisection
                 }
                 status.Disk = known.State;
             }
+            // The other files: each hashed again only when its size or time changed, and not here but on a
+            // worker ("checking" meanwhile; the next look has it); one on another computer that the user
+            // didn't add isn't contacted
+            var archived = !settings.InItself && path != null && status.Disk != "no archive";
             foreach (var file in OtherFiles(doc, settings))
             {
+                if (FileArchive.OnNetwork(file) && FileArchive.StoreRefusal(file, path) != null)
+                {
+                    status.Others.Add((Path.GetFileName(file), "not looked at (on another computer)"));
+                    continue;
+                }
                 try
                 {
-                    var state = settings.InItself ? FileArchive.Check(Kept(doc), file).State : archive != null && File.Exists(archive) ? FileArchive.Check(archive, file).State : null;
+                    var state = settings.InItself ? FileArchive.Check(Kept(doc), file, Nothing).State : archived ? FileArchive.Check(archive, file, Nothing).State : null;
                     status.Others.Add((Path.GetFileName(file), state ?? "not kept"));
                 }
                 catch (Exception)
@@ -357,6 +391,10 @@ namespace MiniVivisection
                 }
             }
             return status;
+        }
+
+        private static void Nothing()
+        {
         }
 
         /// <summary>The state the Markdown fields show for <paramref name="doc"/>.</summary>
@@ -384,6 +422,8 @@ namespace MiniVivisection
                        "; the open model: " + (status.OpenModified ? "changed, not saved" : "unchanged");
             foreach (var (name, state) in status.Others)
                 line += "; " + name + ": " + (state == "original" ? "the original" : state);
+            if (!settings.InItself && FileArchive.ArchiveRefusal(Archive(doc, settings), ModelPath(doc)) is string refusal)
+                line += " -- " + refusal + " (BackToSetup, Archive)";
             return line;
         }
 
@@ -464,19 +504,31 @@ namespace MiniVivisection
         // A file reverted in itself: its original and fingerprint, put back into it once it is open again
         private static (string Path, string Original, string Fingerprint, string Kept)? s_reopening;
 
-        /// <summary>Revert: the original over the file on disk when that isn't the original; the file
-        /// opened again from it (the open model's changes dropped). <paramref name="ask"/>: asked
-        /// first. What went wrong, or null; "" when the user said no.</summary>
-        public static string Revert(RhinoDoc doc, bool ask)
+        /// <summary>Why <paramref name="doc"/> can't be reverted (not protected, the original already, the
+        /// original not there), or null.</summary>
+        public static string RevertProblem(RhinoDoc doc)
         {
-            var settings = Read(doc);
-            var path = ModelPath(doc);
-            if (!settings.Protected || path == null)
+            if (!Read(doc).Protected || ModelPath(doc) == null)
                 return "This file isn't protected (ProtectModel protects it).";
             Forget(doc);
             var status = Look(doc);
             if (status.Text != "modified")
                 return status.Text == "original" ? "This file is the original already." : "The original can't be put back: " + status.Disk + ".";
+            return null;
+        }
+
+        /// <summary>Revert: the original over the file on disk when that isn't the original; the file
+        /// opened again from it (the open model's changes dropped). <paramref name="ask"/>: asked
+        /// first. Not from inside a command (it runs _-New and _-Open: the ProtectModel command
+        /// reverts after it ends): the model not closed, nothing is written. What went wrong, or
+        /// null; "" when the user said no.</summary>
+        public static string Revert(RhinoDoc doc, bool ask)
+        {
+            if (RevertProblem(doc) is string problem)
+                return problem;
+            var settings = Read(doc);
+            var path = ModelPath(doc);
+            var status = Look(doc);
             var disk = status.Disk;
             var what = (disk == "changed" || disk == "missing" ? "The file on disk isn't the original: the original is written over it. " : "") +
                        (status.OpenModified ? "Your changes to the open model are dropped. " : "") +
@@ -485,6 +537,7 @@ namespace MiniVivisection
                 return "";
             // The original first to a file of its own: Rhino keeps the open model's file locked
             string temp = null;
+            var serial = doc.RuntimeSerialNumber;
             try
             {
                 if (disk == "changed" || disk == "missing")
@@ -497,12 +550,20 @@ namespace MiniVivisection
                         // The original is the file saved without it: put back once it's open
                         s_reopening = (path, doc.Strings.GetValue(OriginalKey), doc.Strings.GetValue(FingerprintKey), doc.Strings.GetValue(KeptKey));
                     }
+                    else if (FileArchive.ArchiveRefusal(Archive(doc, settings), path) is string refusal)
+                        throw new InvalidOperationException(refusal);
                     else if (!FileArchive.Restore(Archive(doc, settings), path, temp))
                         throw new InvalidOperationException("the archive has no copy of " + path);
                 }
-                // The model closed (its changes dropped: the user chose so), the original put in place, opened
+                // The model closed (its changes dropped: the user chose so) -- really closed, or nothing
+                // is written: the original put in place, opened
+                var modified = doc.Modified;
                 doc.Modified = false;
-                RhinoApp.RunScript("_-New _None", false);
+                if (!RhinoApp.RunScript("_-New _None", false) || RhinoDoc.ActiveDoc?.RuntimeSerialNumber == serial)
+                {
+                    doc.Modified = modified;
+                    throw new InvalidOperationException("Rhino didn't close the model" + (Rhino.Commands.Command.InCommand() ? " (a command runs)." : "."));
+                }
                 if (temp != null)
                     File.Copy(temp, path, overwrite: true);
             }
@@ -525,9 +586,9 @@ namespace MiniVivisection
                     }
                 }
             }
-            RhinoApp.RunScript("_-Open \"" + path + "\"", false);
-            var opened = RhinoDoc.ActiveDoc;
-            if (opened == null || string.IsNullOrEmpty(opened.Path) || !SamePath(opened.Path, path))
+            // The file opened again -- a new model, not the one closed (PutBack saves it)
+            var opened = RhinoApp.RunScript("_-Open \"" + path + "\"", false) ? RhinoDoc.ActiveDoc : null;
+            if (opened == null || opened.RuntimeSerialNumber == serial || string.IsNullOrEmpty(opened.Path) || !SamePath(opened.Path, path))
             {
                 s_reopening = null;
                 return "Rhino didn't open " + path + " again.";

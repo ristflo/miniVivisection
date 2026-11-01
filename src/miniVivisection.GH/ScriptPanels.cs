@@ -24,7 +24,10 @@ namespace MiniVivisection.GH
     /// .rhp's GrasshopperInputScripts.OpenPanel: a working file, saved back into the Panel).
     /// Shift+double-click keeps Grasshopper's own text box (then without wrapping, in the
     /// console font, Tab as four spaces), Ctrl+double-click its dialog. After Ctrl+Alt+B stopped
-    /// the Panel's script, the .rhp opens it in place at that line (EditAtLine).
+    /// the Panel's script, the .rhp opens it in place at that line (EditAtLine). Debugged from its
+    /// working copy in the Script Editor, the Panel shows that copy's breakpoints in its gutter
+    /// (ShowBreakpoints) and, paused, the line and why along its bottom (ShowPause); a double-click
+    /// then brings the Script Editor up, where the run continues.
     ///
     /// A script Panel: its own text (no sources, Multiline Data on), connected to a script
     /// component's "script" input (its language), or marked or recognized as Python or C#
@@ -73,6 +76,14 @@ namespace MiniVivisection.GH
             public string[] StopLines;
             public string StopText;
 
+            // The Script Editor's breakpoints in the Panel's script (its working copy; 1-based
+            // lines, hollow when turned off), and the line its run is paused at in the debugger
+            // now (0: none) -- both from the .rhp's GrasshopperScriptPauses
+            public int[] Breakpoints = new int[0];
+            public bool[] BreakpointsActive = new bool[0];
+            public int PauseLine;
+            public string PauseTitle;
+
             // A Panel with sources: its data's text, the same string while it's the same -- made
             // again only when the data changed (the Panel expired, or its tree's count differs)
             public string SourcedText;
@@ -116,6 +127,10 @@ namespace MiniVivisection.GH
         internal static (int Line, string Title, string[] Lines) StopOf(GH_Panel panel) =>
             s_states.TryGetValue(panel, out var state) && state.StopLine > 0 && ReferenceEquals(state.StopText, panel.UserText)
                 ? (state.StopLine, state.StopTitle, state.StopLines) : (0, null, null);
+
+        /// <summary>The breakpoints and the pause shown on the Panel (for the live test).</summary>
+        internal static (int[] Breakpoints, int PauseLine, string PauseTitle) DebugOf(GH_Panel panel) =>
+            s_states.TryGetValue(panel, out var state) ? (state.Breakpoints, state.PauseLine, state.PauseTitle) : (new int[0], 0, null);
 
         private static readonly ConditionalWeakTable<GH_Panel, State> s_states = new ConditionalWeakTable<GH_Panel, State>();
         private static bool s_reported;
@@ -464,6 +479,9 @@ namespace MiniVivisection.GH
         internal static readonly Color StopBand = Color.FromArgb(110, 255, 128, 0);
         internal static readonly Color StopArrow = Color.FromArgb(230, 230, 100, 0);
 
+        /// <summary>A breakpoint in the gutter: the Script Editor's red dot.</summary>
+        internal static readonly Color BreakpointDot = Color.FromArgb(255, 229, 20, 0);
+
         internal static readonly StringFormat Typographic = MakeFormat(StringAlignment.Near);
         internal static readonly StringFormat TypographicFar = MakeFormat(StringAlignment.Far);
 
@@ -568,14 +586,34 @@ namespace MiniVivisection.GH
                 for (var i = first; i <= last; i++)
                     graphics.DrawString((i + 1).ToString(), font, numbers, content.Left + gutter - charWidth * 0.5f, top + i * lineHeight - offsetY, TypographicFar);
             }
+            // The Script Editor's breakpoints: a red dot left of the number (hollow: turned off)
+            var dot = Math.Max(3f, Math.Min(lineHeight - 4f, charWidth * 1.1f));
+            using (var fill = new SolidBrush(BreakpointDot))
+            using (var ring = new Pen(BreakpointDot, 1.2f))
+            {
+                for (var b = 0; b < state.Breakpoints.Length; b++)
+                {
+                    var line = state.Breakpoints[b];
+                    if (line < first + 1 || line > last + 1)
+                        continue;
+                    var dotAt = new RectangleF(content.Left + 2.5f, top + (line - 1) * lineHeight - offsetY + (lineHeight - dot) / 2, dot, dot);
+                    if (b >= state.BreakpointsActive.Length || state.BreakpointsActive[b])
+                        graphics.FillEllipse(fill, dotAt);
+                    else
+                        graphics.DrawEllipse(ring, dotAt);
+                }
+            }
 
             // The code: each line in pieces, plain between the colored ones
             graphics.SetClip(new RectangleF(codeLeft - 1, top, viewWidth + 1, viewHeight));
             var stop = StopOf(panel);
-            if (stop.Line > 0 && stop.Line <= state.Lines.Length)
+            // Paused in the debugger: that line; else where Ctrl+Alt+B stopped it
+            var paused = state.PauseLine > 0 && state.PauseLine <= state.Lines.Length;
+            var marked = paused ? state.PauseLine : stop.Line;
+            if (marked > 0 && marked <= state.Lines.Length)
             {
                 // Orange, to stand out on Grasshopper's yellow Panels; an arrow at the line number
-                var y = top + (stop.Line - 1) * lineHeight - offsetY;
+                var y = top + (marked - 1) * lineHeight - offsetY;
                 using (var band = new SolidBrush(StopBand))
                     graphics.FillRectangle(band, codeLeft - 1, y, viewWidth + 1, lineHeight);
                 graphics.SetClip(new RectangleF(content.Left, top, gutter, viewHeight));
@@ -628,8 +666,9 @@ namespace MiniVivisection.GH
                     brush.Dispose();
                 graphics.ResetClip();
             }
-            // Where it stopped, in a word, along the bottom: double-click for the rest
-            if (stop.Line > 0)
+            // Where it stopped, in a word, along the bottom: double-click for the rest (paused:
+            // the Script Editor, where it continues)
+            if (paused || stop.Line > 0)
             {
                 var banner = new RectangleF(content.Left + 2, bottom - lineHeight - 2, content.Width - 4 - BarWidth, lineHeight + 2);
                 graphics.SetClip(banner);
@@ -638,7 +677,8 @@ namespace MiniVivisection.GH
                 using (var edge = new Pen(Color.FromArgb(200, 191, 128, 0)))
                     graphics.DrawRectangle(edge, banner.X, banner.Y, banner.Width - 1, banner.Height - 1);
                 using (var text = new SolidBrush(Color.FromArgb(255, 60, 40, 0)))
-                    graphics.DrawString((char)0x25A0 + " " + stop.Title + " -- double-click for more", font, text, banner.X + charWidth * 0.5f, banner.Y + 1, Typographic);
+                    graphics.DrawString(paused ? (char)0x25B6 + " " + state.PauseTitle + " -- double-click: the Script Editor"
+                        : (char)0x25A0 + " " + stop.Title + " -- double-click for more", font, text, banner.X + charWidth * 0.5f, banner.Y + 1, Typographic);
                 graphics.ResetClip();
             }
         }
@@ -1092,6 +1132,11 @@ namespace MiniVivisection.GH
                 var state = Script(__instance.Owner);
                 if (state == null)
                     return true;
+                if (state.PauseLine > 0 && RaiseScriptEditor(__instance.Owner))
+                {
+                    __result = GH_ObjectResponse.Handled; // paused: the debugger is in the Script Editor
+                    return false;
+                }
                 if (!state.TrackControl.IsEmpty && state.TrackControl.Contains(e.ControlLocation))
                 {
                     __result = GH_ObjectResponse.Handled; // a quick double-click on the bottom bar
@@ -1126,6 +1171,53 @@ namespace MiniVivisection.GH
             state.StopText = ghPanel.UserText;
             Instances.InvalidateCanvas();
             return CodeBox.Open(ghPanel, state.Language, line, mark: true);
+        }
+
+        /// <summary>For the .rhp, by reflection (GrasshopperScriptPauses): the breakpoints the Script
+        /// Editor has in the Panel's script (its working copy) -- 1-based lines, each turned on or
+        /// off --, drawn in the gutter.</summary>
+        internal static void ShowBreakpoints(object panel, int[] lines, bool[] active)
+        {
+            if (!(panel is GH_Panel ghPanel))
+                return;
+            var state = s_states.GetValue(ghPanel, _ => new State());
+            state.Breakpoints = lines ?? new int[0];
+            state.BreakpointsActive = active ?? new bool[0];
+            Instances.InvalidateCanvas();
+        }
+
+        /// <summary>For the .rhp, by reflection (GrasshopperScriptPauses): the Panel's script paused
+        /// in the debugger at <paramref name="line"/> -- marked, scrolled into view, <paramref name="title"/>
+        /// along the bottom --, or not paused any more (0).</summary>
+        internal static void ShowPause(object panel, int line, string title)
+        {
+            if (!(panel is GH_Panel ghPanel))
+                return;
+            var state = s_states.GetValue(ghPanel, _ => new State());
+            state.PauseLine = Math.Max(0, line);
+            state.PauseTitle = title;
+            // Scrolled to it when it's out of sight (as laid out at the last drawing): a third down
+            var lines = state.Lines?.Length ?? 0;
+            var range = state.ContentHeight - state.ViewHeight;
+            if (line > 0 && line <= lines && range > 0)
+            {
+                var lineHeight = state.ContentHeight / lines;
+                var at = (line - 1) * lineHeight;
+                var offset = ghPanel.ScrollRatio * range;
+                if (at < offset || at + lineHeight > offset + state.ViewHeight)
+                    ghPanel.ScrollRatio = Math.Max(0, Math.Min(1, (at - state.ViewHeight / 3) / range));
+            }
+            Instances.InvalidateCanvas();
+        }
+
+        // Paused: the Script Editor showing the Panel's script brought up (the .rhp's
+        // GrasshopperScriptPauses.Raise). False without the .rhp, or no editor.
+        private static bool RaiseScriptEditor(GH_Panel panel)
+        {
+            var raise = AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(a => a.GetName().Name == "miniVivisection")
+                ?.GetType("MiniVivisection.GrasshopperScriptPauses")
+                ?.GetMethod("Raise", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static, null, new[] { typeof(object) }, null);
+            return raise?.Invoke(null, new object[] { panel }) as bool? == true;
         }
 
         /// <summary>The Panel's script in the Script Editor: the .rhp's

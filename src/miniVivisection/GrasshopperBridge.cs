@@ -47,8 +47,9 @@ namespace MiniVivisection
         public static string CaptureFolder => Path.Combine(Path.GetTempPath(), "rhinovivisection", "minivivisection", "captures");
 
         /// <summary>The tools as MCP tools: read-only ones only (<paramref name="readOnly"/>), the capture
-        /// only when allowed. Each runs on the UI thread.</summary>
-        public static IEnumerable<McpServer.Tool> Tools(bool readOnly, bool capture)
+        /// only when allowed. Each runs on the UI thread; gh_set_script only after
+        /// <paramref name="askToRun"/> (the code runs when the definition computes).</summary>
+        public static IEnumerable<McpServer.Tool> Tools(bool readOnly, bool capture, Func<string, string, Task<bool>> askToRun)
         {
             if (!(Invoke("GrasshopperTools", "Tools") is object[][] tools))
                 yield break;
@@ -58,9 +59,32 @@ namespace MiniVivisection
                 var changes = (bool)tool[3];
                 if ((changes && readOnly) || (name == "gh_capture_canvas" && !capture))
                     continue;
-                yield return new McpServer.Tool(name, (string)tool[1], (string)tool[2],
-                    arguments => ScriptEditorAccess.OnUiThread(() => Task.FromResult(Call(name, arguments))));
+                yield return new McpServer.Tool(name, (string)tool[1], (string)tool[2], name == "gh_set_script"
+                    ? arguments => SetScriptAsked(arguments.Clone(), askToRun)
+                    : (Func<JsonElement, Task<string>>)(arguments => ScriptEditorAccess.OnUiThread(() => Task.FromResult(Call(name, arguments)))));
             }
+        }
+
+        /// <summary>gh_set_script, asked as run_python is ("Claude may run Python": On runs it, Off
+        /// refuses it, Ask shows the code in the V°Claude window and waits for Run or Deny).</summary>
+        private static async Task<string> SetScriptAsked(JsonElement arguments, Func<string, string, Task<bool>> askToRun)
+        {
+            string Text(string key) => arguments.ValueKind == JsonValueKind.Object && arguments.TryGetProperty(key, out var value) &&
+                                       value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+            switch (MiniVivisectionSettings.ClaudeRunCode)
+            {
+                case "Off":
+                    return "Not done: running code is switched off (Options > miniVivisection > Claude > \"Claude may run Python\"), and a script " +
+                           "component runs its code when the definition computes. Show the code in your answer instead; the user can paste it.";
+                case "On":
+                    break;
+                default:
+                    if (!await askToRun("a script for " + (Text("id") ?? "a component") + ", which runs when the definition computes", Text("code") ?? ""))
+                        return "Not done: the user declined the script, or didn't answer within 2 minutes (\"Claude may run Python\" is Ask). " +
+                               "Don't try it again unasked; show the code in your answer instead.";
+                    break;
+            }
+            return await ScriptEditorAccess.OnUiThread(() => Task.FromResult(Call("gh_set_script", arguments)));
         }
 
         /// <summary>The names of the tools that change the definition.</summary>

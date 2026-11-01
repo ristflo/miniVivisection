@@ -275,6 +275,9 @@ namespace MiniVivisection
             Check("a control for every shown setting", new SettingsView(immediate: false, narrow: false).Count, shown);
             Check("the left panel's too", new SettingsView(immediate: true, narrow: true).Count, shown);
             Check("the switches only in the top bar", System.Linq.Enumerable.Count(MiniVivisectionSettings.All, x => x.Hidden), 2);
+            MiniVivisectionSettings.TopBarFailed = true; // the top bar couldn't take them: the pages show them
+            Check("no top bar: the switches on the pages", new SettingsView(immediate: false, narrow: false).Count, MiniVivisectionSettings.All.Count);
+            MiniVivisectionSettings.TopBarFailed = false;
             Check("keys unique", new HashSet<string>(System.Linq.Enumerable.Select(MiniVivisectionSettings.All, x => x.Key)).Count, MiniVivisectionSettings.All.Count);
         }
 

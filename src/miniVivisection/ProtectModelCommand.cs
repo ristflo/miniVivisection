@@ -5,6 +5,7 @@ using Rhino;
 using Rhino.Commands;
 using Rhino.Input;
 using Rhino.Input.Custom;
+using MiniVivisection.GH;
 
 namespace MiniVivisection
 {
@@ -75,25 +76,44 @@ namespace MiniVivisection
                 else if (index == add)
                 {
                     foreach (var file in AskFiles(doc, mode))
+                    {
+                        FileArchive.Pick(file); // added in this session: stored wherever it is
                         RhinoProtect.Change(doc, s =>
                         {
                             if (!s.Files.Any(f => string.Equals(f, file, StringComparison.OrdinalIgnoreCase)))
                                 s.Files.Add(file);
                         });
+                    }
                 }
                 else if (index == clear)
                     RhinoProtect.Change(doc, s => s.Files.Clear());
                 else if (index == archive)
                 {
                     var path = AskArchive(doc, mode);
+                    if (!string.IsNullOrEmpty(path))
+                        FileArchive.Pick(path); // chosen in this session: used also on another computer
                     if (path != null)
                         RhinoProtect.Change(doc, s => s.Archive = path.Length == 0 ? null : path);
                 }
                 else if (index == revert)
                 {
-                    problem = RhinoProtect.Revert(doc, ask: mode == RunMode.Interactive);
+                    // Reverted once the command has ended: it closes this model and opens the file
+                    // again (_-New, _-Open) -- only a script-runner command may run commands, and the
+                    // model would go under this one
+                    problem = RhinoProtect.RevertProblem(doc);
                     if (problem == null)
-                        return Result.Success; // the file was opened again: this document is gone
+                    {
+                        var serial = doc.RuntimeSerialNumber;
+                        var ask = mode == RunMode.Interactive;
+                        HelpCommands.Later(() =>
+                        {
+                            var model = RhinoDoc.FromRuntimeSerialNumber(serial);
+                            var said = model == null ? "Not reverted: the model was closed." : RhinoProtect.Revert(model, ask);
+                            if (!string.IsNullOrEmpty(said))
+                                RhinoApp.WriteLine("ProtectModel: " + said);
+                        });
+                        return Result.Success;
+                    }
                 }
                 else if (index == back)
                 {

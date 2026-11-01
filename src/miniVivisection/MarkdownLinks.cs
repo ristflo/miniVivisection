@@ -52,7 +52,9 @@ namespace MiniVivisection
         /// set by the .rhp (RhinoProtect.Install) for Rhino's files.</summary>
         public static Func<string, string> ProtectLink = null;
 
-        private static string FileLinkWaits()
+        /// <summary>Why a file can't be opened or replaced now (FileLinksWait: a script paused, a component
+        /// computing), or null; V°Protect's Revert asks it too.</summary>
+        internal static string FileLinkWaits()
         {
             try
             {

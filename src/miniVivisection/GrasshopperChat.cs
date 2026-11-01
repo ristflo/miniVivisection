@@ -40,7 +40,8 @@ namespace MiniVivisection
             "(what 'this' and 'these' mean).\n" +
             "grasshopper tools (miniVivisection): gh_get_selection (the selected objects in detail), gh_get_data (a parameter's data in full, " +
             "with each item's facts: coordinates, length, area, volume, closed), gh_get_script, gh_set_value (sliders, Panels, toggles, value lists, " +
-            "stored values, Rhino objects referenced), gh_set_script (a script component's code and inputs/outputs), gh_edit_objects (nickname, " +
+            "stored values, Rhino objects referenced), gh_set_script (a script component's code and inputs/outputs; the code runs when the definition " +
+            "computes, so the user may be asked to approve it first -- if they refuse, don't try again unasked), gh_edit_objects (nickname, " +
             "enabled, preview, move, group), gh_disconnect (remove wires), gh_add_note (a Markdown Panel), gh_capture_canvas (an image of the canvas; " +
             "Read the file it names to see it).\n";
 
@@ -76,11 +77,13 @@ namespace MiniVivisection
             "  /undo                   take back Claude's last change (also Ctrl+Z in Grasshopper)\n" +
             "  /history                the messages of this chat\n" +
             "  /allow on|off           let Claude use RhinoAI's commands and scripts (run_command, run_python, ...), without asking\n" +
+            "  /run, /deny             run or refuse the script Claude asks to write (\"Claude may run Python\": Ask)\n" +
+            "  /auto on|off            run Claude's code without asking from now on, or ask again\n" +
             "  /new                    start a new chat (about this definition)\n" +
             "  /clear                  clear this view\n" +
             "  /help                   this list\n";
 
-        private static readonly HashSet<string> s_whileAnswering = new HashSet<string> { "/help", "/clear", "/history" };
+        private static readonly HashSet<string> s_whileAnswering = new HashSet<string> { "/run", "/deny", "/auto", "/help", "/clear", "/history" };
 
         private readonly RhinoToolPolicy _rhinoTools = RhinoToolPolicy.Load();
         private readonly ClaudeRunner _runner = new ClaudeRunner();
@@ -98,6 +101,7 @@ namespace MiniVivisection
         private string _sessionKey;
         private string _answerFor;   // the definition the answer being written is about (DocumentKey)
         private UITimer _watch;      // while answering: the canvas still shows that definition?
+        private readonly CodeQuestion _question; // a script Claude asks to write: Run, Always, Deny
 
         private static readonly Dictionary<string, string> s_sessions = LoadSessions();
 
@@ -126,8 +130,9 @@ namespace MiniVivisection
                     Ui(() => Write(string.Format("  [{0}] {1}\n", ShortToolName(name), Short(input, 300))));
             };
             _runner.Finished += (text, cost, isError) => Ui(() => OnFinished(text, cost, isError));
-            Content = _view;
-            Write("Claude Code in Grasshopper (experimental, miniVivisection). It reads the definition -- the selection, the data, the scripts -- " +
+            _question = new CodeQuestion(Write, () => { ShowPrompt(); _view.FocusInput(); }, Ui);
+            Content = new TableLayout { Rows = { new TableRow(_question.MakeBar()), new TableRow(_view) { ScaleHeight = true } } };
+            Write("Claude Code in Grasshopper (miniVivisection). It reads the definition -- the selection, the data, the scripts -- " +
                   "and, with RhinoAI, places, wires and sets components; it writes scripts and notes. Each answer is one undo step.\n" + Help + "\n");
             ShowPrompt();
         }
@@ -137,6 +142,7 @@ namespace MiniVivisection
         /// <summary>Rhino shuts down, or the window goes: the answer stops, the tools go.</summary>
         public void Shutdown()
         {
+            _question.Withdraw();
             if (_runner.Busy)
                 _runner.Stop();
             if (_mcpUrl != null)
@@ -166,7 +172,9 @@ namespace MiniVivisection
             var rest = command == null ? text : (space < 0 ? "" : text.Substring(space + 1).Trim());
             if (_runner.Busy && text.Length > 0 && (command == null || !s_whileAnswering.Contains(command)))
             {
-                Write("Claude is still answering -- the rest when it's done (Ctrl+C stops it).\n");
+                Write(_question.Waiting
+                    ? "Claude waits for Run, Always or Deny (/run, /auto on, /deny); the rest when it's done (Ctrl+C stops it).\n"
+                    : "Claude is still answering -- the rest when it's done (Ctrl+C stops it).\n");
                 ShowPrompt();
                 return;
             }
@@ -188,6 +196,16 @@ namespace MiniVivisection
                     break;
                 case "/history":
                     Write(_history.Count == 0 ? "No messages yet.\n" : string.Join("\n", _history) + "\n");
+                    break;
+                case "/run":
+                case "/deny":
+                    _question.Answer(command == "/run");
+                    break;
+                case "/auto":
+                    if (rest == "on" || rest == "off")
+                        _question.Auto(rest == "on");
+                    else
+                        Write("Claude may run Python: " + MiniVivisectionSettings.ClaudeRunCode + " (/auto on|off).\n");
                     break;
                 case "/allow":
                     if (rest == "on" || rest == "off")
@@ -402,7 +420,7 @@ namespace MiniVivisection
             if (_mcpUrl != null)
                 McpServer.Instance.Unregister(_mcpUrl);
             _mcpUrl = McpServer.Instance.Register(GrasshopperBridge.ServerName, GrasshopperBridge.Instructions,
-                GrasshopperBridge.Tools(readOnly, MiniVivisectionSettings.GhClaudeCapture).ToList());
+                GrasshopperBridge.Tools(readOnly, MiniVivisectionSettings.GhClaudeCapture, (what, code) => _question.Ask(what, code, "")).ToList());
             var servers = new Dictionary<string, object> { [GrasshopperBridge.ServerName] = new { type = "http", url = _mcpUrl } };
             var router = ClaudeChat.RhinoMcpRouter();
             if (router != null)

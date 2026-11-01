@@ -509,6 +509,8 @@ namespace MiniVivisection
                     PausedForTools?.Invoke(controls);
                     return; // switched off (PluginSwitch): no visualizers, drawing or editing
                 }
+                // A Grasshopper script's pause: its editor brought up, a Panel's script marked there
+                GrasshopperScriptPauses.AtPause(controls, _editors.TryGetValue(controls, out var pausedIn) ? pausedIn : null);
                 try
                 {
                     _editors.TryGetValue(controls, out var shownIn);
@@ -584,6 +586,7 @@ namespace MiniVivisection
             try
             {
                 ConsoleTabs.UpdateStatus();
+                GrasshopperScriptPauses.Resumed(controls);
                 if (_editors.TryGetValue(controls, out var editor))
                 {
                     WatchListFor(editor).SetNotPaused("running");
@@ -794,6 +797,7 @@ namespace MiniVivisection
             try
             {
                 Edits.End(controls);
+                GrasshopperScriptPauses.Resumed(controls);
                 _conduit.Clear(controls);
                 ValueHistory.Clear(controls);
                 if (_editors.TryGetValue(controls, out var editor))
