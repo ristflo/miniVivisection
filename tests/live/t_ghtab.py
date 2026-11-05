@@ -1,5 +1,5 @@
 #! python 3
-# The Grasshopper tab: "miniVivisection", and "V°" (its short name, with the chosen mark) when the
+# The Grasshopper tab: "miniVivisection", and "V°" (its short name) when the
 # tabs don't fit -- Grasshopper shortens them from the right, then shows symbols (V).
 import os
 import sys
@@ -16,7 +16,7 @@ def grasshopper_ready():
 
 def test():
     yield 2
-    short = lt.static_call('VNames', 'Of', '').strip()  # V and the chosen mark: V° by default
+    short = lt.static_call('VNames', 'Of', '').strip()  # V°
     Rhino.RhinoApp.RunScript('_Grasshopper', False)
     yield lt.wait_for(grasshopper_ready, 120)
     import System

@@ -38,7 +38,7 @@ def test():
     from Grasshopper.Kernel.Data import GH_Path
     from GH_IO.Serialization import GH_LooseChunk
     import System
-    vedit_id = System.Guid('b7d2e8a4-3c1f-4e6b-a9d0-5f2c7e1b8d63')  # by its id: its name has the chosen mark (V°Edit)
+    vedit_id = System.Guid('b7d2e8a4-3c1f-4e6b-a9d0-5f2c7e1b8d63')  # by its id (V°Edit)
     yield lt.wait_for(lambda: Grasshopper.Instances.ComponentServer.EmitObjectProxy(vedit_id) is not None, 60)
     proxy = Grasshopper.Instances.ComponentServer.EmitObjectProxy(vedit_id)
     lt.check('V Edit is loaded in Grasshopper', proxy is not None, True)

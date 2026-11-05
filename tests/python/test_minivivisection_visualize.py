@@ -167,6 +167,43 @@ def test_write_back_through_an_inverse(monkeypatch):
     assert node.x == 7 and replacement is None and how == "back() updated it in place"
 
 
+def test_write_back_a_list_of_your_own_objects(monkeypatch):
+    # Lesson 10's beams: a list whose items are drawn by a visualizer; an edit goes back
+    # through the inverse of the item whose object changed -- the others are left alone
+    class Node:
+        def __init__(self, x):
+            self.x = x
+
+    class Other:
+        pass
+
+    def show(node):
+        return rg.Point3d(node.x, 0, 0)
+
+    calls = []
+
+    def back(node, point):
+        calls.append(node)
+        node.x = point.X
+
+    fake = types.ModuleType("rhinoviv")
+    fake.get_visualizer = lambda obj: show if isinstance(obj, (Node, Other)) else None
+    fake.get_inverse = lambda obj: (back, "full") if isinstance(obj, Node) else None
+    monkeypatch.setitem(sys.modules, "rhinoviv", fake)
+    nodes = [Node(1), Node(2), None, Node(3)]
+    assert wv.edit_mode(nodes) == "inverse"
+    assert wv.edit_mode([Node(1), Other()]) == "readonly:no @rhinoviv.inverse for Other"
+    assert wv.edit_mode([Node(1), [0, 0, 0]]) == "geometry"  # not all of them: item by item
+    drawn = [part for _, part in wv.visualize(nodes, wv.AUTO, rg)[1]]
+    assert len(drawn) == 3
+    edited = [drawn[0], rg.Point3d(9, 0, 0), drawn[2]]
+    how, replacement = wv.write_back(nodes, wv.AUTO, edited, rg)
+    assert (nodes[1].x, calls, replacement) == (9, [nodes[1]], None)
+    assert how == "back() for 1 of its 4 items"
+    with pytest.raises(ValueError):
+        wv.write_back(nodes, wv.AUTO, edited[:2], rg)  # an object fewer than drawn
+
+
 def test_load_visualizer_script(tmp_path, monkeypatch):
     fake = types.ModuleType("rhinoviv")
     monkeypatch.setitem(sys.modules, "rhinoviv", fake)

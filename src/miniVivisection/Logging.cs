@@ -373,7 +373,7 @@ namespace MiniVivisection
             {
                 text = format;
             }
-            text = VNames.Text(text); // V°Watch: the mark the settings choose
+            text = VNames.Text(text); // V°Watch
             var entry = new UserLogEntry(kind, text);
             lock (s_entries)
             {

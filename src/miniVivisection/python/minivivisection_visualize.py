@@ -293,20 +293,40 @@ def _chosen(value, interpretation):
     return options[0] if interpretation in (None, AUTO) or interpretation not in options else interpretation
 
 
+def _inverse_of(value):
+    """``value``'s ``@rhinoviv.inverse`` function, or None."""
+    try:
+        import rhinoviv
+        entry = rhinoviv.get_inverse(value)
+    except Exception:
+        return None
+    return entry[0] if isinstance(entry, tuple) else entry
+
+
+def _visualized_items(value):
+    """A list's or tuple's items when every one of them (None aside) is drawn by a
+    visualizer -- a list of your own objects: ``[(item, its inverse or None)]``; else None."""
+    if not isinstance(value, (list, tuple)) or not any(item is not None for item in value):
+        return None
+    if any(item is not None and _visualizer(item) is None for item in value):
+        return None
+    return [(item, None if item is None else _inverse_of(item)) for item in value]
+
+
 def edit_mode(value, interpretation=AUTO):
     """How ``value`` can be edited as Rhino objects: ``inverse`` (a registered
-    visualizer with an ``@rhinoviv.inverse``), ``raw`` (points of raw data, written
-    into the list), ``geometry`` (Rhino geometry, written back item by item), or
-    ``readonly`` with the reason after a colon."""
+    visualizer with an ``@rhinoviv.inverse``, or a list or tuple of such objects),
+    ``raw`` (points of raw data, written into the list), ``geometry`` (Rhino geometry,
+    written back item by item), or ``readonly`` with the reason after a colon."""
     visualizer = _visualizer(value)
     if visualizer is not None:
-        try:
-            import rhinoviv
-            if rhinoviv.get_inverse(value) is not None:
-                return "inverse"
-        except ImportError:
-            pass
+        if _inverse_of(value) is not None:
+            return "inverse"
         return "readonly:no @rhinoviv.inverse for " + type(value).__name__
+    items = _visualized_items(value)
+    if items is not None:
+        missing = [type(item).__name__ for item, inverse in items if item is not None and inverse is None]
+        return "readonly:no @rhinoviv.inverse for " + missing[0] if missing else "inverse"
     chosen = _chosen(value, interpretation)
     if chosen in ("geometry", "group"):
         return "geometry"
@@ -336,22 +356,72 @@ def _like(old, point):
     return point
 
 
-def write_back(value, interpretation, geometries):
-    """Edited geometry back into ``value``: through its inverse, or into the raw data's
-    points. Returns ``(how, replacement)``: the caller assigns a replacement to the
-    watched expression; None means changed in place. Raises when it can't."""
+def _same(rg, drawn, edited):
+    """Whether ``edited`` is still ``drawn`` (the geometry the visualizer makes now)."""
+    try:
+        equals = getattr(getattr(rg, "GeometryBase", None), "GeometryEquals", None)
+        if equals is not None and hasattr(drawn, "Duplicate") and hasattr(edited, "Duplicate"):
+            return bool(equals(drawn, edited))
+        return bool(drawn == edited)
+    except Exception:
+        return False
+
+
+def _write_back_items(value, items, geometries, rg):
+    """A list's or tuple's visualized items edited: the objects in drawing order, each
+    item's own ones -- as many as its visualizer draws now -- through its inverse; only
+    the items whose objects were changed. Returns ``(how, replacement)``."""
+    at, changed, names = 0, 0, []
+    replaced = list(value)
+    for i, (item, inverse) in enumerate(items):
+        drawn = [part for _, part in visualize(item, AUTO, rg)[1]]
+        mine = geometries[at:at + len(drawn)]
+        at += len(drawn)
+        if len(mine) != len(drawn):
+            raise ValueError("its drawing changed (item %d) -- edit it again" % i)
+        if item is None or not drawn or all(_same(rg, d, e) for d, e in zip(drawn, mine)):
+            continue
+        result = inverse(item, mine[0] if len(mine) == 1 else mine)
+        changed += 1
+        name = getattr(inverse, "__name__", "inverse")
+        if name not in names:
+            names.append(name)
+        if result is not None:
+            replaced[i] = result
+    if at != len(geometries):
+        raise ValueError("its drawing changed (%d objects, %d drawn now) -- edit it again" % (len(geometries), at))
+    how = "%s() for %d of its %d items" % (", ".join(names) or "the inverse", changed, len(value))
+    if isinstance(value, tuple):
+        return how, (tuple(replaced) if any(r is not o for r, o in zip(replaced, value)) else None)
+    for i, item in enumerate(replaced):
+        if item is not value[i]:
+            value[i] = item
+    return how, None
+
+
+def write_back(value, interpretation, geometries, rg=None):
+    """Edited geometry back into ``value``: through its inverse (a list's or tuple's items:
+    each through its own), or into the raw data's points. Returns ``(how, replacement)``:
+    the caller assigns a replacement to the watched expression; None means changed in
+    place. Raises when it can't. ``rg``: the geometry module (Rhino.Geometry)."""
     geometries = list(geometries)
     visualizer = _visualizer(value)
     if visualizer is not None:
-        import rhinoviv
-        entry = rhinoviv.get_inverse(value)
-        if entry is None:
+        func = _inverse_of(value)
+        if func is None:
             raise ValueError("no @rhinoviv.inverse for " + type(value).__name__)
-        func = entry[0] if isinstance(entry, tuple) else entry
         name = getattr(func, "__name__", "inverse")
         replacement = func(value, geometries[0] if len(geometries) == 1 else geometries)
         how = name + "() updated it in place" if replacement is None else "assigned what " + name + "() returned"
         return how, replacement
+    items = _visualized_items(value)
+    if items is not None:
+        missing = [type(item).__name__ for item, inverse in items if item is not None and inverse is None]
+        if missing:
+            raise ValueError("no @rhinoviv.inverse for " + missing[0])
+        if rg is None:
+            import Rhino.Geometry as rg
+        return _write_back_items(value, items, geometries, rg)
     chosen = _chosen(value, interpretation)
     if chosen not in _RAW_EDITABLE:
         raise ValueError(LABELS.get(chosen, chosen) + " can't be edited back")

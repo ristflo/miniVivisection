@@ -30,9 +30,8 @@ SRC = os.path.join(HERE, "src", "miniVivisection")  # the plug-in's sources
 GENERATED = os.path.join(MANUAL, "generated")
 MAIN = "miniVivisection_Manual"
 
-ENUMS = {  # choices made from enums (Logging.cs) and VNames
+ENUMS = {  # choices made from enums (Logging.cs)
     "LogLevel": ["Off", "Error", "Warning", "Info", "Debug", "Trace"],
-    "NameMark": ["°", "|", "∣ (on the line)", "| with thin spaces", "∣ with thin spaces"],
 }
 STRING = r'"((?:[^"\\]|\\.)*)"'
 
@@ -122,9 +121,7 @@ def settings():
             continue  # the V AI and V Debug switches: the top bar
         if kind == "Choice":
             strings = [unescape(s) for s in re.findall(STRING, rest)]
-            if key == "NameMark":
-                choices, default = ENUMS["NameMark"], "°"
-            elif "LogLevel" in rest:
+            if "LogLevel" in rest:
                 choices, default = ENUMS["LogLevel"], strings[0]
             else:
                 default, choices = strings[0], strings[1:]

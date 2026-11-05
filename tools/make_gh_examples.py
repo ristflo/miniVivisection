@@ -330,8 +330,8 @@ def gh4(folder):
     profiles = _place(persistent(Param_Curve(), 'Profiles', {(0,): [GH_Curve(_profile(0, 0)), GH_Curve(_profile(10, 3.5)), GH_Curve(_profile(20, 0))]}), 495, 60)
     index = _place(persistent(Param_Integer(), 'Index', {(0,): [GH_Integer(1)]}), 495, 130)
     server = Grasshopper.Instances.ComponentServer
-    vedit = server.EmitObjectProxy(System.Guid('b7d2e8a4-3c1f-4e6b-a9d0-5f2c7e1b8d63')).CreateInstance()  # V°Edit, by its id (its name has the chosen mark)
-    vedit.NickName = 'V\u00b0Edit'  # the lesson's link gh:V°Edit finds it, whatever mark this Rhino uses
+    vedit = server.EmitObjectProxy(System.Guid('b7d2e8a4-3c1f-4e6b-a9d0-5f2c7e1b8d63')).CreateInstance()  # V°Edit, by its id
+    vedit.NickName = 'V\u00b0Edit'  # the lesson's link gh:V°Edit finds it
     _place(vedit, 620, 90)
     loft = server.FindObjectByName('Loft', True, True).CreateInstance()
     _place(loft, 780, 90)

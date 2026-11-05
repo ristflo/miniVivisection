@@ -29,7 +29,7 @@ namespace MiniVivisection
             public string Key;
             public string Group;
             private string _label, _description;
-            /// <summary>Its label, the V names in the chosen mark (VNames).</summary>
+            /// <summary>Its label, the V names with their ° (VNames).</summary>
             public string Label { get => VNames.Text(_label); set => _label = value; }
             public string Description { get => VNames.Text(_description); set => _description = value; }
             public Kind Kind;
@@ -117,7 +117,6 @@ namespace MiniVivisection
             Bool("FreezeGuard", DebuggerGroup, "Freeze guard for threads", "A script without '# async:true' runs on Rhino's UI thread: a breakpoint hit in one of its worker threads would freeze Rhino. Such a pause is skipped, and V Log and the Terminal say why.", true),
             Int("PausedThreadTimeout", DebuggerGroup, "Wait for the paused script (ms)", "How long the tabs wait for the paused script's thread to answer (Watch tab expressions, members, Claude's tools).", 2000),
 
-            Choice("NameMark", EditorGroup, "Mark in the V names", "What stands between V and the name: \u00B0, a bar, or a bar with thin spaces. For Script Editors opened afterwards, and V Edit and V Text components placed afterwards.", VNames.DefaultChoice, VNames.Marks.Select(m => m.Choice).ToArray()).ForNewWindows(),
             Int("TerminalFontSize", EditorGroup, "Prompt font size", "The text size of V Python, V PowerShell and V Claude. Also Ctrl+mouse wheel in any of them.", 10),
             Bool("ColorsPython", EditorGroup, "Syntax colors: V Python", "What you type in V Python, in the Script Editor's Python colors.", true),
             Bool("ColorsPowerShell", EditorGroup, "Syntax colors: V PowerShell", "What you type in V PowerShell, in the Script Editor's colors for PowerShell.", true),
@@ -251,7 +250,6 @@ namespace MiniVivisection
         public static bool RunCommandRecord => PluginOn && GetText("RunCommand") == "Stop and record";
         public static bool RunCommandDebug => PluginOn && GetText("RunCommand") == "Debug";
         public static bool GrasshopperButton => GetBool("GrasshopperButton");
-        public static string NameMark => GetText("NameMark");
         public static bool GrasshopperAlwaysDebug => PluginOn && GrasshopperScripts == "Always debug";
         /// <summary>Ctrl+Alt+B stops a running component that the debugger can't pause (Stop and record; Always debug's fallback).</summary>
         public static bool GrasshopperStops => PluginOn && GrasshopperScripts != "Normal";

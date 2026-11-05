@@ -49,18 +49,17 @@ namespace MiniVivisection
         }
 
         // Which of Claude's expressions are read without asking, and which are code to approve.
-        // "Mark in the V names": ° by default; text written "V Watch" (or with any mark) shown with it.
+        // The V names with the °; text written "V Watch" (or with a mark earlier versions could choose) shown with it.
         private static void VNameChecks()
         {
             var degree = ((char)0x00B0).ToString();
             var onTheLine = ((char)0x2223).ToString();
             var thin = ((char)0x2009).ToString();
-            Check("the default mark: the degree sign", VNames.Of("Watch"), "V" + degree + "Watch");
-            Check("five choices", VNames.Marks.Length, 5);
-            Check("the setting's default", MiniVivisectionSettings.Find("NameMark").Default, VNames.DefaultChoice);
+            Check("the mark: the degree sign", VNames.Of("Watch"), "V" + degree + "Watch");
+            Check("no setting for it any more", MiniVivisectionSettings.All.Any(s => s.Key == "NameMark"), false);
             Check("text written with a space", VNames.Text("open V Watch or V Python, then V Log"),
                 "open V" + degree + "Watch or V" + degree + "Python, then V" + degree + "Log");
-            Check("written with another mark", VNames.Text("V|Edit, V" + onTheLine + "Help, V" + thin + "|" + thin + "Claude"),
+            Check("written with an earlier mark", VNames.Text("V|Edit, V" + onTheLine + "Help, V" + thin + "|" + thin + "Claude"),
                 "V" + degree + "Edit, V" + degree + "Help, V" + degree + "Claude");
             Check("V AI and V Debug too", VNames.Text("V AI, V Debug"), "V" + degree + "AI, V" + degree + "Debug");
             Check("other words left alone", VNames.Text("V Watchman, a V shape, VWatch"), "V Watchman, a V shape, VWatch");

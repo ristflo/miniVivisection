@@ -1070,7 +1070,7 @@ return 'badge shown';
                 var separator = documentObject.GetMethods(BindingFlags.Public | BindingFlags.Static).First(m => m.Name == "Menu_AppendSeparator");
                 var item = documentObject.GetMethods(BindingFlags.Public | BindingFlags.Static).First(m => m.Name == "Menu_AppendItem" && m.GetParameters().Length == 4 &&
                     m.GetParameters()[2].ParameterType == typeof(EventHandler) && m.GetParameters()[3].ParameterType == typeof(bool));
-                // Every item "V° ..." (the chosen mark), as all of the plug-in's Grasshopper menu items
+                // Every item "V° ...", as all of the plug-in's Grasshopper menu items
                 void Add(string text, Action click, bool enabled = true) =>
                     item.Invoke(null, new[] { menu, VNames.Menu(text), (EventHandler)((s, e) => click()), (object)enabled });
                 separator.Invoke(null, new[] { menu });

@@ -47,8 +47,9 @@ def update_sensors(array, edited):    # edited: one geometry, or the list in dra
 
 With the visualizer registered, a watch of an array draws its sensors as points; \ui{In Rhino} says
 \code{drawn by show_sensors (12)}. With the inverse, \ui{Edit in Rhino} and Auto edit work on it: drag a
-point, and the sensor's coordinates change in the paused script. A value without an inverse can't be
-edited.
+point, and the sensor's coordinates change in the paused script. A list of such objects is edited the
+same way: each object you change in Rhino goes back through its own inverse, the others are left as they
+are (lesson 10's beams). A value without an inverse can't be edited.
 
 \section{Where to register them}
 
