@@ -10,9 +10,10 @@ namespace MiniVivisection
         /// <summary>Python 3, Rhino's CPython (pythonnet): everything of the plug-in works.</summary>
         Python3,
 
-        /// <summary>IronPython 2.7 (<c>#! python2</c>): the debugger, drawing of plain names
-        /// and breakpoint hit counts work; whatever needs the paused Python 3 frame
-        /// doesn't, and is left out quietly.</summary>
+        /// <summary>IronPython 2.7 (<c>#! python2</c>): the debugger, and its paused frame through
+        /// IronPython's own engine (IronPythonBridge) -- expressions, conditions, editing, the
+        /// Python tab; the pipeline (visualizers, raw data written back) and the thread
+        /// features are Python 3's and are left out quietly.</summary>
         IronPython,
 
         CSharp,
@@ -22,7 +23,7 @@ namespace MiniVivisection
     /// <summary>
     /// Which scripts the plug-in's Python 3 features apply to. PythonBridge reaches Rhino's
     /// CPython only; an IronPython 2 script (<c>#! python2</c>) is a <c>.py</c> file too, but
-    /// its frames aren't CPython's. The kind comes from the editor's language for the
+    /// its frames aren't CPython's (IronPythonBridge reaches them). The kind comes from the editor's language for the
     /// script ("IronPython 2.7.12 (mcneel.ironpython.python)", "Python 3.9.10
     /// (mcneel.pythonnet.python)"), learned whenever the plug-in sees the script open
     /// (Learn), else from the file: <c>.cs</c>, or a <c>.py</c> whose first line asks for

@@ -59,9 +59,9 @@ learn before you can start: set a breakpoint, press \key{F5}, and the values are
 \ui{Rhino} & Rhino~8 for Windows, with its Script Editor (RhinoCode). Rhino~8 runs on .NET; IronPython~2
              scripts need the .NET~8 runtime (Rhino's \code{SetDotNetRuntime}). \\
 \ui{Python 3 scripts} & Get every feature. This is what miniVivisection is made for. \\
-\ui{IronPython 2 scripts} & (\code{\#! python2}) Get the debugger features, drawing of plain variable names and
-             conditional breakpoints; not expressions, inline values, editing in Rhino or the Python
-             prompt in the paused frame (\cref{ch:limits}). \\
+\ui{IronPython 2 scripts} & (\code{\#! python2}) Nearly everything, through IronPython's own engine: expressions,
+             conditions, tooltips, values at line ends, Edit in Rhino, the Python prompt in the paused frame, raw
+             data drawn; not visualizers, raw data written back or the thread features (\cref{ch:limits}). \\
 \ui{C\# scripts} & Watches of plain variable names and conditional breakpoints (a small C\# evaluator);
              largely untested. \\
 \ui{Grasshopper} & Rhino~8's Python~3 script components. The legacy GhPython (IronPython) component is not covered. \\

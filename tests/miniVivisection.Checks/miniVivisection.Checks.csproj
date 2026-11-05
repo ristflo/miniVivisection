@@ -31,6 +31,8 @@
     <Compile Include="..\..\src\miniVivisection\MiniVivisectionOptionsPage.cs" Link="Plugin\MiniVivisectionOptionsPage.cs" />
     <Compile Include="..\..\src\miniVivisection\CSharpConditions.cs" Link="Plugin\CSharpConditions.cs" />
     <Compile Include="..\..\src\miniVivisection\BreakpointConditions.cs" Link="Plugin\BreakpointConditions.cs" />
+    <Compile Include="..\..\src\miniVivisection\IronPythonBridge.cs" Link="Plugin\IronPythonBridge.cs" />
+    <EmbeddedResource Include="..\..\src\miniVivisection\python\minivivisection_helpers_ipy.py" LogicalName="minivivisection_helpers_ipy.py" />
     <Compile Include="..\..\src\miniVivisection\StateToggle.cs" Link="Plugin\StateToggle.cs" />
     <Compile Include="..\..\src\miniVivisection\DrawnIcons.cs" Link="Plugin\DrawnIcons.cs" />
     <Compile Include="..\..\src\miniVivisection\HoverText.cs" Link="Plugin\HoverText.cs" />
@@ -68,6 +70,11 @@
     <Reference Include="Eto"><HintPath>C:\Program Files\Rhino 8\System\Eto.dll</HintPath></Reference>
     <Reference Include="Markdig.Signed"><HintPath>C:\Program Files\Rhino 8\System\Markdig.Signed.dll</HintPath></Reference>
     <Reference Include="Eto.Wpf"><HintPath>C:\Program Files\Rhino 8\System\Eto.Wpf.dll</HintPath></Reference>
+    <!-- Rhino's IronPython 2.7 (IronPythonBridge), hosted for real by the IronPython checks. -->
+    <Reference Include="IronPython"><HintPath>C:\Program Files\Rhino 8\System\netcore\IronPython.dll</HintPath></Reference>
+    <Reference Include="IronPython.Modules"><HintPath>C:\Program Files\Rhino 8\System\netcore\IronPython.Modules.dll</HintPath></Reference>
+    <Reference Include="Microsoft.Scripting"><HintPath>C:\Program Files\Rhino 8\System\netcore\Microsoft.Scripting.dll</HintPath></Reference>
+    <Reference Include="Microsoft.Dynamic"><HintPath>C:\Program Files\Rhino 8\System\netcore\Microsoft.Dynamic.dll</HintPath></Reference>
   </ItemGroup>
 
 </Project>

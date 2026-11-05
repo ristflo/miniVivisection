@@ -102,8 +102,9 @@ once per thread, as \code{pt @Worker-1}. The details are in \see{sec:everythread
 
 \section{C\# and IronPython scripts}
 
-For C\# scripts and IronPython~2 scripts, watches of plain variable names are drawn and baked;
-expressions need Python~3.
+For C\# scripts, watches of plain variable names are drawn and baked; expressions need Python.
+IronPython~2 scripts get expressions, raw data and Interpret as too, through IronPython's own engine
+(\cref{ch:limits}).
 
 \begin{lesson}{lessons 01, 06, 07}
 \lessonfile{01_watch_geometry.py}: V°Watch. \lessonfile{06_watch_expressions.py}: expressions in watches.

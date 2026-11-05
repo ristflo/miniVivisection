@@ -163,7 +163,7 @@ namespace MiniVivisection
             {
                 {
                     var controls = access.DebugControls;
-                    if (controls != null && controls.State == DebugControlsState.Paused && ScriptEditorHook.IsPythonPause(controls))
+                    if (controls != null && controls.State == DebugControlsState.Paused && (ScriptEditorHook.IsPythonPause(controls) || ScriptEditorHook.IsIronPythonPause(controls)))
                     {
                         var done = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
                         var reached = hook.RunOnPausedThread(controls, () =>
@@ -171,7 +171,9 @@ namespace MiniVivisection
                             try
                             {
                                 TerminalHost.Instance.Use(access, hook);
-                                var output = PythonBridge.Exec(code, inPausedFrame: true);
+                                var output = ScriptEditorHook.IsIronPythonPause(controls)
+                                    ? IronPythonBridge.Exec(controls.Results?.CurrentThread?.CurrentFrame, code) // an IronPython 2 script: in its frame, as IronPython 2 code
+                                    : PythonBridge.Exec(code, inPausedFrame: true);
                                 hook.Refresh(controls);
                                 done.SetResult(output);
                             }
@@ -213,8 +215,19 @@ namespace MiniVivisection
                     var controls = access.DebugControls;
                     if (controls == null || controls.State != DebugControlsState.Paused)
                         return "The debugger isn't paused -- there are no variables to look at.";
+                    if (ScriptEditorHook.IsIronPythonPause(controls))
+                    {
+                        try
+                        {
+                            return expression + " = " + ValueText.Describe(IronPythonBridge.Eval(controls.Results?.CurrentThread?.CurrentFrame, expression)); // its own engine, any thread
+                        }
+                        catch (Exception ex)
+                        {
+                            return expression + ": " + ScriptEditorHook.FirstLine(ex);
+                        }
+                    }
                     if (!ScriptEditorHook.IsPythonPause(controls))
-                        return "The paused script isn't Python 3 (IronPython 2 or C#): evaluate reaches Python 3 scripts only. get_debug_state lists its variables.";
+                        return "The paused script is C#: evaluate reaches Python scripts only. get_debug_state lists its variables.";
                     if (!hook.IsPausedThread(controls))
                         return "The paused script runs on its own thread and can't be reached (FreePause is off).";
                     try

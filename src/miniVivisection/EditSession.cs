@@ -17,7 +17,8 @@ namespace MiniVivisection
     /// variable's type and assigned in the paused frame (<c>crv = ...</c>,
     /// <c>curves[2] = ...</c>). At every pause the objects take the script's current
     /// values; they are removed when the run ends. Python scripts only: assigning needs
-    /// the paused Python frame.
+    /// the paused Python frame -- Python 3's through PythonBridge, an IronPython 2 script's
+    /// through IronPythonBridge (geometry item by item; no pipeline there).
     /// </summary>
     internal sealed class EditSession : IDisposable
     {
@@ -41,11 +42,29 @@ namespace MiniVivisection
         {
             if (target.Frame == null)
                 return null;
-            var now = PythonBridge.PausedFrameKey();
+            var now = FrameKeyOf(target.Controls);
             if (now == null || now == target.Frame)
                 return null;
             return "the script is paused in another place now (" + Describe(now) + ", the edit came from " + Describe(target.Frame) +
                    ") -- not written back; edit it again here";
+        }
+
+        /// <summary>The paused frame's key (file, function, ...): a Python 3 frame's through its
+        /// helpers, an IronPython 2 frame's through its engine; null when it can't be read.</summary>
+        private static string FrameKeyOf(IDebugControls controls)
+        {
+            var frame = controls?.Results?.CurrentThread?.CurrentFrame;
+            return IronPythonBridge.FrameOf(frame) != null ? IronPythonBridge.FrameKey(frame) : PythonBridge.PausedFrameKey();
+        }
+
+        /// <summary><c>target = value</c> in the paused frame: Python 3's or an IronPython 2 script's.</summary>
+        private static void Assign(IDebugControls controls, string target, object value)
+        {
+            var frame = controls?.Results?.CurrentThread?.CurrentFrame;
+            if (IronPythonBridge.FrameOf(frame) != null)
+                IronPythonBridge.Assign(frame, target, value);
+            else
+                PythonBridge.Assign(target, value);
         }
 
         private static string Describe(string frameKey)
@@ -115,14 +134,30 @@ namespace MiniVivisection
         /// -- drawn as by <paramref name="interpretation"/> (Interpret As).</summary>
         public void Start(IDebugControls controls, string expression, string interpretation = "auto")
         {
-            if (!ScriptEditorHook.IsPythonPause(controls))
+            if (!ScriptEditorHook.IsPythonPause(controls) && !ScriptEditorHook.IsIronPythonPause(controls))
             {
-                UserLog.Warning("Edit in Rhino works for Python 3 scripts only (not IronPython 2 or C#): {0} isn't edited.", expression);
+                UserLog.Warning("Edit in Rhino works for Python scripts only (not C#): {0} isn't edited.", expression);
                 return;
             }
             if (!_hook.RunOnPausedThread(controls, () => StartOnPausedThread(controls, expression, interpretation)))
                 UserLog.Warning("Can't edit {0}: {1}.", expression, WatchActions.NotReachable);
         }
+
+        /// <summary><see cref="ModeOf(object, string)"/> for the script paused in
+        /// <paramref name="controls"/>: an IronPython 2 script's geometry is edited item by item;
+        /// its raw data is drawn only -- writing it back is the pipeline's, Python 3's.</summary>
+        public static string ModeOf(IDebugControls controls, object value, string interpretation)
+        {
+            if (controls != null && ScriptEditorHook.IsIronPythonPause(controls))
+                return IsGeometryToEdit(value) ? "geometry" : "readonly:an IronPython 2 script's raw data is drawn only (editing it needs Python 3)";
+            return ModeOf(value, interpretation);
+        }
+
+        /// <summary>Whether <paramref name="value"/> is something to edit as geometry without the
+        /// pipeline (an IronPython 2 script): geometry, or a list with geometry in it.</summary>
+        public static bool IsGeometryToEdit(object value) =>
+            WatchGeometry.ItemOf(value) != null ||
+            (value is IList list && !(value is string) && list.Cast<object>().Any(item => WatchGeometry.ItemOf(item) != null));
 
         /// <summary>How a value can be edited (minivivisection_visualize.edit_mode); "geometry"
         /// without the pipeline (no Python: C#).</summary>
@@ -148,8 +183,8 @@ namespace MiniVivisection
                 UserLog.Warning("Can't edit {0}: {1}", expression, error);
                 return;
             }
-            var frame = PythonBridge.PausedFrameKey();
-            var mode = ModeOf(value, interpretation);
+            var frame = FrameKeyOf(controls);
+            var mode = ModeOf(controls, value, interpretation);
             if (mode.StartsWith("readonly"))
             {
                 UserLog.Warning("Can't edit {0} in Rhino: {1}.", expression, mode.Substring(mode.IndexOf(':') + 1));
@@ -384,7 +419,7 @@ namespace MiniVivisection
             }
             try
             {
-                PythonBridge.Assign(target.Expression, value);
+                Assign(target.Controls, target.Expression, value);
                 target.Original = value;
                 UserLog.Success("Wrote the edited {0} back into the script.", target.Expression);
                 return true;

@@ -76,7 +76,8 @@ namespace MiniVivisection
             else
             {
                 Content = Python2Notice.Above(_view, new Python2Notice(editor,
-                    "This tab runs Python 3. The script being debugged is IronPython 2 (#! python2): its variables can't be read or changed from here."));
+                    "The script being debugged is IronPython 2 (#! python2). While it is paused, input runs in its frame as IronPython 2 code and can change its variables; " +
+                    "the tab's commands (show, bake, watch, edit, ...) are Python 3's and aren't available there."));
                 _view.Write("Python prompt (miniVivisection). While the debugger is paused, code runs in the paused frame.\n" +
                             "Commands: show(value, ...) draws in Rhino, hide(name), clear(), bake(value), watch('expr'), edit('expr'); help(show) for more.\n");
             }
@@ -97,12 +98,14 @@ namespace MiniVivisection
         public void UpdateStatus()
         {
             var controls = PausedControls();
-            var state = controls == null ? 0 : ScriptEditorHook.IsPythonPause(controls) ? 1 : 2;
+            var state = controls == null ? 0 : ScriptEditorHook.IsPythonPause(controls) ? 1 : ScriptEditorHook.IsIronPythonPause(controls) ? 3 : 2;
             var ghRun = state == 0 ? null : GrasshopperRuns.PausedRun();
             var status = state == 1
                 ? "[paused" + (ghRun != null ? " in Grasshopper " + ghRun : "") + ": code runs in the paused frame and can change the script's variables]\n"
+                : state == 3
+                    ? "[paused in an IronPython 2 script: code runs in its paused frame, as IronPython 2 code, and can change its variables; the tab's commands need Python 3]\n"
                 : state == 2
-                    ? "[paused in a script that isn't Python 3 (IronPython 2 or C#): code runs in the terminal's own namespace, without its variables]\n"
+                    ? "[paused in a C# script: code runs in the terminal's own namespace, without its variables]\n"
                     : "[not paused: code runs in the terminal's own namespace]\n";
             if (_shownStatus == status)
                 return;
@@ -134,9 +137,13 @@ namespace MiniVivisection
             {
                 Show(Run(source, cell, inPausedFrame: false, controls: null));
             }
+            else if (ScriptEditorHook.IsIronPythonPause(controls))
+            {
+                Show(RunIronPython(source, cell, controls));
+            }
             else if (!ScriptEditorHook.IsPythonPause(controls))
             {
-                _view.Write("[the paused script isn't Python 3 (IronPython 2 or C#): this runs in the tab's own Python 3 namespace, without its variables]\n");
+                _view.Write("[the paused script is C#: this runs in the tab's own Python 3 namespace, without its variables]\n");
                 Show(Run(source, cell, inPausedFrame: false, controls: null));
             }
             else if (_hook.IsPausedThread(controls))
@@ -178,6 +185,24 @@ namespace MiniVivisection
                 while (ex is TargetInvocationException && ex.InnerException != null)
                     ex = ex.InnerException;
                 return (false, ex.Message + "\n");
+            }
+        }
+
+        /// <summary>Input in a paused IronPython 2 script's frame, through its own engine
+        /// (IronPythonBridge; any thread -- no GIL to wait for).</summary>
+        private (bool More, string Output) RunIronPython(string source, bool cell, IDebugControls controls)
+        {
+            try
+            {
+                var frame = controls.Results?.CurrentThread?.CurrentFrame;
+                var result = cell ? (More: false, Output: IronPythonBridge.Exec(frame, source)) : IronPythonBridge.Run(frame, source);
+                if (!result.More)
+                    _hook.Refresh(controls); // the watch drawing shows what the input changed
+                return result;
+            }
+            catch (Exception ex)
+            {
+                return (false, ScriptEditorHook.FirstLine(ex) + "\n");
             }
         }
 

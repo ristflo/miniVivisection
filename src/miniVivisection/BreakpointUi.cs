@@ -456,9 +456,10 @@ return 'ok';";
                 if (uri == null || ed == null || line <= 0)
                     return;
                 var python = IsPython(uri, access.Language);
+                var ironPython = !python && ScriptKinds.Of(uri, access.Language) == ScriptKind.IronPython;
                 var spec = BreakpointSpecs.Find(uri, line);
                 var current = spec == null ? "" : field == SpecField.Condition ? spec.Condition : field == SpecField.HitCount ? spec.HitCondition : spec.LogMessage;
-                var text = Prompt(editor, line, field, python, current, spec?.LastError);
+                var text = Prompt(editor, line, field, python, ironPython, current, spec?.LastError);
                 if (text == null)
                     return;
                 if (text.Trim().Length > 0)
@@ -495,14 +496,14 @@ return 'ok';";
         // The dialog has no buttons.
         private const string DialogKeys = " -- Enter: OK, Esc: cancel, empty: remove";
 
-        private static string Hint(SpecField field, bool python)
+        private static string Hint(SpecField field, bool python, bool ironPython)
         {
             switch (field)
             {
                 case SpecField.Condition:
-                    return python
+                    return python || ironPython
                         ? "Pauses only when this is true, e.g.  i > 3 and crv.IsClosed  (Python, at the line)" + DialogKeys
-                        : "Pauses only when this is true, e.g.  i > 3 and crv.IsClosed  (C# and IronPython: names, members, calls, operators; and/or/not or &&/||/!)" + DialogKeys;
+                        : "Pauses only when this is true, e.g.  i > 3 && crv.IsClosed  (C#: names, members, calls, operators; &&/||/!)" + DialogKeys;
                 case SpecField.HitCount:
                     return "Pauses at the n-th hit:  5   >= 5   % 10 (every 10th)  -- after the condition" + DialogKeys;
                 default:
@@ -511,10 +512,10 @@ return 'ok';";
         }
 
         /// <summary>A small modal box at the mouse; null when cancelled.</summary>
-        private static string Prompt(object editor, int line, SpecField field, bool python, string current, string lastError)
+        private static string Prompt(object editor, int line, SpecField field, bool python, bool ironPython, string current, string lastError)
         {
             var box = new TextBox { Text = current, Width = 420 };
-            var hint = new Label { Text = Hint(field, python), TextColor = Colors.Gray, Font = SystemFonts.Default(8) };
+            var hint = new Label { Text = Hint(field, python, ironPython), TextColor = Colors.Gray, Font = SystemFonts.Default(8) };
             var error = new Label { Text = lastError == null ? "" : "Last run: " + lastError, TextColor = Color.FromArgb(220, 50, 50), Font = SystemFonts.Default(8) };
             var dialog = new Dialog<string>
             {
@@ -537,7 +538,7 @@ return 'ok';";
                 else if (e.Key == Keys.Enter)
                 {
                     e.Handled = true;
-                    var problem = Validate(field, python, box.Text);
+                    var problem = Validate(field, python, ironPython, box.Text);
                     if (problem == null)
                         dialog.Close(box.Text.Trim());
                     else
@@ -556,7 +557,11 @@ return 'ok';";
         }
 
         /// <summary>Null when <paramref name="text"/> can be used, else what's wrong.</summary>
-        internal static string Validate(SpecField field, bool python, string text)
+        internal static string Validate(SpecField field, bool python, string text) => Validate(field, python, false, text);
+
+        /// <summary>Null when <paramref name="text"/> can be used, else what's wrong.
+        /// <paramref name="ironPython"/>: an IronPython 2 script's (its own syntax check).</summary>
+        internal static string Validate(SpecField field, bool python, bool ironPython, string text)
         {
             text = (text ?? "").Trim();
             if (text.Length == 0)
@@ -564,13 +569,13 @@ return 'ok';";
             switch (field)
             {
                 case SpecField.Condition:
-                    return ExpressionError(text, python);
+                    return ExpressionError(text, python, ironPython);
                 case SpecField.HitCount:
                     return BreakpointConditions.HitSyntaxError(text);
                 default:
                     foreach (Match part in Regex.Matches(text, @"\{\{|\}\}|\{([^{}]+)\}"))
                     {
-                        if (part.Groups[1].Success && ExpressionError(part.Groups[1].Value, python) is string problem)
+                        if (part.Groups[1].Success && ExpressionError(part.Groups[1].Value, python, ironPython) is string problem)
                             return "{" + part.Groups[1].Value + "}: " + problem;
                     }
                     return null;
@@ -579,9 +584,12 @@ return 'ok';";
 
         /// <summary>Syntax check of a condition or a {part}. Python: only where Python can be
         /// reached without waiting for a paused script's GIL (ScriptEditorHook.TryPython);
-        /// when it can't, unchecked here -- an error shows at the first hit.</summary>
-        private static string ExpressionError(string expression, bool python)
+        /// when it can't, unchecked here -- an error shows at the first hit. IronPython 2: its
+        /// own compiler, once Rhino has it loaded.</summary>
+        private static string ExpressionError(string expression, bool python, bool ironPython)
         {
+            if (ironPython)
+                return IronPythonBridge.SyntaxError(expression);
             if (!python)
                 return CSharpConditions.SyntaxError(expression);
             var hook = MiniVivisectionPlugin.Instance?.Hook;

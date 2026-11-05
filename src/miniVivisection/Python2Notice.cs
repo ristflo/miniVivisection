@@ -8,10 +8,10 @@ namespace MiniVivisection
 {
     /// <summary>
     /// A notice line on top of the V Python and V Claude tabs while an IronPython 2 script
-    /// (<c>#! python2</c>) is being debugged: their Python is Rhino's Python 3, which can't
-    /// reach that script's variables (ScriptKinds). Shown while a debug run of such a script
-    /// is going on, gone when it ends. Updated at every pause, continue and end
-    /// (ConsoleTabs.UpdateStatus) and when the tab is shown.
+    /// (<c>#! python2</c>) is being debugged: input runs in its frame as IronPython 2 code
+    /// (IronPythonBridge), and the tabs' Python 3 helpers aren't there (ScriptKinds). Shown
+    /// while a debug run of such a script is going on, gone when it ends. Updated at every
+    /// pause, continue and end (ConsoleTabs.UpdateStatus) and when the tab is shown.
     /// </summary>
     internal sealed class Python2Notice : Panel
     {

@@ -45,6 +45,9 @@
     <!-- The Python helpers PythonBridge runs in the paused script's Python: inside the .rhp. -->
     <None Remove="python\minivivisection_helpers.py" />
     <EmbeddedResource Include="python\minivivisection_helpers.py" LogicalName="minivivisection_helpers.py" />
+    <!-- The IronPython 2.7 helpers IronPythonBridge runs in Rhino's IronPython: inside the .rhp. -->
+    <None Remove="python\minivivisection_helpers_ipy.py" />
+    <EmbeddedResource Include="python\minivivisection_helpers_ipy.py" LogicalName="minivivisection_helpers_ipy.py" />
     <!-- The default Markdown styles (MarkdownStyle): inside the .rhp, and next to it in styles\ to read and copy. -->
     <EmbeddedResource Include="styles\markdown_rhino.css" LogicalName="markdown_rhino.css" />
     <EmbeddedResource Include="styles\markdown_grasshopper.css" LogicalName="markdown_grasshopper.css" />
@@ -79,6 +82,21 @@
     <!-- Rhino's Markdig (the Script Editor's Markdown preview): MarkdownText. Same rules. -->
     <Reference Include="Markdig.Signed">
       <HintPath>C:\Program Files\Rhino 8\System\Markdig.Signed.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- Rhino's IronPython 2.7 (IronPythonBridge: eval and exec in a paused IronPython 2 script's
+         frame): the .NET Core build in System\netcore, the same assembly identity as
+         System\IronPython.dll. Same rules; its types are touched only once Rhino loaded it. -->
+    <Reference Include="IronPython">
+      <HintPath>C:\Program Files\Rhino 8\System\netcore\IronPython.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Microsoft.Scripting">
+      <HintPath>C:\Program Files\Rhino 8\System\netcore\Microsoft.Scripting.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Microsoft.Dynamic">
+      <HintPath>C:\Program Files\Rhino 8\System\netcore\Microsoft.Dynamic.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>

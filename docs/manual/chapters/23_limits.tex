@@ -5,14 +5,16 @@
 \begin{description}
   \item[A beta.] miniVivisection relies on internal code of Rhino~8's Script Editor (RhinoCode 8.36 when it was
         written). A Rhino service release can change it. The plug-in then follows nothing; it doesn't fail.
-  \item[Python~3 first.] Inline values, tooltips with scope, the Python prompt in the paused frame and Edit in Rhino are
-        for Python~3 scripts only.
-  \item[IronPython~2] (\code{\#! python2}): FreePause, step over across modules, \vn{Watch} drawing and baking of plain variable
-        names, the hover preview and tooltip values of plain names, the value tree, conditional breakpoints, hit counts and
-        logpoints work. Left out, quietly: expressions in watches and the Watch tab, scoped tooltips, values at the ends of
-        lines, “was”, Edit in Rhino and Auto edit, visualizers and Interpret as for raw Python data, the Python prompt and
-        Claude's evaluation in the paused frame. While one is debugged, an amber notice on \vn{Python} and \vn{Claude} says so.
-        Full IronPython~2 support is planned.
+  \item[Python~3 first.] Visualizers, raw data written back, tooltips scoped to the hovered line and the thread features
+        are for Python~3 scripts only.
+  \item[IronPython~2] (\code{\#! python2}): Debugged through IronPython's own engine: expressions in watches and the Watch
+        tab, conditions and logpoints as Python, tooltips with “was”, values at the ends of lines, Edit in Rhino and Auto
+        edit of geometry (written back into globals and a function's locals), the Python prompt and Claude's \code{evaluate}
+        and \code{run_python} in the paused frame -- as IronPython~2 code --, raw data drawn and Interpret as. Left out,
+        quietly: visualizers and raw data written back (the pipeline is Python~3's), tooltips scoped to the hovered line
+        (the paused frame's value shows), \vn{Threads} and watches in every thread, the Python prompt's commands
+        (\code{show}, \code{bake}, …) while such a script is paused. While one is debugged, an amber notice on \vn{Python}
+        and \vn{Claude} says so.
   \item[C\#:] Watches of plain variable names and conditional breakpoints with a small evaluator; largely untested.
   \item[Two watch lists.] The editor's Watch tab shows values; \vn{Watch} draws. Each has its own list.
   \item[Grasshopper:] Python~3 script components through their own script editor. The legacy GhPython (IronPython~2)

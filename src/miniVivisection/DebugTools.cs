@@ -126,6 +126,8 @@ namespace MiniVivisection
                     var controls = access.DebugControls;
                     if (controls == null || controls.State != DebugControlsState.Paused)
                         return Task.FromResult("The debugger isn't paused.");
+                    if (!ScriptEditorHook.IsPythonPause(controls))
+                        return Task.FromResult("Visualizers are Python 3's: the paused script is " + (ScriptEditorHook.IsIronPythonPause(controls) ? "IronPython 2" : "C#") + ", whose values are drawn as geometry only.");
                     var done = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
                     if (!hook.RunOnPausedThread(controls, () =>
                     {

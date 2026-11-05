@@ -541,7 +541,7 @@ namespace MiniVivisection
         /// longer listed stop being edited. On the paused thread.</summary>
         private void AutoEdit(IDebugControls controls, RhinoWatchList list)
         {
-            if (!IsPythonPause(controls))
+            if (!IsPythonPause(controls) && !IsIronPythonPause(controls))
                 return; // write-back needs the paused Python frame
             var hiddenHere = Threads.PausedLabel(controls);
             var listed = new HashSet<string>(list.Snapshot.Where(w => w.Visible && !(hiddenHere != null && w.HiddenThreads.Contains(hiddenHere))).Select(w => w.Expression),
@@ -553,7 +553,7 @@ namespace MiniVivisection
             {
                 if (Edits.IsEditing(controls, watch.Expression) || !TryEvaluate(controls, watch.Expression, out var value, out _))
                     continue;
-                if (EditSession.ModeOf(value, watch.Interpretation).StartsWith("readonly"))
+                if (EditSession.ModeOf(controls, value, watch.Interpretation).StartsWith("readonly"))
                     continue; // drawn, not editable: no message at every pause
                 if (WatchGeometry.Drawable(value, watch.Interpretation, true, out _, out _, out _).Count > 0)
                     Edits.Start(controls, watch.Expression, watch.Interpretation);
@@ -685,8 +685,15 @@ namespace MiniVivisection
         {
             variable = null;
             var controls = ControlsPausedAt(frame);
-            if (controls == null || !ScriptKinds.IsPython3(frame.Reference?.Uri))
-                return false; // C# and IronPython 2: the editor's own lookup
+            if (controls == null)
+                return false;
+            if (IronPythonBridge.FrameOf(frame) != null) // an IronPython 2 script: its own engine, from any thread
+            {
+                variable = IronPythonBridge.WatchVariable(frame, expression.ExpressionString);
+                return variable is object;
+            }
+            if (!ScriptKinds.IsPython3(frame.Reference?.Uri))
+                return false; // C#: the editor's own lookup
             if (frame.ThreadId.Id == Environment.CurrentManagedThreadId)
             {
                 variable = PythonBridge.WatchVariable(expression.ExpressionString);
@@ -736,6 +743,12 @@ namespace MiniVivisection
         /// paused Python frame only.</summary>
         internal static bool IsPythonPause(IDebugControls controls) =>
             BreakpointUi.IsPython(controls.Results?.CurrentThread?.CurrentFrame?.Reference?.Uri, null);
+
+        /// <summary>Whether the paused frame is an IronPython 2 script's, reached through
+        /// IronPython's own engine (IronPythonBridge): expressions, assignments and editing
+        /// work there too, from any thread.</summary>
+        internal static bool IsIronPythonPause(IDebugControls controls) =>
+            IronPythonBridge.FrameOf(controls.Results?.CurrentThread?.CurrentFrame) != null;
 
         /// <summary>Whether this is the thread paused for <paramref name="controls"/>: the
         /// paused frame records it (ExecFrame.ThreadId) -- right from the start of the
@@ -982,6 +995,8 @@ namespace MiniVivisection
                     // the editor's variable, below
                 }
             }
+            else if (IronPythonBridge.FrameOf(frame) != null)
+                return IronPythonBridge.VariableFor(name, value); // the tracer's own kind of variable, for the value as it is now
             var bypass = WatchExpressions.Bypass;
             WatchExpressions.Bypass = true;
             try
@@ -1012,6 +1027,18 @@ namespace MiniVivisection
                 try
                 {
                     value = PythonBridge.Eval(expression.ExpressionString);
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    pythonError = ex;
+                }
+            }
+            else if (IronPythonBridge.FrameOf(frame) != null) // an IronPython 2 script: its own engine, from any thread
+            {
+                try
+                {
+                    value = IronPythonBridge.Eval(frame, expression.ExpressionString);
                     return true;
                 }
                 catch (Exception ex)

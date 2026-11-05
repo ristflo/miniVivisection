@@ -68,8 +68,8 @@ script's variables; a script variable of the same name takes precedence. \code{h
   \item When the script runs on its own thread, the tab needs FreePause to reach the paused script.
   \item The editor's Variables and Watch tabs keep the values from the pause until the next step, and are
         refreshed after a command changed something.
-  \item While an IronPython~2 script is debugged, an amber notice says that this Python~3 can't reach its
-        variables; input runs in the tab's own namespace.
+  \item While an IronPython~2 script is debugged, an amber notice says that input runs in its paused frame as
+        IronPython~2 code (\code{print x}), and that the tab's commands (\code{show}, \code{bake}, …) are Python~3's.
 \end{itemize}
 
 \begin{lesson}{lesson 08}\lessonfile{08_python_terminal.py}: V°Python.\end{lesson}

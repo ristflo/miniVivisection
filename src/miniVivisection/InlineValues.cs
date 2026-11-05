@@ -16,8 +16,9 @@ namespace MiniVivisection
     /// line, the paused frame's variables written on it, "count = 5, k = 2", in gray
     /// after the line; those changed since the last pause in another color (option
     /// "What changed since the last pause"). Monaco decorations with an <c>after</c>
-    /// text, in the code view showing the paused file. Python scripts. At every pause it
-    /// also gives ValueHistory the frame's variables, for "was" in the tooltips.
+    /// text, in the code view showing the paused file. Python scripts (Python 3 through
+    /// PythonBridge, IronPython 2 through IronPythonBridge). At every pause it also gives
+    /// ValueHistory the frame's variables, for "was" in the tooltips.
     /// Options: "Values at the ends of lines".
     /// </summary>
     internal static class InlineValues
@@ -58,24 +59,30 @@ return 'ok';";
         {
             if (!(MiniVivisectionSettings.InlineValues || MiniVivisectionSettings.ShowChanges))
                 return;
-            if (!PythonBridge.IsRunning || editor == null)
+            if (editor == null)
             {
-                Once("not shown: {0}", !PythonBridge.IsRunning ? "Python isn't loaded" : "the Script Editor isn't known yet");
+                Once("not shown: the Script Editor isn't known yet");
                 return;
             }
             var frame = controls.Results?.CurrentThread?.CurrentFrame;
             var uri = frame?.Reference?.Uri;
             if (frame == null || frame.Event == Rhino.Runtime.Code.Execution.ExecEvent.Exception)
                 return;
-            if (!BreakpointUi.IsPython(uri, null))
+            var ironPython = IronPythonBridge.FrameOf(frame) != null; // an IronPython 2 script: its frame through its own engine
+            if (!ironPython && !BreakpointUi.IsPython(uri, null))
             {
-                Log.Debug(LogArea.Hover, "values at the line ends: {0} isn't a Python 3 script", uri); // C#, IronPython 2: quietly none
+                Log.Debug(LogArea.Hover, "values at the line ends: {0} isn't a Python script", uri); // C#: quietly none
+                return;
+            }
+            if (!ironPython && !PythonBridge.IsRunning)
+            {
+                Once("not shown: Python isn't loaded");
                 return;
             }
             (string Key, int First, int Current, List<(string Name, string Text, object Value)> Items) found;
             try
             {
-                found = PythonBridge.InlineValues();
+                found = ironPython ? IronPythonBridge.InlineValues(frame) : PythonBridge.InlineValues();
             }
             catch (Exception ex)
             {

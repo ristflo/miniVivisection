@@ -265,15 +265,24 @@ def __minivivisection_pipeline():
     import minivivisection_visualize
     return minivivisection_visualize
 
+def __minivivisection_native(value, depth=0):
+    # An IronPython 2 script's lists and tuples (pythonnet wraps them as .NET objects) as
+    # Python lists and tuples, item by item, so the pipeline reads them as raw data too.
+    kind = type(value)
+    if kind.__name__ in ('List', 'PythonTuple') and 'IronPython.Runtime' in (getattr(kind, '__module__', '') or '') + str(kind) and depth < 20:
+        items = [__minivivisection_native(v, depth + 1) for v in value]
+        return tuple(items) if kind.__name__ == 'PythonTuple' else items
+    return value
+
 def __minivivisection_visualize(value, interpretation, limit):
     import Rhino.Geometry as rg
     wv = __minivivisection_pipeline()
-    how, items = wv.visualize(value, interpretation, rg, limit)
+    how, items = wv.visualize(__minivivisection_native(value), interpretation, rg, limit)
     return [how, wv.describe(how), [k for k, _ in items], [v for _, v in items]]
 
 def __minivivisection_candidates(value):
     wv = __minivivisection_pipeline()
-    return [c + '|' + wv.LABELS.get(c, c) for c in wv.candidates(value)]
+    return [c + '|' + wv.LABELS.get(c, c) for c in wv.candidates(__minivivisection_native(value))]
 
 def __minivivisection_edit_mode(value, interpretation):
     return __minivivisection_pipeline().edit_mode(value, interpretation)

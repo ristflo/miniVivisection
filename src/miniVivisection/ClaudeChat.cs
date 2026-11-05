@@ -149,8 +149,8 @@ namespace MiniVivisection
                     _runner.Stop();
             });
             var chat = Python2Notice.Above(_view, new Python2Notice(editor,
-                "The script being debugged is IronPython 2 (#! python2). Claude's Python tools run Python 3 and can't read or change its variables; " +
-                "Claude still sees the code, the breakpoints and the debugger's variable list (get_debug_state)."));
+                "The script being debugged is IronPython 2 (#! python2). While it is paused, Claude's evaluate and run_python work in its frame as IronPython 2 code; " +
+                "the Python 3 helpers (show, bake, visualizers) aren't available there."));
             Content = new TableLayout { Rows = { new TableRow(_question.MakeBar()), new TableRow(chat) { ScaleHeight = true } } };
             Write("Claude Code in the Script Editor (miniVivisection). It can read the script, the selection, the Terminal and the debugger, " +
                   "run Python in the paused frame, edit the script and -- with RhinoAI installed -- work in Rhino.\n" + Help + "\n");

@@ -66,6 +66,7 @@ namespace MiniVivisection
             Section("OncePerLine", OncePerLineChecks);
             Section("StoppedRuns", StoppedRunChecks);
             Section("IronPython", IronPythonChecks);
+            Section("IronPythonBridge", IronPythonBridgeChecks);
             Section("FolderDrop", FolderDropChecks);
             Section("Threads", ThreadChecks);
             Section("Examples", ExampleChecks);

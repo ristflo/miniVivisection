@@ -26,8 +26,8 @@ applies, \key{Esc} cancels, an empty text clears it. A breakpoint is made on the
   \item[C\# scripts:] A small evaluator over the frame's variables: literals, names, members, indexers,
         method calls (and \code{Math.}), arithmetic, comparisons, and \code{\&\&}, \code{||}, \code{!}, which
         short-circuit, so \code{crv != null \&\& crv.IsClosed} works. No LINQ, lambdas, casts or generics.
-  \item[IronPython~2 scripts:] The same evaluator, which also reads Python's \code{and}, \code{or}, \code{not}
-        and \code{True}, \code{False}, \code{None}: \code{i > 3 and name == 'a'}.
+  \item[IronPython~2 scripts:] Any Python expression too, evaluated by IronPython in the traced frame
+        (in Grasshopper with \code{gh_run}, \code{gh_branch}, \code{gh_item}).
 \end{description}
 
 A condition that fails, by a typo or a missing name, \emph{pauses}, as without a condition. The marker

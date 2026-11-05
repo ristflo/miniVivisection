@@ -210,6 +210,7 @@ namespace MiniVivisection
         {
             HoverText.Tip tip;
             object value;
+            var ironPython = !python && ScriptEditorHook.IsIronPythonPause(controls);
             if (python)
             {
                 tip = HoverText.InfoForPython(expression, line, filename);
@@ -217,9 +218,10 @@ namespace MiniVivisection
             }
             else
             {
+                // C#, IronPython 2: the value in the paused frame (an IronPython expression through its engine)
                 if (!ScriptEditorHook.TryEvaluate(controls, expression, out value, out _))
                     return null;
-                tip = HoverText.InfoForValue(value, ScriptKinds.Of(controls.Results?.CurrentThread?.CurrentFrame?.Reference?.Uri) == ScriptKind.IronPython ? "python" : "csharp");
+                tip = HoverText.InfoForValue(value, ironPython || ScriptKinds.Of(controls.Results?.CurrentThread?.CurrentFrame?.Reference?.Uri) == ScriptKind.IronPython ? "python" : "csharp");
             }
             var was = MiniVivisectionSettings.ShowChanges ? ValueHistory.WasFor(controls, expression, line, tip.Text) : null;
             var links = new List<(string Label, string Href)>();
@@ -227,7 +229,7 @@ namespace MiniVivisection
             if (MiniVivisectionSettings.TooltipActions && !whole && !IsPlain(value)) // titles: HoverText.LinkTitle
             {
                 links.Add(("Watch in Rhino", HoverText.LinkFor("watch", expression, line)));
-                if (python && !EditSession.ModeOf(value, "auto").StartsWith("readonly", StringComparison.Ordinal))
+                if (python && !EditSession.ModeOf(value, "auto").StartsWith("readonly", StringComparison.Ordinal) || ironPython && EditSession.IsGeometryToEdit(value))
                 {
                     links.Add(("Edit in Rhino", HoverText.LinkFor("edit", expression, line)));
                     links.Add(("Bake", HoverText.LinkFor("bake", expression, line)));

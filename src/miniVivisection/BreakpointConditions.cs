@@ -394,13 +394,17 @@ namespace MiniVivisection
         /// <summary>Pause or not, for a breakpoint hit at <paramref name="line"/> with a spec.</summary>
         internal static bool Decide(BreakpointSpec spec, ExecFrame frame, Uri uri, int line, IDebugControls controls)
         {
-            var python = IsPython(uri);
+            var kind = KindOf(uri);
+            var python = kind == ScriptKind.Python3;
+            var ironPython = kind == ScriptKind.IronPython && IronPythonBridge.FrameOf(frame) != null;
             if (spec.Condition.Length > 0)
             {
                 bool holds;
                 try
                 {
-                    holds = python ? PythonBridge.ConditionHolds(spec.Condition) : CSharpConditions.IsTrue(spec.Condition, ConditionVariables(frame));
+                    holds = python ? PythonBridge.ConditionHolds(spec.Condition)
+                        : ironPython ? IronPythonBridge.ConditionHolds(frame, spec.Condition, GrasshopperExtras())
+                        : CSharpConditions.IsTrue(spec.Condition, ConditionVariables(frame));
                 }
                 catch (Exception ex)
                 {
@@ -430,7 +434,8 @@ namespace MiniVivisection
                 string text;
                 try
                 {
-                    text = python ? PythonBridge.Logpoint(spec.LogMessage, MiniVivisectionSettings.ThreadTags) : PrintCSharp(Format(spec.LogMessage, ConditionVariables(frame)), controls);
+                    text = python ? PythonBridge.Logpoint(spec.LogMessage, MiniVivisectionSettings.ThreadTags)
+                        : PrintCSharp(ironPython ? IronPythonBridge.Logpoint(frame, spec.LogMessage, GrasshopperExtras()) : Format(spec.LogMessage, ConditionVariables(frame)), controls);
                 }
                 catch (Exception ex)
                 {
@@ -479,21 +484,25 @@ namespace MiniVivisection
                 ? null
                 : "a number (the n-th hit), or >= n, > n, <= n, < n, % n";
 
-        /// <summary>Python 3 conditions run in the traced CPython frame; IronPython 2 and C#
-        /// ones go to CSharpConditions over the frame's variables (it reads Python's
-        /// and/or/not and True/False/None too).</summary>
-        private static bool IsPython(Uri uri)
+        /// <summary>Python 3 conditions run in the traced CPython frame; IronPython 2 ones in
+        /// the traced IronPython frame (IronPythonBridge); C# ones go to CSharpConditions over
+        /// the frame's variables -- it reads Python's and/or/not and True/False/None too, so an
+        /// IronPython frame the bridge can't reach gets it as well.</summary>
+        private static ScriptKind KindOf(Uri uri)
         {
-            switch (ScriptKinds.Of(uri))
-            {
-                case ScriptKind.Python3:
-                    return true;
-                case ScriptKind.IronPython:
-                case ScriptKind.CSharp:
-                    return false;
-                default:
-                    return PythonBridge.IsRunning && PythonBridge.InTraceCallback();
-            }
+            var kind = ScriptKinds.Of(uri);
+            if (kind == ScriptKind.Other)
+                kind = PythonBridge.IsRunning && PythonBridge.InTraceCallback() ? ScriptKind.Python3 : ScriptKind.CSharp;
+            return kind;
+        }
+
+        /// <summary>gh_run, gh_branch and gh_item of the Grasshopper run being evaluated, as names
+        /// an IronPython 2 condition or logpoint can use (as Python 3 ones have them); null outside
+        /// a component's run.</summary>
+        private static Dictionary<string, object> GrasshopperExtras()
+        {
+            var run = PythonBridge.GrasshopperRun?.Invoke();
+            return run == null ? null : WithGrasshopperRun(new Dictionary<string, object>(StringComparer.Ordinal), run);
         }
 
         /// <summary>What a C# or IronPython 2 condition or logpoint can name: the frame's

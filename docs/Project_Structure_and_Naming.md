@@ -36,8 +36,8 @@ miniVivisection/
 ├── src/
 │   ├── miniVivisection/         the Rhino plug-in -> miniVivisection.rhp
 │   │   ├── *.cs, Properties/
-│   │   ├── python/              shipped Python: minivivisection_helpers.py (embedded),
-│   │   │                        minivivisection_visualize.py, rhinoviv.py
+│   │   ├── python/              shipped Python: minivivisection_helpers.py and minivivisection_helpers_ipy.py
+│   │   │                        (embedded; Python 3's and IronPython 2's), minivivisection_visualize.py, rhinoviv.py
 │   │   ├── styles/              the default Markdown styles (CSS)
 │   │   ├── toolbar/             miniVivisection.rui and its icons
 │   │   └── rhino_tools.json     V°Claude's Rhino tools
