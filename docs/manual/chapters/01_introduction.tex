@@ -1,6 +1,6 @@
 \chapter{Introduction}\label{ch:intro}
 
-miniVivisection extends the debugger of Rhino~8's Script Editor, and it brings that debugger into
+miniVivisection extends the debugger of the Script Editor in Rhino~8 and Rhino~9, and it brings that debugger into
 Grasshopper. When a script stops at a breakpoint, you see what its variables hold \emph{as geometry in
 Rhino's viewports}, not only as lines of text. You can change that geometry with Rhino's own tools and
 write it back into the running script. The values appear where you read the code: in the tooltips, and
@@ -56,7 +56,7 @@ learn before you can start: set a breakpoint, press \key{F5}, and the values are
 
 \begin{xltabular}{\linewidth}{@{}P{0.28\linewidth}L@{}}
 \toprule
-\ui{Rhino} & Rhino~8 for Windows, with its Script Editor (RhinoCode). Rhino~8 runs on .NET; IronPython~2
+\ui{Rhino} & Rhino~8 (8.36 or later) or Rhino~9 (9.2 or later, its own package: \cref{sec:rhino9}) for Windows, with its Script Editor (RhinoCode). Rhino~8 runs on .NET; IronPython~2
              scripts need the .NET~8 runtime (Rhino's \code{SetDotNetRuntime}). \\
 \ui{Python 3 scripts} & Get every feature. This is what miniVivisection is made for. \\
 \ui{IronPython 2 scripts} & (\code{\#! python2}) Nearly everything, through IronPython's own engine: expressions,
@@ -64,7 +64,7 @@ learn before you can start: set a breakpoint, press \key{F5}, and the values are
              data drawn; not visualizers, raw data written back or the thread features (\cref{ch:limits}). \\
 \ui{C\# scripts} & Watches of plain variable names and conditional breakpoints (a small C\# evaluator);
              largely untested. \\
-\ui{Grasshopper} & Rhino~8's Python~3 script components. The legacy GhPython (IronPython) component is not covered. \\
+\ui{Grasshopper} & Rhino's Python~3 script components. The legacy GhPython (IronPython) component is not covered. \\
 \ui{V°Claude} (optional) & Claude Code, the \code{claude} command line program, installed and signed in.
              RhinoAI (McNeel's Rhino MCP Platform) lets Claude work in the model and in Grasshopper. \\
 \ui{V°PowerShell} & PowerShell~7 (\code{pwsh}) or Windows PowerShell. \\

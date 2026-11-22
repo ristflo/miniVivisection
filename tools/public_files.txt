@@ -9,6 +9,7 @@
 + THIRD-PARTY-NOTICES.txt
 + miniVivisection.sln
 + Version.props
++ Rhino.props
 + .gitignore
 
 # Code, tests, lessons

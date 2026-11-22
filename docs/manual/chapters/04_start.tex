@@ -2,15 +2,15 @@
 
 \section{Installing}\label{sec:install}
 
-miniVivisection runs in Rhino~8 (8.36 or later) on Windows. It comes as a Rhino package,
-\file{minivivisection-<version>-rh8\_36-win.yak}, from Rhino's Package Manager or from the web page.
+miniVivisection runs in Rhino~8 (8.36 or later) and Rhino~9 (9.2 or later) on Windows. It comes as a Rhino package,
+\file{minivivisection-<version>-rh8\_36-win.yak} (Rhino~9: \file{…-rh9\_2-win.yak}), from Rhino's Package Manager or from the web page.
 The package holds the plug-in \file{miniVivisection.rhp}, its Grasshopper
 part \file{miniVivisection.GH.gha}, the libraries they need, the lessons in \file{examples}, and this
 manual.
 
-\paragraph{Installing the package.} In Rhino~8, run \code{PackageManager}, search for
+\paragraph{Installing the package.} In Rhino~8 (or Rhino~9), run \code{PackageManager}, search for
 \ui{miniVivisection}, tick \ui{Include pre-releases} (it's a beta) and click \ui{Install}. Or drag the
-\file{.yak} file from the web page onto Rhino~8's window: Rhino installs it as a package all the same.
+\file{.yak} file from the web page onto Rhino's window: Rhino installs it as a package all the same. Each Rhino gets its own package; each loads only in its own Rhino.
 Restart Rhino: it loads from then on, its Grasshopper components too. \code{PackageManager} offers
 newer builds, however miniVivisection was installed (keep \ui{Include pre-releases} ticked). To remove
 it: \code{PackageManager}, \ui{Installed}, miniVivisection, \ui{Uninstall}. Each version
@@ -27,7 +27,7 @@ them too. \code{-DeleteFiles} moves the zip copy's files out as well, \code{-Res
 settings, \code{-ListOnly} only lists. In Rhino, \code{PlugInManager} (miniVivisection,
 \ui{Uninstall}) removes the registration too.
 
-\paragraph{From a build folder.} For development, the build folder \file{bin\bs Release\bs net7.0}
+\paragraph{From a build folder.} For development, the build folder \file{bin\bs Release\bs net7.0} (Rhino~9: \file{bin\bs Release\bs rhino9})
 holds the same files. Remove the package first, in \code{PackageManager}. Then:
 
 \begin{enumerate}[label=\arabic*.]

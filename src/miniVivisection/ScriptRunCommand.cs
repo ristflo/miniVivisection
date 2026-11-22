@@ -175,6 +175,7 @@ namespace MiniVivisection
             return string.Format("miniVivisection: {0} runs as Python 3, without the debugger. To stop it with {1} and see where, set V Settings > RunPythonScript command to Stop and record (or Debug to pause it).", title, hotkey);
         }
 
+#if !RHINO9
         /// <summary>Opens <paramref name="script"/> (a Template) in the Script Editor and runs
         /// it there in the debugger, the editor minimized until it pauses; false: couldn't
         /// (the caller runs it as it would).</summary>
@@ -291,6 +292,201 @@ namespace MiniVivisection
                 UserLog.Warning("ScriptEditor Run keeps running scripts plainly (its Debug option and the setting \"Debug\" can't apply): {0}", ex.Message);
             }
         }
+#else
+        // Rhino 9: RhinoCodePlugin's ScriptEditorCommand has no OpenEditor any more; the one
+        // standalone editor is RhinoCodePlatform.Rhino3D.Rhino3DScriptEditor's (OpenScriptAsync,
+        // TryGetForm), and its public model debugs a script without the breakpoint rule
+        // (ICodesAspect.RestoreAndDebug) -- no Debug command to force, no polling.
+        private const string PlatformAssembly = "RhinoCodePlatform.Rhino3D";
+        private const string ScriptEditorType = "RhinoCodePlatform.Rhino3D.Rhino3DScriptEditor";
+        private static MethodInfo s_openScriptAsync; // Rhino3DScriptEditor.OpenScriptAsync(Template)
+        private static MethodInfo s_tryGetForm;      // Rhino3DScriptEditor.TryGetForm(out MainEditor)
+        private static bool s_newEditorPatched;
+
+        // Editors running a debug run that ScriptEditor Run / RunPythonScript started: their
+        // minimizing is the editor's (KeepEditorOpen), until the run ends.
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<object, object> s_commandRuns =
+            new System.Runtime.CompilerServices.ConditionalWeakTable<object, object>();
+
+        /// <summary>For KeepEditorOpen: this editor's current run was started by ScriptEditor Run
+        /// (or RunPythonScript) with Debug.</summary>
+        internal static bool IsCommandDebugRun(object window) => window != null && s_commandRuns.TryGetValue(window, out _);
+
+        /// <summary>Opens <paramref name="script"/> (a Template) in the Script Editor and runs it
+        /// there in the debugger, out of sight until it pauses. False: couldn't start (the caller
+        /// runs it plainly); a later failure is reported and the editor shown.</summary>
+        internal static bool DebugInEditor(object script, string via)
+        {
+            if (s_openScriptAsync == null)
+            {
+                // RhinoCodePlugin (the ScriptEditor command's) loads on demand
+                Rhino.PlugIns.PlugIn.LoadPlugIn(PluginId);
+                var loaded = AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(a => a.GetName().Name == PluginAssembly);
+                if (loaded != null)
+                    TryInstall(loaded);
+            }
+            if (s_openScriptAsync == null || !(script is Rhino.Runtime.Code.Template template))
+            {
+                UserLog.Warning("{0}: the Script Editor isn't available ({1}) -- running the script plainly.", via, s_error ?? "RhinoCodePlugin not loaded");
+                return false;
+            }
+            _ = DebugInEditorAsync(template, via); // on the UI thread; its awaits continue there
+            return true;
+        }
+
+        private static async System.Threading.Tasks.Task DebugInEditorAsync(Rhino.Runtime.Code.Template script, string via)
+        {
+            Window window = null;
+            try
+            {
+                PatchNewEditor();
+                window = ExistingEditor();
+                if (window != null)
+                {
+                    // As in Rhino 8: out of sight unless it's on screen already (or only there
+                    // because the last such run's pause brought it up) -- before OpenAsync focuses it.
+                    var madeInvisible = s_invisible.TryGetValue(window, out _);
+                    var onScreen = !madeInvisible && IsOnScreen(window);
+                    var shownByPause = s_shownByPause.TryGetValue(window, out _);
+                    var hidden = madeInvisible || !onScreen || shownByPause;
+                    Log.Info(LogArea.Tabs, "the editor {0}: invisible {1}, on screen {2}, shown by a pause {3}",
+                        hidden ? "is kept out of sight" : "stays as it is", madeInvisible, onScreen, shownByPause);
+                    if (hidden && !madeInvisible)
+                        MakeInvisible(window);
+                }
+                s_hideNewEditor = window == null; // a new editor: invisible from its constructor on
+                try
+                {
+                    await (System.Threading.Tasks.Task)s_openScriptAsync.Invoke(null, new object[] { script });
+                }
+                finally
+                {
+                    s_hideNewEditor = false;
+                }
+                window = ExistingEditor() ?? throw new InvalidOperationException("the Script Editor didn't open");
+                var model = Rhino9Editor.ModelOf(window) ?? throw new InvalidOperationException("the Script Editor has no model");
+                var item = model.Codes.Current;
+                if (item?.Code == null || !SameScript(item.Code.Uri, script.Uri))
+                    throw new InvalidOperationException("the script isn't the editor's open tab");
+                if (!window.Visible)
+                    (window as Form)?.Show(); // hidden by its close button; still cloaked if it was
+                s_commandRuns.AddOrUpdate(window, null);
+                s_debugStarted.AddOrUpdate(window, null); // its run's end reveals it (minimized)
+                UserLog.Info("{0}: {1} runs in the debugger, the Script Editor out of sight until it pauses ({2}, a breakpoint).", via, script.Title, GrasshopperRuns.Hotkey());
+                await model.Codes.RestoreAndDebug(item); // the whole run: the editor's Debug, without its breakpoint rule
+            }
+            catch (Exception ex)
+            {
+                while (ex is TargetInvocationException && ex.InnerException != null)
+                    ex = ex.InnerException;
+                UserLog.Warning("{0} in the debugger failed ({1}).", via, ex.Message);
+                try
+                {
+                    if (window != null)
+                        Reveal(window, paused: true); // never left invisible
+                }
+                catch (Exception revealing)
+                {
+                    Log.Warning(LogArea.Tabs, "showing the editor again: {0}", Log.Describe(revealing));
+                }
+            }
+            finally
+            {
+                if (window != null)
+                    s_commandRuns.Remove(window);
+            }
+        }
+
+        private static bool SameScript(Uri a, Uri b) =>
+            a != null && b != null && (a == b || (a.IsFile && b.IsFile && string.Equals(a.LocalPath, b.LocalPath, StringComparison.OrdinalIgnoreCase)));
+
+        private static Window ExistingEditor()
+        {
+            var args = new object[] { null };
+            return s_tryGetForm != null && (bool)s_tryGetForm.Invoke(null, args) ? args[0] as Window : null;
+        }
+
+        /// <summary>A new Script Editor window is invisible from its creation while
+        /// s_hideNewEditor is set: a postfix on MainEditor's constructors (Rhino 8: CodeEditor.BeginEdit).
+        /// Rhino 9 creates it inside OpenAsync after an await, then shows it (BeginEdit).</summary>
+        private static void PatchNewEditor()
+        {
+            if (s_newEditorPatched || s_harmony == null || s_tryGetForm == null)
+                return;
+            s_newEditorPatched = true;
+            try
+            {
+                // TryGetForm(out MainEditor): the parameter's element type is MainEditor (loads RhinoCodeEditor).
+                var mainEditor = s_tryGetForm.GetParameters()[0].ParameterType.GetElementType()
+                    ?? throw new MissingMemberException(ScriptEditorType, "TryGetForm(out MainEditor)");
+                foreach (var ctor in mainEditor.GetConstructors(BindingFlags.Public | BindingFlags.Instance))
+                    s_harmony.Patch(ctor, postfix: new HarmonyMethod(typeof(ScriptRunCommand), nameof(NewEditorPostfix)));
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(LogArea.Tabs, "a new editor can't be kept invisible (it shows while the script runs): {0}", Log.Describe(ex));
+            }
+        }
+
+        private static void NewEditorPostfix(object __instance)
+        {
+            try
+            {
+                if (s_hideNewEditor && __instance is Window window && !IsOnScreen(window))
+                {
+                    MakeInvisible(window); // no handle yet: cloaked at SourceInitialized, before it's drawn
+                    Log.Info(LogArea.Tabs, "a new editor is made invisible before it shows");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(LogArea.Tabs, "a new editor kept invisible: {0}", Log.Describe(ex));
+            }
+        }
+
+        private static void TryInstall(Assembly assembly)
+        {
+            if (s_harmony != null || s_error != null)
+                return;
+            try
+            {
+                var type = assembly.GetType(CommandType, throwOnError: true);
+                var runScript = type.GetMethod("RunScript", Any) ?? throw new MissingMethodException(CommandType, "RunScript");
+                s_tryGetScript = type.GetMethod("TryGetScript", Any) ?? throw new MissingMethodException(CommandType, "TryGetScript");
+                s_fromText = type.GetMethod("TryGetScriptFromText", Any) ?? throw new MissingMethodException(CommandType, "TryGetScriptFromText");
+                s_fromPath = type.GetMethod("TryGetScriptFromPath", Any) ?? throw new MissingMethodException(CommandType, "TryGetScriptFromPath");
+                s_browse = type.GetMethod("TryBrowseScript", Any) ?? throw new MissingMethodException(CommandType, "TryBrowseScript");
+                var platform = AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(a => a.GetName().Name == PlatformAssembly)
+                    ?? Assembly.Load(PlatformAssembly); // RhinoCodePlugin references it
+                var editorType = platform.GetType(ScriptEditorType, throwOnError: true);
+                s_openScriptAsync = editorType.GetMethod("OpenScriptAsync", BindingFlags.Public | BindingFlags.Static)
+                    ?? throw new MissingMethodException(ScriptEditorType, "OpenScriptAsync");
+                s_tryGetForm = editorType.GetMethod("TryGetForm", BindingFlags.Public | BindingFlags.Static)
+                    ?? throw new MissingMethodException(ScriptEditorType, "TryGetForm");
+                var harmony = new Harmony("minivivisection.scriptruncommand");
+                try
+                {
+                    harmony.Patch(runScript, prefix: new HarmonyMethod(typeof(ScriptRunCommand), nameof(RunScriptPrefix)));
+                    harmony.Patch(s_tryGetScript, prefix: new HarmonyMethod(typeof(ScriptRunCommand), nameof(TryGetScriptPrefix)));
+                }
+                catch
+                {
+                    harmony.UnpatchAll(harmony.Id); // all or none
+                    throw;
+                }
+                s_harmony = harmony;
+                s_openEditor = s_openScriptAsync; // "the editor is reachable"
+            }
+            catch (Exception ex)
+            {
+                while (ex is TargetInvocationException && ex.InnerException != null)
+                    ex = ex.InnerException;
+                s_openScriptAsync = null;
+                s_error = ex.Message;
+                UserLog.Warning("ScriptEditor Run keeps running scripts plainly (its Debug option and the setting \"Debug\" can't apply): {0}", ex.Message);
+            }
+        }
+#endif
 
         /// <summary>The script to run, asked for as Rhino does (a path, "(code)", or Browse),
         /// with the Debug option; null: cancelled.</summary>
@@ -300,7 +496,11 @@ namespace MiniVivisection
             while (true)
             {
                 var get = new Rhino.Input.Custom.GetString();
+#if RHINO9
+                get.SetCommandPrompt(Rhino.UI.Localization.LocalizeString("Path of script to run", 6));
+#else
                 get.SetCommandPrompt(Rhino.UI.Localization.LocalizeString("Path of script to run", 11));
+#endif
                 var browse = get.AddOption(Rhino.UI.Localization.LocalizeCommandOptionName("Browse", 10));
                 get.AddOptionToggle("Debug", ref toggle);
                 var result = get.GetLiteralString();
@@ -310,7 +510,11 @@ namespace MiniVivisection
                 {
                     if (get.OptionIndex() != browse)
                         continue; // Debug toggled: ask again
+#if RHINO9
+                    args = new object[] { null, true }; // TryBrowseScript(out Template, bool executablesOnly)
+#else
                     args = new object[] { null };
+#endif
                     return (bool)s_browse.Invoke(null, args) ? args[0] : null;
                 }
                 if (result != Rhino.Input.GetResult.String)
@@ -390,6 +594,9 @@ namespace MiniVivisection
         /// (with RhinoCodePlugin, loaded here if it isn't yet). For Grasshopper's hidden editors.</summary>
         internal static bool CanHideNewEditors()
         {
+#if RHINO9
+            return false; // Grasshopper's hidden editors: Rhino 8 only so far
+#else
             if (s_harmony == null && s_error == null)
             {
                 Rhino.PlugIns.PlugIn.LoadPlugIn(PluginId);
@@ -398,6 +605,7 @@ namespace MiniVivisection
                     TryInstall(loaded);
             }
             return s_harmony != null;
+#endif
         }
 
         /// <summary>A new editor made by <paramref name="open"/> is invisible from the start, without

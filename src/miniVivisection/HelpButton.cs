@@ -133,7 +133,11 @@ namespace MiniVivisection
                 Rhino.Runtime.Code.Code code;
                 try
                 {
+#if RHINO9
+                    code = new StorageEntry(Rhino.Runtime.Code.Languages.LanguageSpec.Markdown, new Uri(path)).CreateCode(); // Rhino 9: language first
+#else
                     code = new StorageEntry(new Uri(path), Rhino.Runtime.Code.Languages.LanguageSpec.Markdown).CreateCode();
+#endif
                 }
                 catch (Exception ex)
                 {

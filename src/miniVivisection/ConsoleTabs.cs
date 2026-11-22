@@ -184,6 +184,9 @@ namespace MiniVivisection
         /// as a click does. False when the editor or the tab isn't there.</summary>
         internal static bool Show(object editor, string name)
         {
+#if RHINO9
+            return Rhino9Ui.Show(editor, name);
+#else
             var tray = name == "Watch" ? RhinoWatchTray : name == "Threads" ? ThreadsTray : name == "Python" ? PythonTray
                 : name == "PowerShell" ? PowerShellTray : name == "Claude" ? ClaudeTray : 0;
             lock (s_consoles)
@@ -199,12 +202,16 @@ namespace MiniVivisection
                 }
             }
             return false;
+#endif
         }
 
         /// <summary>For the screenshots and tests: <paramref name="line"/> typed into
         /// <paramref name="editor"/>'s V Python tab and run. False without that tab.</summary>
         internal static bool TypeInPython(object editor, string line)
         {
+#if RHINO9
+            return Rhino9Ui.TypeInPython(editor, line);
+#else
             lock (s_consoles)
             {
                 foreach (var reference in s_consoles)
@@ -217,6 +224,7 @@ namespace MiniVivisection
                 }
             }
             return false;
+#endif
         }
 
         /// <summary>A tab's setting or the AI / Debug switch changed: in every open
@@ -224,6 +232,9 @@ namespace MiniVivisection
         /// thread).</summary>
         public static void ApplyVisibility()
         {
+#if RHINO9
+            Rhino9Ui.ApplyVisibility();
+#endif
             lock (s_consoles)
             {
                 s_consoles.RemoveAll(r => !r.TryGetTarget(out _));
@@ -250,6 +261,10 @@ namespace MiniVivisection
             RhinoApp.InvokeOnUiThread(new Action(() =>
             {
                 Python2Notice.UpdateAll(); // V Python and V Claude: an IronPython 2 script is being debugged
+#if RHINO9
+                foreach (var terminal in Rhino9Ui.PythonTerminals())
+                    terminal.UpdateStatus();
+#endif
                 lock (s_terminals)
                 {
                     s_terminals.RemoveAll(r => !r.TryGetTarget(out _));

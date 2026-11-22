@@ -290,6 +290,7 @@ namespace MiniVivisection
             }
         }
 
+#if !RHINO9
         private static bool IsEmbedded(object editor)
         {
             var options = editor.GetType().GetProperty("LaunchOptions", Any)?.GetValue(editor);
@@ -316,6 +317,52 @@ namespace MiniVivisection
                 Log.Info(LogArea.Runs, "the error's traceback:\n{0}", record.Traceback);
             ShowOverlay(editor, code, record);
         }
+#else
+        // Rhino 9: the standalone Script Editor's id (Rhino3DScriptEditor's LaunchConfigs);
+        // Grasshopper's editors have others, and their models are IMiniEditor.
+        private static readonly Guid StandaloneEditorId = new Guid("E4E07551-BF52-42BC-8E78-B36A3BEB4865");
+
+        private static bool IsEmbedded(object editor)
+        {
+            var model = Rhino9Editor.ModelOf(editor);
+            if (model == null)
+                return false;
+            if (model is Rhino.Runtime.Code.Editor.IMiniEditor)
+                return true; // a Grasshopper component's editor holds that component's script
+            try
+            {
+                var id = model.Configs?.Id;
+                return id.HasValue && id.Value != Guid.Empty && id.Value != StandaloneEditorId && !(model is Rhino.Runtime.Code.Editor.IMainEditor);
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        private static async void Show(object editor, Record record)
+        {
+            try
+            {
+                // The script: its tab if open, else opened -- the editor's model makes it current.
+                var model = Rhino9Editor.ModelOf(editor) ?? throw new MissingMemberException(editor.GetType().FullName, "DataContext (the editor's model)");
+                await model.Codes.TryAdd(new SourceCode(new Uri(record.File)));
+                var code = model.Codes.Current?.Code;
+                if (code?.Uri == null || !code.Uri.IsFile || !SamePath(code.Uri.LocalPath, record.File))
+                    throw new InvalidOperationException("the script didn't open in the editor");
+                // No breakpoint is set: the overlay says how to stop there again.
+                UserLog.Info("{0}: {1} -- shown in the Script Editor.", record.Title,
+                    record.Kind == "stopped" ? "stopped by Break now at line " + record.Line : "error at line " + record.Line + ": " + record.Error);
+                if (!string.IsNullOrEmpty(record.Traceback))
+                    Log.Info(LogArea.Runs, "the error's traceback:\n{0}", record.Traceback);
+                ShowOverlay(editor, code, record);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(LogArea.Runs, "showing where the script ended: {0}", Log.Describe(ex));
+            }
+        }
+#endif
 
         /// <summary>A breakpoint at <paramref name="line"/> of <paramref name="code"/> for the
         /// next debug run only -- removed when its editor's debugger next disconnects (the run's

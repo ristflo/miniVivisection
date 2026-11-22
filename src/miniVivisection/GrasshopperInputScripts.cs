@@ -177,6 +177,53 @@ namespace MiniVivisection
         /// (x, y, ghenv) given, as Grasshopper runs it -- the editor's text taken into the Panel
         /// first; Debug in the debugger (DebugOnce). Run as a Rhino script, it would have none of
         /// them. Patched once, when such a script is opened.</summary>
+#if RHINO9
+        // Rhino 9: Run and Debug are the editor model's commands (RhinoCodeEditor's CodeRunCommand<TEditor>,
+        // CodeDebugCommand<TEditor>, the alternate run), all ending in Rhino.Runtime.Code.Editor's
+        // ExecuteCommand<TEditor>.ExecuteCode(BuildKind) -- generic: one patch covers every editor.
+        private static void PatchRun(object editor)
+        {
+            if (s_runHarmony != null || editor == null)
+                return;
+            try
+            {
+                var type = typeof(Rhino.Runtime.Code.Editor.Commands.ExecuteCommand<>).MakeGenericType(typeof(Rhino.Runtime.Code.Editor.IEditor));
+                var execute = type.GetMethod("ExecuteCode", BindingFlags.NonPublic | BindingFlags.Instance, null, new[] { typeof(Rhino.Runtime.Code.Execution.BuildKind) }, null)
+                              ?? throw new MissingMethodException(type.FullName, "ExecuteCode(BuildKind)");
+                var harmony = new Harmony("minivivisection.inputscriptrun");
+                harmony.Patch(execute, prefix: new HarmonyMethod(typeof(GrasshopperInputScripts), nameof(ExecuteCodePrefix9)));
+                s_runHarmony = harmony;
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(LogArea.Breakpoints, "Grasshopper: Run of a script input in Grasshopper: {0}", Log.Describe(ex));
+            }
+        }
+
+        // ExecuteCommand<TEditor>.ExecuteCode(kind): the editor (m_editor of EditorCommand<TEditor>, read
+        // on the instance's own closed type) and its window -- what InGrasshopper takes as Rhino 8's
+        // ExecuteWith arguments.
+        private static bool ExecuteCodePrefix9(object __instance, Rhino.Runtime.Code.Execution.BuildKind kind, ref System.Threading.Tasks.Task __result)
+        {
+            try
+            {
+                object model = null;
+                for (var type = __instance.GetType(); type != null && model == null; type = type.BaseType)
+                    model = type.GetField("m_editor", BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly)?.GetValue(__instance);
+                if (model == null)
+                    return true;
+                var window = Application.Instance.Windows.FirstOrDefault(w => ReferenceEquals(Rhino9Editor.ModelOf(w), model));
+                if (window == null)
+                    return true;
+                return !InGrasshopper(new object[] { window }, debug: kind == Rhino.Runtime.Code.Execution.BuildKind.Debug, ref __result);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(LogArea.Breakpoints, "Grasshopper: Run of a script input: {0}", Log.Describe(ex));
+                return true;
+            }
+        }
+#else
         private static void PatchRun(object editor)
         {
             if (s_runHarmony != null || editor == null)
@@ -202,6 +249,7 @@ namespace MiniVivisection
         private static bool RunPrefix(object[] __args, ref System.Threading.Tasks.Task __result) => !InGrasshopper(__args, debug: false, ref __result);
 
         private static bool DebugPrefix(object[] __args, ref System.Threading.Tasks.Task __result) => !InGrasshopper(__args, debug: true, ref __result);
+#endif
 
         // The editor's code a script input's file: taken into the Panel, the component computed (in the debugger)
         private static bool InGrasshopper(object[] args, bool debug, ref System.Threading.Tasks.Task result)
@@ -281,6 +329,23 @@ namespace MiniVivisection
                 }
                 try
                 {
+#if RHINO9
+                    // Rhino 9: a rendered Markdown file is the model's preview (IEditor.Preview): its source
+                    // shown by leaving the preview.
+                    foreach (var window in Application.Instance.Windows.Where(Rhino9Editor.IsEditorWindow))
+                    {
+                        if (!string.Equals(new ScriptEditorAccess(window).ScriptPath, path, StringComparison.OrdinalIgnoreCase))
+                            continue;
+                        var preview = Rhino9Editor.ModelOf(window)?.Preview;
+                        if (preview == null)
+                            continue;
+                        if (preview.IsViewing)
+                            preview.IsViewing = false;
+                        timer.Stop();
+                        Log.Info(LogArea.Tabs, "the Panel's Markdown: its source shown for editing ({0})", path);
+                        return;
+                    }
+#else
                     foreach (var window in Application.Instance.Windows.Where(w => w.GetType().FullName == "RhinoCodeEditor.Editor.RCE"))
                     {
                         if (!string.Equals(new ScriptEditorAccess(window).ScriptPath, path, StringComparison.OrdinalIgnoreCase))
@@ -295,6 +360,7 @@ namespace MiniVivisection
                         Log.Info(LogArea.Tabs, "the Panel's Markdown: its source shown for editing ({0})", path);
                         return;
                     }
+#endif
                 }
                 catch (Exception ex)
                 {
@@ -410,7 +476,11 @@ namespace MiniVivisection
         internal static List<(Window Window, Rhino.Runtime.Code.Code Code)> OpenCodes()
         {
             var found = new List<(Window, Rhino.Runtime.Code.Code)>();
+#if RHINO9
+            foreach (var window in Application.Instance.Windows.Where(Rhino9Editor.IsEditorWindow))
+#else
             foreach (var window in Application.Instance.Windows.Where(w => w.GetType().FullName == "RhinoCodeEditor.Editor.RCE"))
+#endif
                 found.AddRange(CodesOf(window).Select(code => (window, code)));
             return found;
         }
@@ -419,10 +489,16 @@ namespace MiniVivisection
         {
             try
             {
+#if RHINO9
+                // Rhino 9: every script of the editor's model (each tab)
+                return Rhino9Editor.ModelOf(window)?.Codes?.GetItems().Select(i => i?.Code).Where(c => c != null).ToList()
+                    ?? new List<Rhino.Runtime.Code.Code>();
+#else
                 var state = window.GetType().GetProperty("ActiveState", Any)?.GetValue(window);
                 var codes = state?.GetType().GetProperty("Codes", Any)?.GetValue(state) as IEnumerable;
                 return codes?.Cast<object>().Select(c => c?.GetType().GetProperty("Code", Any)?.GetValue(c) as Rhino.Runtime.Code.Code)
                     .Where(c => c != null).ToList() ?? new List<Rhino.Runtime.Code.Code>();
+#endif
             }
             catch (Exception ex)
             {

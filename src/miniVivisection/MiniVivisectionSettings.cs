@@ -131,7 +131,7 @@ namespace MiniVivisection
             Bool("PageThreads", EditorGroup, "Page (left): V Threads", "V Threads in the editor's left panel.", true),
             Bool("PagePowerShell", EditorGroup, "Page (left): V PowerShell", "V PowerShell in the editor's left panel.", true),
             Bool("PageLog", EditorGroup, "Page (left): V Log", "V Log, the user log, in the editor's left panel.", true),
-            Bool("ExamplesTab", EditorGroup, "Lessons in the Examples tab", "The miniVivisection lessons (the examples folder next to the plug-in) in a 'miniVivisection' folder of the editor's Examples tab (left panel); they open your own copies (in %LOCALAPPDATA%\\miniVivisection\\lessons).", true),
+            Bool("ExamplesTab", EditorGroup, "Lessons in the Examples tab", "The miniVivisection lessons (the examples folder next to the plug-in) in a 'miniVivisection' folder of the editor's Examples tab (left panel); they open your own copies (in %LOCALAPPDATA%\\miniVivisection\\lessons). Rhino 9's Examples tab shows one folder: the lessons' folder when the tab is empty, or from the V° menu.", true),
             Bool("FolderDrop", EditorGroup, "Drop a folder: open it in the editor's Explorer", "A folder dropped anywhere on the Script Editor opens in its Explorer (left panel). Files dropped still open as scripts.", true),
             Bool("PageSettings", EditorGroup, "Page (left): V Settings", "These settings in the editor's left panel, applied at once. Shown whatever the V AI and V Debug switches say.", true),
 

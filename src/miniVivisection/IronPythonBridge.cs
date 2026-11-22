@@ -189,6 +189,7 @@ namespace MiniVivisection
         {
             try
             {
+#if !RHINO9 // Rhino 9's tracer values are ExecSlots: the plain variable below
                 if (!s_pyExecVariableLooked)
                 {
                     s_pyExecVariableLooked = true;
@@ -203,6 +204,7 @@ namespace MiniVivisection
                     return (ExecVariable)Activator.CreateInstance(s_pyExecVariable, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null,
                         new object[] { name, value, ExecVariableKind.FrameVariable, ExecVariableAttribute.Empty }, null);
                 }
+#endif
             }
             catch (Exception ex)
             {

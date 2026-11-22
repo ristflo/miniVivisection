@@ -46,8 +46,18 @@ namespace MiniVivisection
         private static bool s_listening;
         private static string s_error;
 
+#if RHINO9
+        /// <summary>For the health line: null when in place; <see cref="WaitingForGrasshopper"/> while
+        /// Grasshopper's script components aren't loaded yet (not tried).</summary>
+        internal static string HookProblem => s_error ?? (s_harmony == null ? WaitingForGrasshopper : null);
+
+        /// <summary>The Grasshopper hooks' health status before Grasshopper (its script components) has
+        /// loaded: not tried yet, not a failure (Rhino 9 starts without Grasshopper).</summary>
+        internal const string WaitingForGrasshopper = "waiting for Grasshopper";
+#else
         /// <summary>For the health line (null: in place, or Grasshopper not loaded yet).</summary>
         internal static string HookProblem => s_error;
+#endif
 
         /// <summary>One run of a component: which data it had.</summary>
         internal sealed class RunInfo
@@ -128,9 +138,18 @@ namespace MiniVivisection
                 const BindingFlags declared = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly;
                 // Every target first, then the patches: a missing one leaves none applied.
                 s_solveInstance = ghComponent.GetMethod("SolveInstance", declared) ?? throw new MissingMethodException(ghComponent.FullName, "SolveInstance");
+#if RHINO9
+                // Grasshopper 9: the four solve loops (ComputeData, Solution_Compute_*) call
+                // GH_Component.TrySolveInstance(it) -- private, not generic, the loops' try/catch moved
+                // into it -- the only caller of SolveInstance.
+                var callers = new[] { "TrySolveInstance" }
+                    .Select(name => ghComponent.GetMethod(name, declared) ?? throw new MissingMethodException(ghComponent.FullName, name)).ToList();
+                var computeData = ghComponent.GetMethod("ComputeData", declared) ?? throw new MissingMethodException(ghComponent.FullName, "ComputeData");
+#else
                 var callers = new[] { "ComputeData", "Solution_Compute_TreeOnlyAccess", "Solution_Compute_TreeAndListAccess", "Solution_Compute_MixedAccess" }
                     .Select(name => ghComponent.GetMethod(name, declared) ?? throw new MissingMethodException(ghComponent.FullName, name)).ToList();
                 var computeData = callers[0];
+#endif
                 var addMessage = activeObject.GetMethods(declared).FirstOrDefault(m => m.Name == "AddRuntimeMessage" && m.GetParameters().Length == 2 &&
                     m.GetParameters()[1].ParameterType == typeof(string)) ?? throw new MissingMethodException(activeObject.FullName, "AddRuntimeMessage(level, string)");
                 // The menu too: GH_Component.AppendAdditionalMenuItems calls the component's
@@ -402,6 +421,13 @@ namespace MiniVivisection
                 return;
             lock (s_computing)
                 s_computing.Add(__instance);
+#if RHINO9
+            // Rhino 9: the patches on generic code checked before the run, not only after it -- .NET
+            // installs a recompiled method in the background, so a long run (a hang) right after many
+            // solutions would otherwise run without them (plainly, the editor's cone on the canvas).
+            GrasshopperDebug.CheckBeforeRun(__instance);
+            GrasshopperHiddenEditors.CheckBeforeRun(__instance);
+#endif
             StateOf(__instance).BuildKindCalls = GrasshopperDebug.Calls;
             Rewiring.Follow(DocumentOf(__instance));
         }

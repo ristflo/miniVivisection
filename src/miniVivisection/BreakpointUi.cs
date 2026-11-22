@@ -9,6 +9,11 @@ using System.Threading.Tasks;
 using Eto.Drawing;
 using Eto.Forms;
 using Rhino.Runtime.Code.Execution.Debugging;
+#if RHINO9
+using MonacoView = Ed.Core.IEd;
+#else
+using MonacoView = Ed.Eto.IEd;
+#endif
 
 namespace MiniVivisection
 {
@@ -91,7 +96,7 @@ return 'ok';";
         private static readonly TimeSpan DropAfter = TimeSpan.FromSeconds(3);
 
         /// <summary>The lines of all the code view's breakpoints, active or not, sorted.</summary>
-        internal static async Task<List<int>> AllBreakpointLines(Ed.Eto.IEd ed)
+        internal static async Task<List<int>> AllBreakpointLines(MonacoView ed)
         {
             var lines = new List<int>();
             foreach (var (line, _) in await ed.GetBreakpointsAsync())

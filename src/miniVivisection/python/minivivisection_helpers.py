@@ -225,16 +225,41 @@ def __minivivisection_tracer_parts():
     parts = (g.get('__pynet_tracevar__'), g.get('__pynet_traceexecvar__'), g.get('__pynet_tracer__'))
     return (tf, parts) if all(p is not None for p in parts) else None
 
+def __minivivisection_rhino9(tracevar):
+    # Rhino 9's trace script names each variable by an ExecExpression too:
+    # __pynet_tracevar__(tracer, var_list, var_expr, var_id, var_obj, is_global) -- Rhino 8's has
+    # no var_expr -- and PyExecVariable takes it after the expander.
+    try:
+        return tracevar.__code__.co_argcount >= 6
+    except Exception:
+        return False
+
+def __minivivisection_expr(name):
+    from Rhino.Runtime.Code.Execution import ExecExpression
+    return ExecExpression.FromMember(name)
+
+def __minivivisection_make(parts, value, name, type_name, text):
+    # A variable RhinoCode would make for value: not expandable (functions, classes,
+    # modules, errors).
+    tracevar, make, tracer = parts
+    if __minivivisection_rhino9(tracevar):
+        return make(tracer, False, None, __minivivisection_expr(name), value, name, type_name, text, True, False, False)
+    return make(tracer, False, None, value, name, type_name, text, False, False)
+
 def __minivivisection_variable(parts, name, value):
     tracevar, make, tracer = parts
     found = []
     try:
-        if tracevar(tracer, found, name, value, False) and found:
+        if __minivivisection_rhino9(tracevar):
+            ok = tracevar(tracer, found, __minivivisection_expr(name), name, value, False)
+        else:
+            ok = tracevar(tracer, found, name, value, False)
+        if ok and found:
             return found[0]
     except Exception:
         pass
     # what RhinoCode leaves out of its variables: functions, classes, modules
-    return make(tracer, False, None, value, name, type(value).__name__, repr(value), False, False)
+    return __minivivisection_make(parts, value, name, type(value).__name__, repr(value))
 
 def __minivivisection_watch_var(expression):
     # A Watch tab row: the variable RhinoCode makes for the expression's value in the
@@ -248,7 +273,7 @@ def __minivivisection_watch_var(expression):
         value = eval(expression, frame.f_globals, frame.f_locals)
     except Exception as e:
         kind = type(e).__name__
-        return parts[1](parts[2], False, None, None, expression, kind, kind + ': ' + str(e), False, False)
+        return __minivivisection_make(parts, None, expression, kind, kind + ': ' + str(e))
     return __minivivisection_variable(parts, expression, value)
 
 def __minivivisection_var_for(name, value):

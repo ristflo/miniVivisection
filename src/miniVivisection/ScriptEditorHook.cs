@@ -26,6 +26,8 @@ namespace MiniVivisection
     ///   <see cref="ExecVariable"/> holding the live value.
     /// Only finding the editors needs reflection (RhinoCode 8.36; may change with
     /// any Service Release).
+    /// Rhino 9: the editor windows show a public model (<see cref="Rhino9Editor"/>) whose
+    /// <c>Codes.DebugControls</c> is the same <see cref="IDebugControls"/>; no reflection to find them.
     /// </summary>
     internal sealed class ScriptEditorHook : IDisposable
     {
@@ -135,6 +137,11 @@ namespace MiniVivisection
             {
                 _runStartEvent?.RemoveEventHandler(null, _runStartHandler);
                 _runEndEvent?.RemoveEventHandler(null, _runEndHandler);
+#if RHINO9
+                foreach (var (evt, handler) in _runEvents9)
+                    evt.GetRemoveMethod(true)?.Invoke(null, new object[] { handler });
+                _runEvents9.Clear();
+#endif
             }
             catch (Exception)
             {
@@ -169,7 +176,7 @@ namespace MiniVivisection
         private void OnAssemblyLoad(object sender, AssemblyLoadEventArgs e)
         {
             var name = e.LoadedAssembly.GetName().Name;
-            if (name != "RhinoCodeEditor" && name != "RhinoCodePlatform.Rhino3D")
+            if (name != "RhinoCodeEditor" && name != "RhinoCodePlatform.Rhino3D" && name != "Rhino.Runtime.Code.Editor")
                 return;
             RhinoApp.InvokeOnUiThread(new Action(() => Scan(withUi: false))); // run events, FreePause; the UI at the next idle
         }
@@ -181,19 +188,31 @@ namespace MiniVivisection
             try
             {
                 FreePause.TryInstall();
+#if RHINO9
+                Rhino9ErrorPause.TryInstall(); // early, before the editor runs anything: an uncaught error pauses as in Rhino 8
+                if (!Rhino9Editor.EditorLoaded())
+                    return; // the Script Editor hasn't been opened in this Rhino yet
+#else
                 WatchExpressions.TryInstall(this);
                 var editorType = EditorType();
                 if (editorType == null)
                     return; // the Script Editor hasn't been opened in this Rhino yet
+#endif
                 if (!_reportedEditorType)
                 {
                     _reportedEditorType = true;
                     Log.Info(LogArea.Scan, "the Script Editor is loaded; looking for its windows.");
                 }
+#if !RHINO9
                 SubscribeToRunEvents(editorType);
+#endif
                 foreach (var window in Eto.Forms.Application.Instance.Windows)
                 {
+#if RHINO9
+                    if (Rhino9Editor.IsEditorWindow(window))
+#else
                     if (editorType.IsInstanceOfType(window))
+#endif
                     {
                         // A closed editor still listed: never its debug controls' editor again -- a
                         // new editor of the same code (a Grasshopper component's) has them now, and
@@ -210,6 +229,11 @@ namespace MiniVivisection
                             Log.Info(LogArea.Scan, "Script Editor window #{0}: '{1}', {2} x {3}{4}", ++_windowCount, window.Title, window.Width, window.Height,
                                 withUi ? "" : " (found at a run's start: its tabs come at the next idle moment)");
                         }
+#if RHINO9
+                        SubscribeToRunEvents9(Rhino9Editor.CodesAspectTypeOf(window));
+                        FollowDebuggerChanges(window);
+                        Rhino9ErrorPause.TryPatchEditor(Rhino9Editor.CodesAspectTypeOf(window)); // the editor holds that pause
+#endif
                         var controls = DebugControlsOf(window);
                         if (controls != null)
                         {
@@ -218,6 +242,24 @@ namespace MiniVivisection
                         }
                         if (!withUi)
                             continue;
+#if RHINO9
+                        // Rhino 9's editor: the plug-in's tabs and what is ported so far
+                        // (Rhino9Ui); the Rhino 8 editor's UI hooks below don't apply.
+                        Rhino9Ui.TryAdd(window, this);
+                        BrowserPages.TryAdd(window, this);       // the pages in the left panel
+                        FolderDrop.TryAdd(window);               // a folder dropped: the editor's Explorer
+                        EditorExamples.TryAdd(window);           // the lessons in an empty Examples tab
+                        Rhino9CodeMenu.TryInstall();             // once, now that RhinoCodeEditor is loaded
+                        BreakpointMarkers.TryAdd(window, this);  // the conditions after the breakpoint lines (ed_editor)
+                        HoverPreview.TryAdd(window, this);       // the geometry of the name under the mouse
+                        TooltipLinks.TryAdd(window, this);       // Watch / Edit / Bake / Tree links in the value tooltips
+                        HoverValues.RegisterOpenScripts(window); // scripts open before the plug-in was loaded
+                        HoverValues.EnsureProvider(window);      // a code view without a hover provider (IronPython 2)
+                        KeepEditorOpen.TryInstall(window);       // stays open while debugging (its BeMinimized)
+                        DebugRunButton.TryAdd(window);           // Run and Debug next to the dashboard's run slot
+                        Threads.StartHeartbeat();
+                        EditorHooks.ReportOnce();
+#else
                         ConsoleTabs.TryAdd(window, this);
                         BrowserPages.TryAdd(window, this);
                         EditorMenus.TryAdd(window, this);
@@ -233,6 +275,7 @@ namespace MiniVivisection
                         Threads.StartHeartbeat();
                         HoverValues.RegisterOpenScripts(window); // scripts open before the plug-in was loaded
                         EditorHooks.ReportOnce();
+#endif
                     }
                 }
             }
@@ -272,9 +315,92 @@ namespace MiniVivisection
         {
             if (editor == null)
                 return null; // a prompt without an editor (the Grasshopper window)
+#if RHINO9
+            return Rhino9Editor.DebugControlsOf(editor);
+#else
             var state = editor.GetType().GetProperty("ActiveState", BindingFlags.Public | BindingFlags.Instance)?.GetValue(editor);
             return state?.GetType().GetProperty("DebugControls", BindingFlags.Public | BindingFlags.Instance)?.GetValue(state) as IDebugControls;
+#endif
         }
+
+#if RHINO9
+        // Rhino 9: the run events of each kind of editor (CodesAspect<,,> is generic: one
+        // static event per editor kind), and the models whose debugger changes are followed.
+        private readonly List<(EventInfo Event, Delegate Handler)> _runEvents9 = new List<(EventInfo, Delegate)>();
+        private readonly HashSet<Type> _runEventTypes9 = new HashSet<Type>();
+        private readonly ConditionalWeakTable<object, object> _followedModels9 = new ConditionalWeakTable<object, object>();
+
+        /// <summary>Rhino 9: <c>CodesAspect.GroupBeginExecute</c> (groupId, buildKind) and
+        /// <c>GroupEndExecute</c> (groupId) -- protected static events of the editor's codes
+        /// aspect, as Rhino 8's RCE had them.</summary>
+        private void SubscribeToRunEvents9(Type codesType)
+        {
+            if (codesType == null || !_runEventTypes9.Add(codesType))
+                return;
+            const BindingFlags anyStatic = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.DeclaredOnly;
+            try
+            {
+                if (codesType.GetEvent("GroupBeginExecute", anyStatic) is EventInfo runStart)
+                {
+                    var handler = Delegate.CreateDelegate(runStart.EventHandlerType, this,
+                        typeof(ScriptEditorHook).GetMethod(nameof(OnRunStarting9), BindingFlags.NonPublic | BindingFlags.Instance));
+                    // protected static: its add method isn't public (EventInfo.AddEventHandler refuses)
+                    runStart.GetAddMethod(true).Invoke(null, new object[] { handler });
+                    _runEvents9.Add((runStart, handler));
+                }
+                if (codesType.GetEvent("GroupEndExecute", anyStatic) is EventInfo runEnd)
+                {
+                    var handler = Delegate.CreateDelegate(runEnd.EventHandlerType, this,
+                        typeof(ScriptEditorHook).GetMethod(nameof(OnRunEnded9), BindingFlags.NonPublic | BindingFlags.Instance));
+                    runEnd.GetAddMethod(true).Invoke(null, new object[] { handler });
+                    _runEvents9.Add((runEnd, handler));
+                }
+                Log.Debug(LogArea.Scan, "run events of {0}: {1}", codesType.Name, _runEvents9.Count);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(LogArea.Scan, "the editor's run events ({0}): {1}", codesType.FullName, Log.Describe(ex));
+            }
+        }
+
+        private void OnRunStarting9(Guid groupId, Rhino.Runtime.Code.Execution.BuildKind buildKind) => OnRunStarting(groupId, Guid.Empty);
+
+        private void OnRunEnded9(Guid groupId)
+        {
+            OnRunEnded(groupId, Guid.Empty);
+            // Code.CanDebug is Rhino's own again (Rhino9ErrorPause): the Variables tab follows.
+            Action refresh = () =>
+            {
+                foreach (var editor in Editors())
+                    Rhino9ErrorPause.RefreshCanDebug(editor);
+            };
+            if (RhinoApp.InvokeRequired)
+                RhinoApp.InvokeOnUiThread(refresh);
+            else
+                refresh();
+        }
+
+        /// <summary>Rhino 9: a new debugger for the editor's codes (<c>Codes.DebugControls</c>
+        /// changed) is followed at once, not at the next scan -- its first pause may come first.</summary>
+        private void FollowDebuggerChanges(Eto.Forms.Window window)
+        {
+            var codes = Rhino9Editor.ModelOf(window)?.Codes;
+            if (codes == null || _followedModels9.TryGetValue(codes, out _))
+                return;
+            _followedModels9.Add(codes, null);
+            var weak = new WeakReference<Eto.Forms.Window>(window);
+            codes.PropertyChanged += (sender, e) =>
+            {
+                if (e.PropertyName != "DebugControls" || _disposed || !weak.TryGetTarget(out var w))
+                    return;
+                var controls = DebugControlsOf(w);
+                if (controls == null)
+                    return;
+                _editors.AddOrUpdate(controls, w);
+                Hook(controls);
+            };
+        }
+#endif
 
         /// <summary>RCE.GroupBeginExecute -- an internal static event with an internal
         /// delegate type (groupId, workspaceId) -- fires when an editor starts a run:
@@ -497,7 +623,12 @@ namespace MiniVivisection
                     var hiddenEditor = badgeIn;
                     RhinoApp.InvokeOnUiThread(new Action(() => ScriptRunCommand.Reveal(hiddenEditor, paused: true))); // RunPythonScript's, off screen
                 }
+#if RHINO9
+                // Rhino 9 pauses once more after a held error was continued (post mortem): said once.
+                if (frame != null && frame.Event == ExecEvent.Exception && !Rhino9ErrorPause.IsRepeat(controls) && _editors.TryGetValue(controls, out var paused))
+#else
                 if (frame != null && frame.Event == ExecEvent.Exception && _editors.TryGetValue(controls, out var paused))
+#endif
                 {
                     UserLog.Error("Stopped at an exception, line {0}: {1}: {2}", frame.Reference.Position.LineNumber, frame.Exception.Id, frame.Exception.Message);
                     RunLogFor(paused).AddException(string.Format("{0}: {1} -- line {2} of {3}\n{4}", frame.Exception.Id, frame.Exception.Message,
@@ -509,6 +640,14 @@ namespace MiniVivisection
                     PausedForTools?.Invoke(controls);
                     return; // switched off (PluginSwitch): no visualizers, drawing or editing
                 }
+#if RHINO9
+                if (_editors.TryGetValue(controls, out var companionOf))
+                {
+                    Rhino9Ui.AtPause(companionOf); // the tabs' window, the first time
+                    var tabsOf = companionOf;
+                    RhinoApp.InvokeOnUiThread(new Action(() => Rhino9ErrorPause.RefreshCanDebug(tabsOf))); // Variables, Call Stack: also without a breakpoint
+                }
+#endif
                 // A Grasshopper script's pause: its editor brought up, a Panel's script marked there
                 GrasshopperScriptPauses.AtPause(controls, _editors.TryGetValue(controls, out var pausedIn) ? pausedIn : null);
                 try
@@ -730,6 +869,9 @@ namespace MiniVivisection
         /// tab is asked once more.</summary>
         private void OnFreePauseWaiting(object paused)
         {
+#if RHINO9
+            return; // Rhino 9's Watch tab evaluates on its own (no typed expressions to answer)
+#else
             if (!(paused is IDebugControls controls) || !WatchExpressions.Enabled || !RhinoApp.InvokeRequired)
                 return;
             if (!controls.Expressions.Any() || !_editors.TryGetValue(controls, out var editor))
@@ -737,6 +879,7 @@ namespace MiniVivisection
             var frame = controls.Results?.CurrentThread?.CurrentFrame;
             if (frame != null)
                 RhinoApp.InvokeOnUiThread(new Action(() => EditorViews.ShowWatch(editor, frame)));
+#endif
         }
 
         /// <summary>Whether the paused frame is Python's: editing writes back through the

@@ -58,14 +58,23 @@ namespace MiniVivisection
 
         internal static int BuildNumber => VersionInfo.Build;
 
+        /// <summary>The Rhino this build is for: 8 or 9 (Rhino.props).</summary>
+#if RHINO9
+        internal const int BuiltForRhino = 9;
+#else
+        internal const int BuiltForRhino = 8;
+#endif
+
         protected override LoadReturnCode OnLoad(ref string errorMessage)
         {
-            // Built on Rhino 8's Script Editor internals (RhinoCode 8.36, by reflection and
-            // Harmony): not loaded in another Rhino, e.g. a zip copy dragged onto Rhino 9.
-            // The Package Manager offers it to Rhino 8 only (its rh8_36-win tag).
-            if (RhinoApp.Version.Major != 8)
+            // Built on the Script Editor internals of one Rhino (by reflection and Harmony): the
+            // Rhino 8 build (RhinoCode 8.36) and the Rhino 9 build (RhinoCode 9) are not loaded in
+            // another Rhino, e.g. a zip copy dragged onto the other one. The Package Manager
+            // offers each to its own Rhino (the rh8_36-win and rh9_0-win packages).
+            if (RhinoApp.Version.Major != BuiltForRhino)
             {
-                errorMessage = string.Format("miniVivisection {0} is for Rhino 8 and was not loaded in Rhino {1}.", ProductVersion, RhinoApp.Version.Major);
+                errorMessage = string.Format("This miniVivisection {0} is the build for Rhino {1} and was not loaded in Rhino {2}: install miniVivisection from the Package Manager of Rhino {2}.",
+                    ProductVersion, BuiltForRhino, RhinoApp.Version.Major);
                 return LoadReturnCode.ErrorShowDialog;
             }
             MiniVivisectionSettings.Migrate();

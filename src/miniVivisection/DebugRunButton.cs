@@ -5,9 +5,13 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using Eto.Forms;
 using HarmonyLib;
+#if RHINO9
+using System.ComponentModel;
+#endif
 
 namespace MiniVivisection
 {
+#if !RHINO9
     /// <summary>
     /// Two fixed run buttons in the Script Editor's dashboard instead of its "smart" one.
     /// The editor's Run slot (DashboardPanel._runContainer) shows Run, or Debug when the
@@ -301,4 +305,260 @@ namespace MiniVivisection
             return state?.GetType().GetProperty("CurrentState", Any)?.GetValue(state)?.ToString();
         }
     }
+#else
+    /// <summary>
+    /// Rhino 9: two fixed buttons next to the Script Editor's run slot (MainDashboard's
+    /// CodeRunDebugContinueCommand: Run, Debug when the script has a breakpoint, Continue while
+    /// paused). Run is the editor's Run command (F5), Debug its Debug command (Shift+F5), enabled
+    /// also without a breakpoint (Rhino's DebugCommand asks for one: <c>CanExecute &amp;=
+    /// code.CanDebug</c>; the debug run itself doesn't need one). The slot shows only during a
+    /// debug run, as Continue. Placed in every left tray of the dashboard (MainEditor.m_dashboard,
+    /// ControlBoard.m_traysL) right after the slot. Options: "Run and Debug buttons".
+    /// </summary>
+    internal static class DebugRunButton
+    {
+        private const BindingFlags Any = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
+        private const string SlotCommandName = "CodeRunDebugContinueCommand";
+
+        private sealed class Buttons
+        {
+            public WeakReference<Window> Window;
+            public readonly List<Control> Slots = new List<Control>();
+            public readonly List<Control> Added = new List<Control>();
+        }
+
+        private static readonly ConditionalWeakTable<object, Buttons> s_added = new ConditionalWeakTable<object, Buttons>();
+        private static readonly List<Buttons> s_all = new List<Buttons>();
+        private static readonly MethodInfo s_setCanExecute =
+            typeof(Rhino.Runtime.Code.Editor.Commands.Command).GetProperty(nameof(Rhino.Runtime.Code.Editor.Commands.Command.CanExecute))?.GetSetMethod(true);
+        private static string s_problem;
+
+        /// <summary>For the health line (EditorHooks): null when added (or not tried), else why not.</summary>
+        internal static string HookProblem => s_problem;
+
+        /// <summary>The buttons in <paramref name="editor"/>'s dashboard (the standalone editor's
+        /// window, RhinoCodeEditor.MainEditor), once. Grasshopper's editors (MiniDashboard): not yet.</summary>
+        public static void TryAdd(object editor)
+        {
+            if (!(editor is Window window) || s_added.TryGetValue(window, out _))
+                return;
+            if (window.GetType().FullName != "RhinoCodeEditor.MainEditor")
+                return;
+            try
+            {
+                var model = Rhino9Editor.ModelOf(window) as Rhino.Runtime.Code.Editor.IMainEditor;
+                if (model == null)
+                    return; // not set up yet: the next scan
+                var commands = model.Commands.GetItems().ToList();
+                var run = commands.FirstOrDefault(c => DerivesFrom(c.GetType(), typeof(Rhino.Runtime.Code.Editor.Commands.RunCommand<>)))
+                    ?? throw new MissingMemberException("the editor's commands", "editor.runCode");
+                var debug = commands.FirstOrDefault(c => DerivesFrom(c.GetType(), typeof(Rhino.Runtime.Code.Editor.Commands.DebugCommand<>)))
+                    ?? throw new MissingMemberException("the editor's commands", "editor.debugCode");
+                var dashboard = TabStrips.FindField(window.GetType(), "m_dashboard").GetValue(window);
+                if (dashboard == null)
+                    return; // not built yet: the next scan
+                var trays = ((System.Collections.IEnumerable)TabStrips.FindField(dashboard.GetType(), "m_traysL").GetValue(dashboard)).Cast<object>().ToList();
+                var buttons = new Buttons { Window = new WeakReference<Window>(window) };
+                // The dashboard's buttons get their commands by binding (DataContext), and only a
+                // shown tray is bound: the project tray (MainDashboard's second, shown while a
+                // project is open) has none. The slot is found by its command in a bound tray; in
+                // an unbound one at the same place -- right after the first separator (MainDashboard:
+                // New, Open, Save, ..., separator, the run slot, the steps, Stop).
+                object CommandOf(Control c) => c.GetType().GetProperty("Command", Any)?.GetValue(c);
+                bool IsSlot(Control c) => CommandOf(c)?.GetType().Name.StartsWith(SlotCommandName, StringComparison.Ordinal) == true;
+                var trayItems = trays.Select(t => ((IEnumerable<Control>)t.GetType().GetProperty("Items", Any).GetValue(t)).ToList()).ToList();
+                if (!trayItems.Any(items => items.Any(IsSlot)))
+                {
+                    if (trayItems.Any(items => items.Any(c => CommandOf(c) != null)))
+                        throw new InvalidOperationException("the Run button isn't where it was");
+                    return; // not bound yet: the next scan
+                }
+                for (var t = 0; t < trays.Count; t++)
+                {
+                    var tray = trays[t];
+                    var items = trayItems[t];
+                    var index = items.FindIndex(IsSlot);
+                    if (index < 0 && items.All(c => CommandOf(c) == null))
+                    {
+                        var separator = items.FindIndex(c => c.GetType().Name == "Separator");
+                        index = separator >= 0 && separator + 1 < items.Count && items[separator + 1].GetType() == items[0].GetType() ? separator + 1 : -1;
+                        if (index < 0)
+                            continue; // an unbound tray of another layout: left as it is
+                    }
+                    if (index < 0)
+                        throw new InvalidOperationException("the Run button isn't where it was");
+                    var slot = items[index];
+                    var insert = tray.GetType().GetMethod("InsertToTray", Any) ?? throw new MissingMethodException(tray.GetType().FullName, "InsertToTray");
+                    var at = index + 1;
+                    foreach (var command in new[] { run, debug })
+                    {
+                        var button = (Control)Activator.CreateInstance(slot.GetType(), new object[] { false }); // PushButton(compact: false)
+                        button.GetType().GetProperty("Command", Any).SetValue(button, command);
+                        CopyTheme(slot, button);
+                        insert.Invoke(tray, new object[] { at++, button, false });
+                        buttons.Added.Add(button);
+                    }
+                    buttons.Slots.Add(slot);
+                }
+                if (buttons.Slots.Count == 0)
+                    throw new InvalidOperationException("the dashboard has no Run button");
+                s_added.Add(window, buttons);
+                lock (s_all)
+                    s_all.Add(buttons);
+                UnlockDebug(debug, model);
+                PropertyChangedEventHandler onModel = (s, e) =>
+                {
+                    if (e.PropertyName == "Theme")
+                        Application.Instance.AsyncInvoke(() => buttons.Added.ForEach(b => CopyTheme(buttons.Slots[0], b)));
+                };
+                PropertyChangedEventHandler onCodes = (s, e) =>
+                {
+                    if (e.PropertyName == "IsRunning" || e.PropertyName == "RunKind" || e.PropertyName == "DebugControlsState")
+                        Application.Instance.AsyncInvoke(() => Apply(buttons));
+                };
+                model.PropertyChanged += onModel;
+                model.Codes.PropertyChanged += onCodes;
+                // Its controls lead to the editor: dropped when it closes.
+                EditorWindows.WhenClosed(window, () =>
+                {
+                    model.PropertyChanged -= onModel;
+                    model.Codes.PropertyChanged -= onCodes;
+                    lock (s_all)
+                        s_all.Remove(buttons);
+                    s_added.Remove(window);
+                });
+                Apply(buttons);
+                Log.Info(LogArea.Tabs, "Run and Debug buttons are in the Script Editor's dashboard ({0} tray(s))", buttons.Slots.Count);
+            }
+            catch (Exception ex)
+            {
+                while (ex is TargetInvocationException && ex.InnerException != null)
+                    ex = ex.InnerException;
+                if (s_problem == null)
+                    UserLog.Warning("Can't add the Run and Debug buttons: {0} (the editor's Run menu has both)", ex.Message);
+                s_problem = ex.Message;
+            }
+        }
+
+        /// <summary>The registered Debug command (the button, Run > Debug, Shift+F5) enabled also
+        /// without a breakpoint: set back right after Rhino's own state sets it off. The run slot's
+        /// own Debug command is another instance: F5's and the slot's choice stay Rhino's.</summary>
+        private static void UnlockDebug(Rhino.Runtime.Code.Editor.Commands.ICommand debug, Rhino.Runtime.Code.Editor.IMainEditor model)
+        {
+            PropertyChangedEventHandler onDebug = (s, e) =>
+            {
+                if (e.PropertyName == nameof(Rhino.Runtime.Code.Editor.Commands.ICommand.CanExecute))
+                    EnableWithoutBreakpoint(debug, model);
+            };
+            PropertyChangedEventHandler onCodes = (s, e) =>
+            {
+                if (e.PropertyName == "Current" || e.PropertyName == "IsRunning" || e.PropertyName == "CanDebug")
+                    EnableWithoutBreakpoint(debug, model);
+            };
+            debug.PropertyChanged += onDebug;
+            model.Codes.PropertyChanged += onCodes;
+            EnableWithoutBreakpoint(debug, model);
+        }
+
+        private static void EnableWithoutBreakpoint(Rhino.Runtime.Code.Editor.Commands.ICommand debug, Rhino.Runtime.Code.Editor.IMainEditor model)
+        {
+            try
+            {
+                if (debug.CanExecute || debug.Locked || s_setCanExecute == null || !MiniVivisectionSettings.DebugRunButton)
+                    return;
+                var codes = model.Codes;
+                if (codes.IsRunning || model.Preview.IsViewing || !codes.TryGetCurrent(out Rhino.Runtime.Code.Code code) || code == null)
+                    return; // running, a preview, nothing open: as Rhino says
+                if (!code.CanRun || !code.HasDebugControls || !code.Language.Capabilities.CanTrace)
+                    return;
+                var project = model.Projects?.Current?.Find(code.Id);
+                if (project != null && !project.CanExecute)
+                    return; // the editor's project rule (ExecuteCommand)
+                s_setCanExecute.Invoke(debug, new object[] { true }); // raises CanExecute again: true, nothing more to do
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(LogArea.Tabs, "Debug without breakpoints: {0}", Log.Describe(ex));
+            }
+        }
+
+        /// <summary>The setting, the V Debug switch or the editor's state changed (UI thread).</summary>
+        public static void ApplyAll()
+        {
+            lock (s_all)
+            {
+                s_all.RemoveAll(b => !b.Window.TryGetTarget(out _));
+                foreach (var buttons in s_all)
+                    Apply(buttons);
+            }
+        }
+
+        private static void Apply(Buttons buttons)
+        {
+            try
+            {
+                if (!buttons.Window.TryGetTarget(out var window))
+                    return;
+                var on = MiniVivisectionSettings.DebugRunButton;
+                var model = Rhino9Editor.ModelOf(window) as Rhino.Runtime.Code.Editor.IMainEditor;
+                var codes = model?.Codes;
+                var debugging = codes != null && codes.IsRunning && codes.RunKind == Rhino.Runtime.Code.Execution.BuildKind.Debug;
+                foreach (var button in buttons.Added)
+                {
+                    if (button.Visible != on)
+                        button.Visible = on;
+                }
+                var show = !on || debugging;
+                foreach (var slot in buttons.Slots)
+                {
+                    if (slot.Visible != show)
+                        slot.Visible = show;
+                }
+                var debug = model?.Commands.GetItems().FirstOrDefault(c => DerivesFrom(c.GetType(), typeof(Rhino.Runtime.Code.Editor.Commands.DebugCommand<>)));
+                if (debug == null)
+                    return;
+                if (on)
+                    EnableWithoutBreakpoint(debug, model);
+                else
+                    debug.GetType().GetMethod("OnModelChanged", Any, null, Type.EmptyTypes, null)?.Invoke(debug, null); // Rhino's own state again
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(LogArea.Tabs, "run buttons: {0}", Log.Describe(ex));
+            }
+        }
+
+        private static void CopyTheme(Control from, Control to)
+        {
+            try
+            {
+                var theme = from.GetType().GetProperty("Theme", Any);
+                if (theme != null && theme.CanWrite)
+                    theme.SetValue(to, theme.GetValue(from));
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(LogArea.Tabs, "run buttons, theme: {0}", Log.Describe(ex));
+            }
+        }
+
+        private static bool DerivesFrom(Type type, Type genericDefinition)
+        {
+            for (var t = type; t != null; t = t.BaseType)
+            {
+                if (t.IsGenericType && t.GetGenericTypeDefinition() == genericDefinition)
+                    return true;
+            }
+            return false;
+        }
+
+        // Rhino 8's ForceDebug/EndForcedDebug (a command's debug run): not needed -- ScriptEditor
+        // Run debugs through the editor's Codes.RestoreAndDebug, without the breakpoint rule.
+        internal static bool ForceDebug(object editor) => true;
+
+        internal static void EndForcedDebug(object editor)
+        {
+        }
+    }
+#endif
 }

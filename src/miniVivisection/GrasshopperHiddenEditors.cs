@@ -32,10 +32,24 @@ namespace MiniVivisection
     /// not generic either): the canvas would draw the cone from the component to its editor's
     /// place, and the run's output would go to an editor nobody sees. Always debug asks
     /// <see cref="HasHiddenEditor"/> instead.
+    ///
+    /// Rhino 9: RhinoCodePlatform.GH.Context is loaded with Rhino's code platform at startup, long
+    /// before Grasshopper, and its ScriptEditor is generic -- ScriptEditor&lt;TOwner&gt;; the
+    /// component's is RhinoCodePluginGH's nested BaseScriptComponent`2+ScriptEditor, whose base
+    /// ScriptEditor&lt;BaseScriptComponent&lt;ScriptParam, ScriptLibraryParam&gt;&gt; declares BeginEdit and
+    /// HasVisibleEditor: patched when RhinoCodePluginGH loads. The window is IScriptEditor.GetWindow()
+    /// (a GH1Editor form). A new one shows itself in RhinoCodeEditor's CodeEditorForm&lt;TEditor&gt;.BeginEdit(),
+    /// kept invisible there (Rhino 8 does it in ScriptRunCommand). Members of generic classes: when
+    /// .NET recompiles their shared code the patches are gone -- put back by the scan (RepairPatches).
     /// </summary>
     internal static class GrasshopperHiddenEditors
     {
-        private const string ContextAssembly = "RhinoCodePlatform.GH.Context";
+#if RHINO9
+        // Patched when Grasshopper's script components load (see the summary).
+        private const string HookAssembly = "RhinoCodePluginGH";
+#else
+        private const string HookAssembly = "RhinoCodePlatform.GH.Context";
+#endif
         private const BindingFlags Any = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
         private const int Most = 24; // hidden editors at a time: each one is a Script Editor window
 
@@ -54,8 +68,14 @@ namespace MiniVivisection
         private static string s_error;
         private static bool s_reportedMost;
 
+#if RHINO9
+        /// <summary>For the health line (EditorHooks): null when installed; "waiting for Grasshopper"
+        /// while Grasshopper's script components aren't loaded yet.</summary>
+        internal static string HookProblem => s_error ?? (s_harmony == null ? GrasshopperRuns.WaitingForGrasshopper : null);
+#else
         /// <summary>For the health line (EditorHooks): null when installed or Grasshopper isn't loaded yet.</summary>
         internal static string HookProblem => s_error;
+#endif
 
         /// <summary>How many hidden editors there are now (for the live test).</summary>
         internal static int Count
@@ -75,11 +95,11 @@ namespace MiniVivisection
                 s_listening = true;
                 AppDomain.CurrentDomain.AssemblyLoad += (sender, e) =>
                 {
-                    if (e.LoadedAssembly.GetName().Name == ContextAssembly)
+                    if (e.LoadedAssembly.GetName().Name == HookAssembly)
                         TryInstall(e.LoadedAssembly);
                 };
             }
-            var loaded = AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(a => a.GetName().Name == ContextAssembly);
+            var loaded = AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(a => a.GetName().Name == HookAssembly);
             if (loaded != null)
                 TryInstall(loaded);
             if (s_scan == null)
@@ -97,7 +117,11 @@ namespace MiniVivisection
                 return;
             try
             {
+#if RHINO9
+                var editor = EditorType9(assembly);
+#else
                 var editor = assembly.GetType("RhinoCodePlatform.GH.Context.ScriptEditor", throwOnError: true);
+#endif
                 var beginEdit = editor.GetMethods(Any).FirstOrDefault(m => m.Name == "BeginEdit" && m.DeclaringType == editor && m.GetParameters().Length == 4)
                     ?? throw new MissingMethodException(editor.FullName, "BeginEdit(window, script, culture, culture)");
                 var hasVisible = editor.GetProperty("HasVisibleEditor", Any)?.GetGetMethod(true)
@@ -107,6 +131,11 @@ namespace MiniVivisection
                 {
                     harmony.Patch(beginEdit, prefix: new HarmonyMethod(typeof(GrasshopperHiddenEditors), nameof(BeginEditPrefix)));
                     harmony.Patch(hasVisible, postfix: new HarmonyMethod(typeof(GrasshopperHiddenEditors), nameof(HasVisibleEditorPostfix)));
+#if RHINO9
+                    s_beginEdit = beginEdit;
+                    s_hasVisible = hasVisible;
+                    PatchNewForms9(assembly, harmony);
+#endif
                 }
                 catch
                 {
@@ -170,8 +199,20 @@ namespace MiniVivisection
         /// ScriptEditor: its CodeEditor's _rce), or null while it has none.</summary>
         private static Window WindowOf(object scriptEditor)
         {
+#if RHINO9
+            // Rhino 9: IScriptEditor.GetWindow() -- the editor's form (a GH1Editor), null without one.
+            // Called by HasVisibleEditor's postfix in every solution: the method looked up once (every
+            // component's editor is the same closed type).
+            if (scriptEditor == null)
+                return null;
+            var getWindow = s_getWindow;
+            if (getWindow == null || !getWindow.DeclaringType.IsInstanceOfType(scriptEditor))
+                s_getWindow = getWindow = scriptEditor.GetType().GetMethod("GetWindow", BindingFlags.Public | BindingFlags.Instance, null, Type.EmptyTypes, null);
+            return getWindow?.Invoke(scriptEditor, null) is Window window && !window.IsDisposed ? window : null;
+#else
             var codeEditor = scriptEditor?.GetType().GetProperty("CodeEditor", Any)?.GetValue(scriptEditor);
             return codeEditor?.GetType().GetField("_rce", Any)?.GetValue(codeEditor) as Window;
+#endif
         }
 
         /// <summary>Grasshopper's canvas drawn again: a shown editor's cone (from the component to
@@ -209,8 +250,15 @@ namespace MiniVivisection
                     return;
                 var wanted = Wanted;
                 Tidy(wanted);
+#if RHINO9
+                if (wanted)
+                    RepairPatches();
+                if (!wanted || !s_newFormsPatched)
+                    return;
+#else
                 if (!wanted || !ScriptRunCommand.CanHideNewEditors())
                     return;
+#endif
                 var candidate = Candidates().FirstOrDefault();
                 if (candidate == null)
                     return;
@@ -324,7 +372,19 @@ namespace MiniVivisection
                 }
                 else
                 {
+#if RHINO9
+                    s_hideNewForm = true; // NewFormPrefix9: the new form kept invisible
+                    try
+                    {
+                        GrasshopperRuns.OpenEditor(component);
+                    }
+                    finally
+                    {
+                        s_hideNewForm = false;
+                    }
+#else
                     ScriptRunCommand.OpenHidden(() => GrasshopperRuns.OpenEditor(component));
+#endif
                 }
             }
             catch (Exception ex)
@@ -347,7 +407,146 @@ namespace MiniVivisection
             }
             lock (s_hidden)
                 s_hidden.Add(new Hidden { Component = new WeakReference<object>(component), Window = new WeakReference<Window>(window) });
+#if RHINO9
+            RepairPatches(ScriptEditorOf(component));
+#endif
             Log.Info(LogArea.Breakpoints, "Grasshopper: '{0}' has its script editor, out of sight -- Ctrl+Alt+B or a breakpoint pauses it", name);
         }
+
+#if RHINO9
+        // --- Rhino 9 -------------------------------------------------------------------------------
+
+        private static MethodInfo s_beginEdit;  // ScriptEditor<TOwner>.BeginEdit(window, script, culture, culture)
+        private static MethodInfo s_hasVisible; // ScriptEditor<TOwner>.HasVisibleEditor's getter
+        private static MethodInfo s_newForm;    // CodeEditorForm<IMiniEditor>.BeginEdit()
+        private static MethodInfo s_getWindow;  // ScriptEditor<TOwner>.GetWindow()
+        private static bool s_newFormsPatched;
+        private static bool s_hideNewForm;      // set around OpenEditor by OpenHidden (UI thread)
+        private static long s_lastRepair;
+
+        /// <summary>For the live test: how often the patches were put back.</summary>
+        internal static int Repairs { get; private set; }
+
+        /// <summary>The script editor type declaring BeginEdit and HasVisibleEditor:
+        /// ScriptEditor&lt;BaseScriptComponent&lt;ScriptParam, ScriptLibraryParam&gt;&gt;, the base of the
+        /// component's nested BaseScriptComponent`2+ScriptEditor.</summary>
+        private static Type EditorType9(Assembly plugin)
+        {
+            var nested = plugin.GetType("RhinoCodePluginGH.Components.BaseScriptComponent`2+ScriptEditor", throwOnError: true);
+            for (var type = Close9(plugin, nested).BaseType; type != null; type = type.BaseType)
+            {
+                if (type.IsGenericType && type.GetGenericTypeDefinition().FullName == "RhinoCodePlatform.GH.Context.ScriptEditor`1")
+                    return type;
+            }
+            throw new TypeLoadException("RhinoCodePlatform.GH.Context.ScriptEditor`1 (the base of BaseScriptComponent`2+ScriptEditor)");
+        }
+
+        // A type nested in BaseScriptComponent<TScriptParam, TLibraryParam>, closed as Grasshopper's
+        // script components are: <ScriptParam, ScriptLibraryParam>.
+        private static Type Close9(Assembly plugin, Type nested) => nested.MakeGenericType(
+            plugin.GetType("RhinoCodePluginGH.Parameters.ScriptParam", throwOnError: true),
+            plugin.GetType("RhinoCodePluginGH.Parameters.ScriptLibraryParam", throwOnError: true));
+
+        /// <summary>A new component editor shows itself in RhinoCodeEditor's CodeEditorForm&lt;TEditor&gt;.BeginEdit()
+        /// (Show() while not Loaded), called by ScriptEditor&lt;TOwner&gt;.BeginEdit right after it made the form
+        /// (RhinoCodePluginGH's GH1Editor : ScriptEditorForm : MiniEditor : CodeEditorForm&lt;IMiniEditor&gt;).
+        /// Shared generic code: every Rhino 9 editor window's BeginEdit, gated by s_hideNewForm.</summary>
+        private static void PatchNewForms9(Assembly plugin, Harmony harmony)
+        {
+            var form = Close9(plugin, plugin.GetType("RhinoCodePluginGH.Components.BaseScriptComponent`2+GH1Editor", throwOnError: true));
+            while (form != null && !(form.IsGenericType && form.GetGenericTypeDefinition().FullName == "RhinoCodeEditor.CodeEditorForm`1"))
+                form = form.BaseType;
+            s_newForm = form?.GetMethod("BeginEdit", BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly, null, Type.EmptyTypes, null)
+                ?? throw new MissingMethodException("RhinoCodeEditor.CodeEditorForm`1", "BeginEdit()");
+            harmony.Patch(s_newForm, prefix: new HarmonyMethod(typeof(GrasshopperHiddenEditors), nameof(NewFormPrefix9)));
+            s_newFormsPatched = true;
+        }
+
+        // CodeEditorForm<TEditor>.BeginEdit: a component's new editor, opened by OpenHidden, about to
+        // show itself -- invisible from the start (cloaked: ScriptRunCommand's standing editors), and
+        // shown without taking the focus from Grasshopper's canvas.
+        private static void NewFormPrefix9(object __instance)
+        {
+            try
+            {
+                if (!s_hideNewForm || !(__instance is Window window) || window.Loaded)
+                    return;
+                var wpf = (window as Control)?.ControlObject;
+                wpf?.GetType().GetProperty("ShowActivated")?.SetValue(wpf, false);
+                ScriptRunCommand.HideStanding(window);
+                Log.Info(LogArea.Tabs, "a new editor is made invisible before it shows (a Grasshopper component's hidden editor)");
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(LogArea.Tabs, "a new editor kept invisible: {0}", Log.Describe(ex));
+            }
+        }
+
+        /// <summary>Before a script component's run (GrasshopperRuns.ComputePrefix, UI thread): its
+        /// hidden editor still not visible to Grasshopper (the patches there), else put back now --
+        /// the run's output and the canvas's cone go by it.</summary>
+        internal static void CheckBeforeRun(object component)
+        {
+            if (!Wanted)
+                return;
+            try
+            {
+                var editor = ScriptEditorOf(component);
+                if (editor != null && ScriptRunCommand.IsStanding(WindowOf(editor)))
+                    RepairPatches(editor);
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(LogArea.Breakpoints, "Grasshopper: the hidden editor's patches, checked before a run: {0}", Log.Describe(ex));
+            }
+        }
+
+        private static void PatchAll9(Harmony harmony)
+        {
+            harmony.Patch(s_beginEdit, prefix: new HarmonyMethod(typeof(GrasshopperHiddenEditors), nameof(BeginEditPrefix)));
+            harmony.Patch(s_hasVisible, postfix: new HarmonyMethod(typeof(GrasshopperHiddenEditors), nameof(HasVisibleEditorPostfix)));
+            harmony.Patch(s_newForm, prefix: new HarmonyMethod(typeof(GrasshopperHiddenEditors), nameof(NewFormPrefix9)));
+        }
+
+        /// <summary>BeginEdit and HasVisibleEditor belong to generic classes: their code is shared, and
+        /// when .NET recompiles it (tiered compilation; HasVisibleEditor runs in every solution) the new
+        /// code comes without the patches -- as Always debug's GetBuildKind (GrasshopperRuns.RepairAlwaysDebug).
+        /// A hidden editor Grasshopper sees as visible says so (a reflection call runs the method's
+        /// current code): all put back, at most once a second. UI thread (Scan).</summary>
+        private static void RepairPatches(object editor = null)
+        {
+            if (s_harmony == null || s_hasVisible == null || s_newForm == null || (editor == null && Environment.TickCount64 - s_lastRepair < 1000))
+                return;
+            try
+            {
+                if (editor == null)
+                {
+                    lock (s_hidden)
+                    {
+                        foreach (var hidden in s_hidden)
+                        {
+                            if (hidden.Window.TryGetTarget(out var window) && IsHidden(window) && hidden.Component.TryGetTarget(out var component))
+                            {
+                                editor = ScriptEditorOf(component);
+                                if (editor != null)
+                                    break;
+                            }
+                        }
+                    }
+                }
+                if (editor == null || !ScriptRunCommand.IsStanding(WindowOf(editor)) || s_hasVisible.Invoke(editor, null) as bool? != true)
+                    return;
+                s_lastRepair = Environment.TickCount64;
+                Repairs++;
+                s_harmony.UnpatchAll(s_harmony.Id);
+                PatchAll9(s_harmony);
+                Log.Info(LogArea.Breakpoints, "Grasshopper: .NET recompiled the script editor's code without the hidden editors' patches -- put back");
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(LogArea.Breakpoints, "Grasshopper: putting the hidden editors' patches back: {0}", Log.Describe(ex));
+            }
+        }
+#endif
     }
 }

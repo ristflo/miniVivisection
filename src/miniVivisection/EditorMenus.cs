@@ -186,7 +186,7 @@ namespace MiniVivisection
             return item;
         }
 
-        private static IDebugControls PausedControls(object editor)
+        internal static IDebugControls PausedControls(object editor)
         {
             var controls = ScriptEditorHook.DebugControlsOf(editor);
             return controls != null && controls.State == DebugControlsState.Paused ? controls : null;
@@ -194,10 +194,15 @@ namespace MiniVivisection
 
         /// <summary>The selection in the code view, else the name under the cursor:
         /// letters, digits, <c>_</c>, <c>.</c> and <c>[...]</c> around it.</summary>
-        private static async Task<string> ExpressionAtCursor(object editors)
+        internal static async Task<string> ExpressionAtCursor(object editors)
         {
+#if RHINO9
+            if (!(editors is Rhino.Runtime.Code.Editing.ITextEditor context))
+                return null; // Rhino 9: the caller passes the text editor
+#else
             if (!(editors.GetType().GetProperty("ActiveEditContext", Any)?.GetValue(editors) is ICodeEditContext context))
                 return null;
+#endif
             var selected = await context.GetSelected();
             if (!string.IsNullOrWhiteSpace(selected))
                 return selected;

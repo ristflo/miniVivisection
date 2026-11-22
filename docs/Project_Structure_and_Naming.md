@@ -2,6 +2,8 @@
 
 **Created:** 2026-10-25T19:20:36+03:00 (Asia/Riyadh)
 **Updated:** 2026-10-25T20:44:05+03:00 (Asia/Riyadh) -- the pages' artwork (web/sources) public too; the pages link the public repository
+**Updated:** 2026-11-21T19:37:03+03:00 (Asia/Riyadh) -- `Rhino.props`: the Rhino 8 and Rhino 9 builds
+**Updated:** 2026-11-21T23:57:54+03:00 (Asia/Riyadh) -- the Rhino 9 build's folder is `rhino9`
 **Generator:** Claude Code (Claude Opus 5.5, claude-opus-5-5)
 
 **Original prompt:**
@@ -33,6 +35,7 @@ miniVivisection/
 ├── AGENTS.md                    rules for AI assistants (private)
 ├── miniVivisection.sln          the three projects
 ├── Version.props                version 0.2.0 and the build counter (build-number.txt: local)
+├── Rhino.props                  which Rhino a build is for: 8 (net7.0) or 9 (net8.0, -p:MvRhino=9, built into rhino9)
 ├── src/
 │   ├── miniVivisection/         the Rhino plug-in -> miniVivisection.rhp
 │   │   ├── *.cs, Properties/
@@ -64,7 +67,7 @@ miniVivisection/
                                  public_files.txt; publish.local.json (local, the SFTP account)
 ```
 
-What is built goes into `bin/` folders, not into git: `src/miniVivisection/bin/<Configuration>/net7.0` (the `.rhp`, the `.gha`, and everything that ships next to them) and `bin/yak` at the root (the packages). The packages are not in git: a release puts the package, with the manual's PDF and the removal tool, into `web/pages/downloads/` (git-ignored), and the package itself is on McNeel's server. Up to 0.2.0-beta.370 the pages' folders held them in git.
+What is built goes into `bin/` folders, not into git: `src/miniVivisection/bin/<Configuration>/net7.0` (Rhino 8) and `.../rhino9` (Rhino 9; not `net8.0`, which Rhino 8 would load instead of `net7.0`) (the `.rhp`, the `.gha`, and everything that ships next to them) and `bin/yak` at the root (the packages). The packages are not in git: a release puts the package, with the manual's PDF and the removal tool, into `web/pages/downloads/` (git-ignored), and the package itself is on McNeel's server. Up to 0.2.0-beta.370 the pages' folders held them in git.
 
 ### Generated and committed
 

@@ -13,6 +13,10 @@ import Rhino
 from Rhino.Runtime.Code.Execution.Debugging import DebugControlsState
 
 ALLOWED_GENERIC = {'GetBuildKind'}
+# Rhino 9 has nothing non-generic to hook for these (its editor's classes are generic): the
+# Grasshopper editor's BeginEdit / HasVisibleEditor / CodeEditorForm.BeginEdit / ExecuteCode
+# (GrasshopperHiddenEditors repairs them) and the editor's OnItemDebuggerPaused (Rhino9ErrorPause).
+ALLOWED_GENERIC_RHINO9 = {'BeginEdit', 'get_HasVisibleEditor', 'ExecuteCode', 'OnItemDebuggerPaused'}
 
 
 def generic(method):
@@ -50,7 +54,8 @@ def test():
     patched = list(harmony.GetMethod('GetAllPatchedMethods').Invoke(None, None))
     lt.note('%d patched methods' % len(patched))
     on_generic = sorted(set(m.Name for m in patched if generic(m)))
-    lt.check('no patch on generic code but GetBuildKind (watched)', [n for n in on_generic if n not in ALLOWED_GENERIC], [])
+    allowed = ALLOWED_GENERIC | (ALLOWED_GENERIC_RHINO9 if Rhino.RhinoApp.Version.Major >= 9 else set())
+    lt.check('no patch on generic code but the watched ones', [n for n in on_generic if n not in allowed], [])
 
     # The script component's menu, now added in Grasshopper's own (non-generic) menu code
     import clr
@@ -67,6 +72,11 @@ def test():
 
     # Endurance: 2500 traced lines, then the condition
     script = lt.write_file('endurance.py', '#! python 3\ntotal = 0\nfor i in range(3000):\n    total += i\nprint(total)\n')
+    if Rhino.RhinoApp.Version.Major >= 9:
+        # Rhino 9: the script opened in the editor, its breakpoint set there, the editor's Debug
+        for step in endurance9(script):
+            yield step
+        return
     Rhino.RhinoApp.RunScript('_-ScriptEditor _Run _Debug=_Off "%s"' % script, False)  # opens nothing: plain
     editor = lt.editors()[0]
     state = lt.member(editor, 'ActiveState')
@@ -88,6 +98,53 @@ def test():
         lt.check('the condition still decides: i == 2500', i, '2500')
         controls[0].Stop()
     lt.static_call('BreakpointSpecs', 'EndOneShot', active.Uri, 4)
+
+
+def endurance9(script):
+    import Eto.Forms
+    Rhino.RhinoApp.RunScript('_-ScriptEditor _Open "%s"' % script, False)
+    yield lt.wait_for(lambda: len(lt.editors()) > 0, 120)
+    yield 4
+    model = lt.editors()[0].DataContext
+    text_editor = lt.member(lt.member(model, 'Codes'), 'Current').Editor
+    text_editor.Goto(Rhino.Runtime.Code.Text.TextPosition(4, 1))
+    yield 1
+    # The editor reopens the last session's scripts with their breakpoints: one already on
+    # line 4 would be toggled off -- then toggled on again.
+    # A code view that isn't ready yet takes no toggle: tried again for a while, then the
+    # breakpoint added to the code directly.
+    count = lambda: len(list(text_editor.Code.DebugControls.Breakpoints))
+    before = count()
+    text_editor.ToggleBreakpoint()
+    yield 1
+    if count() < before:
+        text_editor.ToggleBreakpoint()
+        yield 1
+    for _ in range(10):
+        if count() > 0:
+            break
+        text_editor.Goto(Rhino.Runtime.Code.Text.TextPosition(4, 1))
+        text_editor.ToggleBreakpoint()
+        yield 2
+    if count() == 0:
+        from Rhino.Runtime.Code.Execution.Debugging import CodeReferenceBreakpoint
+        text_editor.Code.DebugControls.Breakpoints.Add(CodeReferenceBreakpoint(text_editor.Code, 4))
+        yield 1
+    uri = text_editor.Code.Uri
+    lt.static_call('BreakpointSpecs', 'SetOneShot', uri, 4, 'i == 2500')
+    debug = lt.member(lt.member(model, 'Commands'), 'CodeDebugCommand')
+    lt.progress('debugging %s: %d breakpoint(s) (before %d), Debug enabled: %s' % (uri, count(), before, debug.CanExecute))
+    m = sorted([m for m in debug.GetType().GetMethods(lt.ANY) if m.Name == 'Execute'], key=lambda m: len(m.GetParameters()))[0]
+    args = [None] * len(m.GetParameters())
+    Eto.Forms.Application.Instance.AsyncInvoke(lambda: m.Invoke(debug, args))
+    yield lt.wait_for(lambda: len(paused_controls()) > 0, 120)
+    controls = paused_controls()
+    lt.check('paused after 2500 traced lines', len(controls), 1)
+    if controls:
+        i = lt.static_call('PythonBridge', 'Exec', 'print(i)', True).strip()
+        lt.check('the condition still decides: i == 2500', i, '2500')
+        controls[0].Stop()
+    lt.static_call('BreakpointSpecs', 'EndOneShot', uri, 4)
 
 
 lt.run('t_patches', test)

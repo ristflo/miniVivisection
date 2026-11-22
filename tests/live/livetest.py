@@ -28,6 +28,7 @@ if os.path.join(ROOT, 'tools') not in sys.path:
 
 RESULT_DIR = os.path.join(os.environ.get('TEMP', '.'), 'minivivisection-live')
 _checks = []
+NO_PLUGIN = False  # a test that runs without the plug-in sets it (the plug-in isn't loaded for it)
 
 
 _progress = [None]
@@ -60,6 +61,24 @@ def assembly(name):
         if a.GetName().Name == name:
             return a
     return None
+
+
+def ensure_plugin():
+    """The plug-in loaded -- the repository's Release build for this Rhino (net7.0: Rhino 8,
+    rhino9: Rhino 9) when Rhino doesn't have it registered (Rhino 9 at first)."""
+    if assembly('miniVivisection') is not None:
+        return True
+    tfm = 'rhino9' if Rhino.RhinoApp.Version.Major >= 9 else 'net7.0'
+    path = os.path.join(ROOT, 'src', 'miniVivisection', 'bin', 'Release', tfm, 'miniVivisection.rhp')
+    if not os.path.exists(path):
+        return False
+    try:
+        result = Rhino.PlugIns.PlugIn.LoadPlugIn(path)  # pythonnet 3: the out Guid comes back in a tuple
+    except TypeError:
+        result = Rhino.PlugIns.PlugIn.LoadPlugIn(path, System.Guid.Empty)
+    ok = result[0] if isinstance(result, tuple) else bool(result)
+    progress('plug-in loaded from %s: %s' % (path, ok))
+    return assembly('miniVivisection') is not None
 
 
 def plugin_type(name):
@@ -110,7 +129,18 @@ def hook():
 
 
 def editors():
-    """The open Script Editor windows (RhinoCodeEditor.Editor.RCE)."""
+    """The open Script Editor windows (Rhino 8: RhinoCodeEditor.Editor.RCE; Rhino 9: a window
+    whose DataContext is the editor's model, an IEditor)."""
+    if Rhino.RhinoApp.Version.Major >= 9:
+        found = []
+        for w in Eto.Forms.Application.Instance.Windows:
+            try:
+                context = w.DataContext
+            except Exception:
+                continue
+            if context is not None and any(i.FullName == 'Rhino.Runtime.Code.Editor.IEditor' for i in context.GetType().GetInterfaces()):
+                found.append(w)
+        return found
     return [w for w in Eto.Forms.Application.Instance.Windows if w.GetType().FullName == 'RhinoCodeEditor.Editor.RCE']
 
 
@@ -133,6 +163,14 @@ def write_file(name, text):
     folder = os.path.join(RESULT_DIR, 'scripts')
     os.makedirs(folder, exist_ok=True)
     path = os.path.join(folder, name)
+    # The same text already there: left alone. Rhino 9's editor reopens the scripts of the last
+    # session, and a script it has open that changes on disk asks "Reload Script?" (modal).
+    try:
+        with open(path, encoding='utf-8') as f:
+            if f.read() == text:
+                return path
+    except (IOError, OSError, UnicodeDecodeError):
+        pass
     with open(path, 'w', encoding='utf-8') as f:
         f.write(text)
     return path
@@ -211,4 +249,9 @@ def run(name, test):
     os.makedirs(RESULT_DIR, exist_ok=True)
     _progress[0] = os.path.join(RESULT_DIR, name + '.progress')
     progress('started')
+    try:
+        if not NO_PLUGIN:
+            ensure_plugin()
+    except Exception as e:
+        progress('loading the plug-in: %s' % e)
     _runners.append(_Runner(name, test()))

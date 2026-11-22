@@ -1,0 +1,31 @@
+<Project>
+  <!-- Which Rhino a build is for: Rhino 8 (the default) or Rhino 9. Shared by the plug-in (.rhp),
+       the Grasshopper part (.gha) and the checks.
+
+         dotnet build -c Release                 Rhino 8: net7.0, bin\Release\net7.0
+         dotnet build -c Release -p:MvRhino=9    Rhino 9: net8.0, bin\Release\rhino9
+
+       The Rhino 9 build's folder is not named net8.0: next to a net7.0 folder, Rhino 8 (on .NET 8
+       or later) would load a plug-in registered in net7.0 from a sibling net8.0 folder instead
+       (RhinoCommon's multi-target lookup, PlugIn.GetMultiTargetPath): the Rhino 9 build.
+
+       The two builds share every source file; code that differs is under #if RHINO9 / RHINO8.
+       Rhino's own assemblies are compiled against, never copied: Rhino has them loaded already. -->
+  <PropertyGroup>
+    <MvRhino Condition="'$(MvRhino)' == ''">8</MvRhino>
+    <MvTfm Condition="'$(MvRhino)' == '8'">net7.0</MvTfm>
+    <MvTfm Condition="'$(MvRhino)' == '9'">net8.0</MvTfm>
+    <MvOut Condition="'$(MvRhino)' == '8'">net7.0</MvOut>
+    <MvOut Condition="'$(MvRhino)' == '9'">rhino9</MvOut>
+    <MvRhinoDir>C:\Program Files\Rhino $(MvRhino)</MvRhinoDir>
+    <!-- RhinoCode (Rhino.Runtime.Code, RhinoCodeEditor) and pythonnet: Rhino 8 runs the ones in
+         System\, Rhino 9 (on .NET 8 and later) the ones in System\netcore\. -->
+    <MvRhinoCode Condition="'$(MvRhino)' == '8'">$(MvRhinoDir)\System</MvRhinoCode>
+    <MvRhinoCode Condition="'$(MvRhino)' == '9'">$(MvRhinoDir)\System\netcore</MvRhinoCode>
+    <!-- Eto and the Script Editor's Monaco view (Ed.Eto): System\ in both. -->
+    <MvRhinoSystem>$(MvRhinoDir)\System</MvRhinoSystem>
+    <!-- IronPython 2.7's .NET Core build: System\netcore\ in both. -->
+    <MvIronPython>$(MvRhinoDir)\System\netcore</MvIronPython>
+    <DefineConstants>$(DefineConstants);RHINO$(MvRhino)</DefineConstants>
+  </PropertyGroup>
+</Project>

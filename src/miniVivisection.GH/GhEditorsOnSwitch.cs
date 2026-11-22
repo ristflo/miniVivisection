@@ -57,8 +57,13 @@ namespace MiniVivisection.GH
                     var editor = ScriptEditorOf(component);
                     if (editor?.GetType().GetProperty("HasVisibleEditor", Any)?.GetValue(editor) as bool? != true)
                         continue;
+#if RHINO9
+                    // Rhino 9: IScriptEditor.GetWindow() -- the component editor's form (Rhino 8's CodeEditor/_rce are gone)
+                    if (editor.GetType().GetMethod("GetWindow", BindingFlags.Public | BindingFlags.Instance, null, Type.EmptyTypes, null)?.Invoke(editor, null) is Eto.Forms.Window window && window.Visible)
+#else
                     var codeEditor = editor.GetType().GetProperty("CodeEditor", Any)?.GetValue(editor);
                     if (codeEditor?.GetType().GetField("_rce", Any)?.GetValue(codeEditor) is Eto.Forms.Window window && window.Visible)
+#endif
                     {
                         window.Close();
                         closed++;

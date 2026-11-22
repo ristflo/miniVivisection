@@ -18,7 +18,11 @@ namespace MiniVivisection
     /// </summary>
     internal static class PythonBridge
     {
+#if RHINO9
+        private const string RuntimeAssemblyName = "McNeel.Python.Runtime"; // Rhino 9: Python 3.13
+#else
         private const string RuntimeAssemblyName = "McNeel.Python39.Runtime";
+#endif
         private const int MaxItems = 10000;
 
         // The helpers (python/minivivisection_helpers.py, embedded): run in the paused thread's
@@ -155,7 +159,7 @@ namespace MiniVivisection
             using (Gil())
             {
                 dynamic helpers = Helpers();
-                return ToClr(helpers["__minivivisection_watch_var"](expression)) as ExecVariable;
+                return AsVariable(ToClr(helpers["__minivivisection_watch_var"](expression)));
             }
         }
 
@@ -503,9 +507,28 @@ namespace MiniVivisection
             using (Gil())
             {
                 dynamic helpers = Helpers();
-                return ToClr(helpers["__minivivisection_var_for"](name, value)) as ExecVariable;
+                return AsVariable(ToClr(helpers["__minivivisection_var_for"](name, value)));
             }
         }
+
+        /// <summary>What the trace script made, as the plug-in's variable: Rhino 8's ExecVariable
+        /// itself; in Rhino 9 its PyExecVariable (an ExecSlot), wrapped (Rhino9Compat).</summary>
+        private static ExecVariable AsVariable(object made)
+        {
+#if RHINO9
+            return made is Rhino.Runtime.Code.Execution.ExecValue value ? new ExecVariable(StripDot(value), value) : null;
+#else
+            return made as ExecVariable;
+#endif
+        }
+
+#if RHINO9
+        private static string StripDot(Rhino.Runtime.Code.Execution.ExecValue value)
+        {
+            var name = value is Rhino.Runtime.Code.Execution.ExecSlot slot ? slot.Id?.Identifier : value.Expression.ExpressionString;
+            return name != null && name.StartsWith(".") ? name.Substring(1) : name;
+        }
+#endif
 
         /// <summary>Runs <paramref name="source"/> -- statements, like a notebook cell: a
         /// final expression's value is printed -- in the paused frame (a function's

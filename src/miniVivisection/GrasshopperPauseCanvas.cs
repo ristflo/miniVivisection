@@ -39,8 +39,14 @@ namespace MiniVivisection
         private static PropertyInfo s_context; // GH_Document.Context
         private static bool s_reportedDelete, s_reportedSolution;
 
+#if RHINO9
+        /// <summary>For the health line (EditorHooks): null when installed; "waiting for Grasshopper"
+        /// while Grasshopper isn't loaded yet.</summary>
+        internal static string HookProblem => s_error ?? (s_harmony == null ? GrasshopperRuns.WaitingForGrasshopper : null);
+#else
         /// <summary>For the health line (EditorHooks): null when installed or Grasshopper isn't loaded yet.</summary>
         internal static string HookProblem => s_error;
+#endif
 
         /// <summary>For the live test: deletions refused while paused.</summary>
         internal static int Refused { get; private set; }

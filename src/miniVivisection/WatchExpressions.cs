@@ -48,6 +48,14 @@ namespace MiniVivisection
             set => t_bypass = value;
         }
 
+#if RHINO9
+        // Rhino 9's Watch tab watches the Variables tab's values (no typed expressions): nothing to answer.
+        public static void TryInstall(ScriptEditorHook hook)
+        {
+            s_hook = hook;
+            s_error = "Rhino 8 only";
+        }
+#else
         public static void TryInstall(ScriptEditorHook hook)
         {
             s_hook = hook;
@@ -96,5 +104,6 @@ namespace MiniVivisection
                 t_bypass = false;
             }
         }
+#endif
     }
 }

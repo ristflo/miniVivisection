@@ -48,7 +48,11 @@ namespace MiniVivisection
 
             public override Code CreateCode()
             {
+#if RHINO9
+                var code = new StorageEntry(LanguageSpec.Python3, new Uri(Path)).CreateCode(); // Rhino 9: language first
+#else
                 var code = new StorageEntry(new Uri(Path), LanguageSpec.Python3).CreateCode();
+#endif
                 // The editor finds an open example by its Id (RCE GetCode: ActiveState.FindCode):
                 // opened again, the lesson's tab is shown instead of a second copy.
                 if (code != null)
@@ -147,6 +151,7 @@ namespace MiniVivisection
                 return Convert.ToHexString(sha.ComputeHash(stream));
         }
 
+#if !RHINO9 // Rhino 9's Examples tab is a new aspect (IExamplesAspect): not followed yet
         /// <summary>The lessons in <paramref name="library"/>'s miniVivisection folder: added
         /// when <paramref name="on"/> and missing, removed when off. Returns how many it holds.</summary>
         internal static int Apply(SourceLibrary library, string folder, bool on)
@@ -174,6 +179,7 @@ namespace MiniVivisection
                 ?? throw new MissingMethodException("Library", "LockAndRemove");
             remove.Invoke(library, new object[] { code });
         }
+#endif
 
         /// <summary>The editor's examples library: RCE.Browser.Examples.Library.</summary>
         private static object LibraryOf(object editor)
@@ -208,6 +214,35 @@ namespace MiniVivisection
 
         private static void ApplyTo(object editor)
         {
+#if RHINO9
+            try
+            {
+                if (!(Rhino9Editor.ModelOf(editor) is Rhino.Runtime.Code.Editor.IMainEditor model))
+                    return; // a Grasshopper (Mini) editor: no Examples tab
+                var examples = model.Examples;
+                var folder = WorkingCopies(ShippedFolder, WorkingFolder);
+                var ours = FolderUri(folder);
+                if (MiniVivisectionSettings.ExamplesTab)
+                {
+                    WrapOpenSelected(model);
+                    if (!examples.CanOrHasLibrary && !examples.IsLibraryChanging)
+                        _ = examples.Open(ours); // an empty tab: the lessons (the user's choice is never replaced)
+                }
+                else
+                {
+                    UnwrapOpenSelected(model);
+                    if (Shows(examples, ours))
+                        _ = examples.Close();
+                }
+                s_problem = null;
+            }
+            catch (Exception ex)
+            {
+                if (s_problem == null)
+                    UserLog.Warning("Can't show the lessons in the Examples tab: {0}", ex.Message);
+                s_problem = ex.Message;
+            }
+#else
             try
             {
                 var library = LibraryOf(editor);
@@ -229,6 +264,96 @@ namespace MiniVivisection
                     UserLog.Warning("Can't add the lessons to the Examples tab: {0}", ex.Message);
                 s_problem = ex.Message;
             }
+#endif
         }
+#if RHINO9
+        /// <summary>The V° menu's "Lessons in the Examples tab": the lessons folder in the tab, shown.</summary>
+        internal static async System.Threading.Tasks.Task<bool> ShowLessons(object editor)
+        {
+            if (!(Rhino9Editor.ModelOf(editor) is Rhino.Runtime.Code.Editor.IMainEditor model))
+                return false;
+            var ours = FolderUri(WorkingCopies(ShippedFolder, WorkingFolder));
+            WrapOpenSelected(model);
+            if (!Shows(model.Examples, ours) && !await model.Examples.Open(ours))
+                return false;
+            Rhino9Trays.SetTray(model, "CurrentBrowser", Rhino9Trays.Examples);
+            Rhino9Trays.SetBool(model, "ShowBrowser", true);
+            return true;
+        }
+
+        private static Uri FolderUri(string folder) =>
+            new Uri(System.IO.Path.GetFullPath(folder).TrimEnd(System.IO.Path.DirectorySeparatorChar) + System.IO.Path.DirectorySeparatorChar);
+
+        private static bool Shows(Rhino.Runtime.Code.Editor.Aspects.IExamplesAspect examples, Uri folder) =>
+            examples.HasLibrary && examples.Library?.Base is Uri shown && shown.IsFile &&
+            string.Equals(System.IO.Path.GetFullPath(shown.LocalPath).TrimEnd('\\'), System.IO.Path.GetFullPath(folder.LocalPath).TrimEnd('\\'), StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>A lesson: a file in the working copies (or, when those couldn't be made, the shipped folder).</summary>
+        private static bool IsLesson(Uri uri)
+        {
+            if (uri == null || !uri.IsFile)
+                return false;
+            var path = System.IO.Path.GetFullPath(uri.LocalPath);
+            return path.StartsWith(System.IO.Path.GetFullPath(WorkingFolder) + "\\", StringComparison.OrdinalIgnoreCase)
+                || path.StartsWith(System.IO.Path.GetFullPath(ShippedFolder) + "\\", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<object, object> s_wrapped =
+            new System.Runtime.CompilerServices.ConditionalWeakTable<object, object>();
+
+        /// <summary>The Examples tab's Open (double-click, context menu) opens a lesson as its file;
+        /// put back if the editor sets its command again.</summary>
+        private static void WrapOpenSelected(Rhino.Runtime.Code.Editor.IMainEditor model)
+        {
+            var examples = model.Examples;
+            if (!(examples.OpenSelectedCommand is OpenLessonCommand) && examples.OpenSelectedCommand != null)
+                examples.OpenSelectedCommand = new OpenLessonCommand(model, examples.OpenSelectedCommand);
+            if (!s_wrapped.TryGetValue(examples, out _))
+            {
+                s_wrapped.Add(examples, null);
+                examples.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == "OpenSelectedCommand" && MiniVivisectionSettings.ExamplesTab && !(examples.OpenSelectedCommand is OpenLessonCommand) && examples.OpenSelectedCommand != null)
+                        examples.OpenSelectedCommand = new OpenLessonCommand(model, examples.OpenSelectedCommand);
+                };
+            }
+        }
+
+        private static void UnwrapOpenSelected(Rhino.Runtime.Code.Editor.IMainEditor model)
+        {
+            if (model.Examples.OpenSelectedCommand is OpenLessonCommand wrapped)
+                model.Examples.OpenSelectedCommand = wrapped.Inner;
+        }
+
+        /// <summary>The editor's ExamplesOpenSelectedCommand, except for a lesson: Rhino 9 opens
+        /// examples as untitled copies (CodesAspect.TryAddCopyAfterCurrent: Unstore); a lesson opens
+        /// its file instead, as a dropped file does (TryAdd: an open one is brought forward).</summary>
+        private sealed class OpenLessonCommand : Rhino.Runtime.Code.Editor.Commands.Command
+        {
+            private readonly Rhino.Runtime.Code.Editor.IMainEditor _model;
+
+            public OpenLessonCommand(Rhino.Runtime.Code.Editor.IMainEditor model, Rhino.Runtime.Code.Editor.Commands.ICommand inner)
+            {
+                _model = model;
+                Inner = inner;
+                Id = inner.Id;
+                Title = inner.Title;
+                Description = inner.Description;
+                CanExecute = true;
+            }
+
+            public Rhino.Runtime.Code.Editor.Commands.ICommand Inner { get; }
+
+            public override async System.Threading.Tasks.Task Execute(System.Threading.CancellationToken token)
+            {
+                if (_model.Examples.TryGetFirstSelected(out var item) && item != null && item.TryGet(out ICode code) && code != null && IsLesson(code.Uri))
+                {
+                    await _model.Codes.TryAdd(new StorageEntry(code.Uri));
+                    return;
+                }
+                await Inner.Execute(token);
+            }
+        }
+#endif
     }
 }

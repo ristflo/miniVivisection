@@ -25,6 +25,9 @@ namespace MiniVivisection
     ///   own thread when it runs on another;
     /// - <c>Proceed(action)</c>, which the editor's Continue/Step/Stop buttons call,
     ///   hands over the action instead of answering the prompt.
+    /// Rhino 9 has the same pause (a "Select Action" prompt on the UI thread) and the same two
+    /// methods; the action waits in <c>_proceedWith</c> there (Rhino 8: <c>_action</c> under
+    /// <c>_actionLock</c>), and <c>Proceed</c> answers the prompt with a hidden "Proceed" option.
     /// </summary>
     internal static class FreePause
     {
@@ -100,8 +103,12 @@ namespace MiniVivisection
                 var controls = platform.GetType(ControlsTypeName, throwOnError: true);
                 s_controlsType = controls;
                 var flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
+#if RHINO9
+                s_action = controls.GetField("_proceedWith", flags) ?? throw new MissingFieldException(ControlsTypeName, "_proceedWith");
+#else
                 s_action = controls.GetField("_action", flags) ?? throw new MissingFieldException(ControlsTypeName, "_action");
                 s_actionLock = controls.GetField("_actionLock", flags) ?? throw new MissingFieldException(ControlsTypeName, "_actionLock");
+#endif
                 var pause = controls.GetMethod("Pause", flags, null, Type.EmptyTypes, null) ?? throw new MissingMethodException(ControlsTypeName, "Pause");
                 var proceed = controls.GetMethod("Proceed", flags, null, new[] { typeof(DebugAction) }, null) ?? throw new MissingMethodException(ControlsTypeName, "Proceed");
 
@@ -207,8 +214,7 @@ namespace MiniVivisection
                     s_early.Add(__instance);
                 }
             }
-            lock (s_actionLock.GetValue(__instance))
-                s_action.SetValue(__instance, (DebugAction?)action);
+            SetAction(__instance, action);
             return false;
         }
 
@@ -238,6 +244,30 @@ namespace MiniVivisection
             }
         }
 
+        // Rhino 9's controls have no lock of their own for the action: one for all.
+        private static readonly object s_rhino9Lock = new object();
+
+        private static object ActionLock(object controls) => s_actionLock?.GetValue(controls) ?? s_rhino9Lock;
+
+        /// <summary>The action the editor gave (Continue, a step, Stop), or none (null).</summary>
+        private static void SetAction(object controls, DebugAction? action)
+        {
+            lock (ActionLock(controls))
+                s_action.SetValue(controls, action);
+        }
+
+        /// <summary>The action given and not yet taken, taken now; null when none.</summary>
+        private static DebugAction? TakeAction(object controls)
+        {
+            lock (ActionLock(controls))
+            {
+                var action = (DebugAction?)s_action.GetValue(controls);
+                if (action.HasValue)
+                    s_action.SetValue(controls, null);
+                return action;
+            }
+        }
+
         // Debug controls given their action while their pause was starting (ProceedPrefix).
         private static readonly HashSet<object> s_early = new HashSet<object>(ReferenceEqualityComparer.Instance);
 
@@ -248,10 +278,7 @@ namespace MiniVivisection
             {
                 // An action given while this pause was starting is this pause's; any other is stale.
                 if (!s_early.Remove(controls))
-                {
-                    lock (s_actionLock.GetValue(controls))
-                        s_action.SetValue(controls, null);
-                }
+                    SetAction(controls, null);
                 if (!s_waiting.TryGetValue(controls, out var stack))
                     s_waiting[controls] = stack = new Stack<ConcurrentQueue<Action>>();
                 stack.Push(work);
@@ -274,14 +301,9 @@ namespace MiniVivisection
                 {
                     while (work.TryDequeue(out var job))
                         RunJob(job);
-                    var action = (DebugAction?)s_action.GetValue(controls);
+                    var action = TakeAction(controls); // taken: an outer pause of the same debugger waits for its own
                     if (action.HasValue)
-                    {
-                        // Taken: an outer pause of the same debugger waits for its own action.
-                        lock (s_actionLock.GetValue(controls))
-                            s_action.SetValue(controls, null);
                         return action.Value;
-                    }
                     if (DateTime.UtcNow >= nextCheck)
                     {
                         nextCheck = DateTime.UtcNow.AddSeconds(0.5);

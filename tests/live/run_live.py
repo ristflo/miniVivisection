@@ -1,4 +1,4 @@
-"""miniVivisection's live tests: each test script runs in a fresh Rhino 8.
+"""miniVivisection's live tests: each test script runs in a fresh Rhino 8 (--rhino 9: Rhino 9).
 
     python tests/live/run_live.py                 # every t_*.py here (not t_*_real.py: real Claude)
     python tests/live/run_live.py t_tracelock     # one (or more) by name
@@ -25,7 +25,11 @@ Windows then takes the user to that virtual desktop. --desktop hidden avoids tha
 a Win32 desktop of its own (CreateDesktop), never on screen, never taking the focus.
 
 Needs the plug-in built in Release (bin/Release/net7.0, where Rhino has it registered)
-and no other Rhino running (the build would be locked, and windows would mix up).
+and no other Rhino running (the build would be locked, and windows would mix up). A Rhino
+that has no registration of the plug-in gets one for the repository's build (ensure_registered:
+loaded at startup, as Rhino writes it when it loads a plug-in); an existing one is left alone.
+--rhino 9 runs the tests in Rhino 9 with the Rhino 9 build (dotnet build -c Release -p:MvRhino=9:
+bin/Release/rhino9); livetest.py loads that build when Rhino 9 doesn't have the plug-in yet.
 """
 import ctypes
 import ctypes.wintypes as wt
@@ -38,6 +42,8 @@ import threading
 import time
 
 RHINO = r'C:\Program Files\Rhino 8\System\Rhino.exe'
+RHINO_TITLE = 'Rhino 8'  # in the main window's title: --rhino 9 makes it 'Rhino 9'
+RHINO_MAJOR = '8'
 HERE = os.path.dirname(os.path.abspath(__file__))
 RESULT_DIR = os.path.join(os.environ.get('TEMP', '.'), 'minivivisection-live')
 FREEZE_SECONDS = 60  # Grasshopper's first load keeps the UI busy for a while
@@ -69,6 +75,9 @@ AREA = None  # display DISPLAY's work area (main sets it)
 DESKTOP = os.environ.get('MINIVIVISECTION_TEST_DESKTOP') or ''  # 'vscode', a number, 'hidden', or '' (off)
 HIDDEN_DESKTOP_NAME = 'minivivisection-tests'
 HIDDEN_DESKTOP = None  # with --desktop hidden: the handle of that Win32 desktop (main opens it)
+# The test Rhinos inherit this: the plug-in doesn't offer to install RhinoAI there (a modal
+# dialog in the middle of a test held its UI thread). CLOSE_AFTER still closes one, from an older build.
+os.environ['MINIVIVISECTION_OFFER_RHINOAI'] = '0'
 kernel32 = ctypes.windll.kernel32
 user32.CreateDesktopW.restype = wt.HANDLE
 user32.CreateDesktopW.argtypes = [wt.LPCWSTR, wt.LPCWSTR, ctypes.c_void_p, wt.DWORD, wt.DWORD, ctypes.c_void_p]
@@ -167,7 +176,7 @@ def keep_out_of_sight(pid, stop):
                 if DESKTOP:
                     continue  # the plug-in moves the windows to the test desktop, and shows Rhino's there
                 if user32.IsIconic(hwnd):
-                    if AREA is not None and 'Rhino 8' in title(hwnd) and hwnd not in placed:
+                    if AREA is not None and RHINO_TITLE in title(hwnd) and hwnd not in placed:
                         # On a display: Rhino starts minimized (its loading would show at its saved
                         # place); once ready, its main window goes onto the display, not activated.
                         placed.add(hwnd)
@@ -221,7 +230,7 @@ def title(hwnd):
 
 def main_window(pid):
     for hwnd in windows_of(pid):
-        if 'Rhino 8' in title(hwnd):
+        if RHINO_TITLE in title(hwnd):
             return hwnd
     return None
 
@@ -233,10 +242,27 @@ DIALOGS = [
 ]
 
 
+# WPF dialogs closed (WM_CLOSE) once they have been up for a while -- they have no button windows:
+# Rhino 9's "Preparing Plug-ins for First Use" waits for Close when a plug-in it found failed to
+# install, at every start (the plug-in that fails isn't remembered).
+# Rhino 8's is a plain dialog titled with its message.
+# The plug-in's offer to install RhinoAI (a Rhino without RhinoAI, V AI on): closed is "Not now".
+CLOSE_AFTER = {'Preparing Plug-ins for First Use': 15, 'Done installing plug-ins, press close to continue': 2,
+               'miniVivisection: install RhinoAI?': 1}
+_first_seen = {}
+
+
 def press_known_buttons(pid):
     """Presses the answer of a known dialog of the test's Rhino; returns what it pressed."""
     pressed = []
     for hwnd in windows_of(pid):
+        wait = CLOSE_AFTER.get(title(hwnd))
+        if wait is not None:
+            since = _first_seen.setdefault(hwnd, time.time())
+            if time.time() - since > wait:
+                user32.PostMessageW(hwnd, 0x0010, 0, 0)  # WM_CLOSE
+                pressed.append(title(hwnd) + ' > closed')
+                _first_seen[hwnd] = time.time()  # again in a while if it stays
         for dialog, button in DIALOGS:
             if title(hwnd) != dialog:
                 continue
@@ -283,6 +309,36 @@ def rhino_pids():
     return {int(line.split('","')[1]) for line in out.splitlines() if line.startswith('"Rhino.exe"')}
 
 
+PLUGIN_ID = 'c198ec17-3078-46a0-8f9b-94a40e9ba298'
+
+
+def ensure_registered():
+    """The plug-in registered in the Rhino under test, for the repository's Release build, when
+    that Rhino has no registration of it: Rhino 8's -ScriptEditor _Run _Debug=_Off needs it at
+    startup (the Debug option is the plug-in's). A registration that is there -- this build, or
+    an installed package's -- stays as it is."""
+    import winreg
+    key = r'Software\McNeel\Rhinoceros\%s.0\Plug-Ins\%s' % (RHINO_MAJOR, PLUGIN_ID)
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key + r'\PlugIn') as plugin:
+            if winreg.QueryValueEx(plugin, 'FileName')[0]:
+                return
+    except OSError:
+        pass
+    rhp = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'src', 'miniVivisection', 'bin', 'Release',
+                       'rhino9' if RHINO_MAJOR == '9' else 'net7.0', 'miniVivisection.rhp')
+    if not os.path.isfile(rhp):
+        raise SystemExit('no %s: dotnet build -c Release%s' % (rhp, ' -p:MvRhino=9' if RHINO_MAJOR == '9' else ''))
+    with winreg.CreateKey(winreg.HKEY_CURRENT_USER, key) as entry:
+        for name, value in (('Name', 'miniVivisection'), ('EnglishName', 'miniVivisection')):
+            winreg.SetValueEx(entry, name, 0, winreg.REG_SZ, value)
+        for name, value in (('LoadMode', 1), ('Type', 16), ('IsDotNETPlugIn', 1), ('DirectoryInstall', 0)):
+            winreg.SetValueEx(entry, name, 0, winreg.REG_DWORD, value)
+    with winreg.CreateKey(winreg.HKEY_CURRENT_USER, key + r'\PlugIn') as plugin:
+        winreg.SetValueEx(plugin, 'FileName', 0, winreg.REG_SZ, rhp)
+    print('Rhino %s had no registration of miniVivisection: registered %s' % (RHINO_MAJOR, rhp), flush=True)
+
+
 def rhino_running():
     return bool(rhino_pids())
 
@@ -325,7 +381,10 @@ def run_test(path, timeout):
     # One command line as Rhino reads it: /runscript="..." -- subprocess would quote the
     # whole switch, which Rhino then ignores. The test's path has no spaces. ScriptEditor
     # Run with Debug off: plainly, whatever the "RunPythonScript command" setting says.
-    command = '"%s" /nosplash /notemplate /runscript="_-ScriptEditor _Run _Debug=_Off %s"' % (RHINO, path)
+    # Rhino 9's ScriptEditor Run has no Debug option (Rhino 8's is miniVivisection's own,
+    # ScriptRunCommand): there it runs plainly anyway.
+    debug_off = '' if RHINO_MAJOR == '9' else ' _Debug=_Off'
+    command = '"%s" /nosplash /notemplate /runscript="_-ScriptEditor _Run%s %s"' % (RHINO, debug_off, path)
     stop_hiding = threading.Event()
     if VISIBLE:
         process = subprocess.Popen(command)
@@ -336,6 +395,7 @@ def run_test(path, timeout):
         startup.dwFlags |= subprocess.STARTF_USESHOWWINDOW
         startup.wShowWindow = 7  # SW_SHOWMINNOACTIVE: minimized, not activated (on a display: shown there once ready)
         environment = dict(os.environ)
+        environment['MINIVIVISECTION_TEST_RHINO'] = RHINO_MAJOR
         if DESKTOP:
             environment['MINIVIVISECTION_TEST_DESKTOP'] = DESKTOP
         process = subprocess.Popen(command, startupinfo=startup, env=environment)
@@ -368,6 +428,8 @@ def run_test(path, timeout):
                     break
             if time.time() - started > timeout:
                 verdict = {'test': name, 'ok': False, 'checks': [{'name': 'timeout', 'ok': False, 'actual': '%d s' % timeout, 'expected': 'a result'}]}
+                # The Rhino's windows then: a dialog nobody answered shows here
+                verdict['windows'] = ', '.join(repr(title(h)) for h in windows_of(process.pid)) or '(none)'
                 break
     finally:
         stop_hiding.set()
@@ -399,12 +461,19 @@ def close_rhino(process):
 
 
 def main(argv):
-    global VISIBLE, DISPLAY, AREA, DESKTOP, HIDDEN_DESKTOP
+    global VISIBLE, DISPLAY, AREA, DESKTOP, HIDDEN_DESKTOP, RHINO, RHINO_TITLE, RHINO_MAJOR
     # A test's notes may hold any character (☐ ☑): printed as UTF-8, also into a pipe
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     if '--visible' in argv:
         VISIBLE = True
         argv = [a for a in argv if a != '--visible']
+    if '--rhino' in argv:
+        at = argv.index('--rhino')
+        RHINO_MAJOR = argv[at + 1]
+        argv = argv[:at] + argv[at + 2:]
+        RHINO = r'C:\Program Files\Rhino %s\System\Rhino.exe' % RHINO_MAJOR
+        RHINO_TITLE = 'Rhino ' + RHINO_MAJOR
+        print('Tests in %s (%s)' % (RHINO_TITLE, RHINO), flush=True)
     if '--list-displays' in argv:
         for number, (device, area) in displays().items():
             print('display %d: %s, work area %s' % (number, device, area))
@@ -436,6 +505,8 @@ def main(argv):
     wanted = argv[1:]
     # t_*_real.py use the real Claude Code (they cost a little): only when named
     tests = sorted(t for t in glob.glob(os.path.join(HERE, 't_*.py')) if not t.endswith('_real.py'))
+    # t_rhino9*.py are Rhino 9's own: in a Rhino 8 run only when named
+    tests = [t for t in tests if RHINO_MAJOR == '9' or not os.path.basename(t).startswith('t_rhino9')]
     if wanted:
         # any script named here, also one that isn't a test (shots_rhino, shots_gh: the screenshots)
         unknown = [name for name in wanted if not os.path.exists(os.path.join(HERE, name + '.py'))]
@@ -448,6 +519,7 @@ def main(argv):
         print('A Rhino is running -- the tests start when it is closed.', flush=True)
         while rhino_running():
             time.sleep(2)
+    ensure_registered()
     failed = 0
     for path in tests:
         timeout = 600 if path.endswith('_real.py') else 300
@@ -459,6 +531,8 @@ def main(argv):
                 continue
             print('   %s %s%s' % ('ok  ' if c['ok'] else 'FAIL', c['name'],
                                   '' if c['ok'] else '  (got %s, want %s)' % (c['actual'], c['expected'])))
+        if verdict.get('windows'):
+            print('   --- windows of the Rhino at the timeout: ' + verdict['windows'])
         if verdict.get('stacks'):
             print('   --- managed stacks of the frozen Rhino: ' + verdict['stacks'])
         for part in ('progress', 'log'):

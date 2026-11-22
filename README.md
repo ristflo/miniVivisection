@@ -1,6 +1,6 @@
 # miniVivisection
 
-A debugger companion for Rhino 8's Script Editor and Grasshopper: while a script is paused, see what its variables hold as geometry in Rhino, change it there and write it back. **Beta.**
+A debugger companion for the Script Editor of Rhino 8 and Rhino 9, and for Grasshopper: while a script is paused, see what its variables hold as geometry in Rhino, change it there and write it back. **Beta.**
 
 ![A paused script's values drawn in Rhino's viewport](docs/screenshots/01_watch_values_in_rhino.png)
 
@@ -17,13 +17,13 @@ The full list: *Features at a glance* in the [manual](docs/miniVivisection_Manua
 
 ## Requirements
 
-Windows, Rhino 8.36 or later (tested with 8.37). The Script Editor's Python 3 for the Python features; C# scripts are covered in part. Claude Code (the `claude` CLI) for V°Claude.
+Windows, Rhino 8.36 or later (tested with 8.37), or Rhino 9.2 or later -- a build of its own, with the same features placed in Rhino 9's editor (the manual's *Rhino 9*). The Script Editor's Python 3 for the Python features; C# scripts are covered in part. Claude Code (the `claude` CLI) for V°Claude.
 
 ## Install
 
-In Rhino 8: `PackageManager`, search *miniVivisection*, tick *Include pre-releases*, *Install*, and restart Rhino. Or download the `.yak` package from [restweiss.de/miniVivisection](https://restweiss.de/miniVivisection/) and drag it onto Rhino 8's window. A copy installed from an older zip is removed first with `miniVivisection_Remove_Old_Install.cmd` (on the web page, and in the package's `misc` folder). Details: the manual's *Install*.
+In Rhino 8 (or 9): `PackageManager`, search *miniVivisection*, tick *Include pre-releases*, *Install*, and restart Rhino; each Rhino gets its own package. Or download the `.yak` package from [restweiss.de/miniVivisection](https://restweiss.de/miniVivisection/) and drag it onto Rhino's window. A copy installed from an older zip is removed first with `miniVivisection_Remove_Old_Install.cmd` (on the web page, and in the package's `misc` folder). Details: the manual's *Install*.
 
-miniVivisection relies on internal code of Rhino 8's Script Editor; a Rhino update can break parts of it. Every feature can be switched off.
+miniVivisection relies on internal code of the Script Editor; a Rhino update can break parts of it. Every feature can be switched off.
 
 ## Documentation
 

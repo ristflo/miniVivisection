@@ -34,11 +34,19 @@ namespace MiniVivisection
         private static Harmony s_harmony;
         private static string s_error;
         private static bool s_listening;
+#if !RHINO9
         private static Harmony s_buttonsHarmony;
         private static FieldInfo s_commandEditor;
+#endif
 
+#if RHINO9
+        /// <summary>For the health line (EditorHooks): null when installed; "waiting for Grasshopper"
+        /// while Grasshopper's script components aren't loaded yet.</summary>
+        internal static string HookProblem => s_error ?? (s_harmony == null ? GrasshopperRuns.WaitingForGrasshopper : null);
+#else
         /// <summary>For the health line (EditorHooks): null when installed or Grasshopper isn't loaded yet.</summary>
         internal static string HookProblem => s_error;
+#endif
 
         /// <summary>At load: patched now if Grasshopper's script components are loaded, else when they load.</summary>
         public static void Start()
@@ -66,6 +74,14 @@ namespace MiniVivisection
         /// <summary>The component editor's Run (always plain) and Debug (also without a breakpoint).</summary>
         private static void TryInstallButtons(Assembly assembly)
         {
+#if RHINO9
+            // Rhino 9: the component editor's Run and Debug are new commands (RhinoCodePlatform.GH.Context's
+            // GHRunCommand / GHDebugCommand, both a GHExecCommand; Rhino 8's ExecuteCommand and
+            // RunDebugCodeCommand are gone), in one switching button whose alternate run is Debug when the
+            // script has no breakpoint -- Rhino 9's own "Debug without a breakpoint". Left as Rhino 9 has
+            // it, as the Script Editor's Run and Debug ("not in Rhino 9 yet").
+            return;
+#else
             if (s_buttonsHarmony != null)
                 return;
             try
@@ -88,8 +104,10 @@ namespace MiniVivisection
                     ex = ex.InnerException;
                 UserLog.Warning("The Grasshopper script editor's Run and Debug keep their own behaviour: {0}", ex.Message);
             }
+#endif
         }
 
+#if !RHINO9
         // Debug: enabled for any script that can be traced while nothing runs, breakpoint or not.
         private static void DebugStatePostfix(object __instance)
         {
@@ -109,6 +127,7 @@ namespace MiniVivisection
                 Log.Debug(LogArea.Breakpoints, "Grasshopper Debug without breakpoints: {0}", Log.Describe(ex));
             }
         }
+#endif
 
         private static void TryInstall(Assembly assembly)
         {
@@ -143,6 +162,40 @@ namespace MiniVivisection
         internal static int Calls;
 
         internal static bool IsInstalled => s_harmony != null;
+
+#if RHINO9
+        /// <summary>For the live test: how often the patch was found gone before a run and put back.</summary>
+        internal static int RepairsBeforeRun { get; private set; }
+
+        /// <summary>Rhino 9, before a script component's run (GrasshopperRuns.ComputePrefix, UI thread):
+        /// GetBuildKind called once by reflection -- its current code -- to see the postfix is still
+        /// there; else put back now, so this run is debugged (Always debug). GrasshopperRuns'
+        /// RepairAlwaysDebug sees a loss only after a run: a recompile .NET installs in the background
+        /// after many solutions would leave the next run -- a hang, say -- plain.</summary>
+        internal static void CheckBeforeRun(object component)
+        {
+            if (s_harmony == null || s_getBuildKind == null || !MiniVivisectionSettings.GrasshopperAlwaysDebug)
+                return;
+            try
+            {
+                var context = GrasshopperRuns.ContextOf(component);
+                var code = GrasshopperRuns.CodeOf(component);
+                if (context == null || code == null || !s_getBuildKind.DeclaringType.IsInstanceOfType(context))
+                    return;
+                var before = Calls;
+                s_getBuildKind.Invoke(context, new object[] { code });
+                if (Calls != before)
+                    return;
+                Repatch();
+                RepairsBeforeRun++;
+                Log.Info(LogArea.Breakpoints, "Grasshopper: Always debug's patch was gone before '{0}' ran (.NET recompiled GetBuildKind) -- put back", GrasshopperRuns.NickName(component));
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(LogArea.Breakpoints, "Grasshopper: Always debug's patch, checked before a run: {0}", Log.Describe(ex));
+            }
+        }
+#endif
 
         /// <summary>The patch again (the runtime recompiled the method without it): see GrasshopperRuns.Repair.</summary>
         internal static void Repatch()

@@ -6,7 +6,8 @@ version: 0.0.0
 authors:
 - Florian Rist
 description: >
-  A companion to the Rhino 8 Script Editor's debugger (Windows, Rhino 8.36 or later).
+  A companion to the Script Editor's debugger of Rhino 8 and Rhino 9 (Windows, Rhino 8.36
+  or later; Rhino 9.2 or later: its own package).
   While a script is paused, its watched values (points, curves, meshes, planes...) are
   drawn in the Rhino viewports, values show in the code and its tooltips, and Rhino stays
   usable. Breakpoints get conditions, hit counts and log messages; Ctrl+Alt+B pauses a
@@ -14,7 +15,7 @@ description: >
   (installed separately; code Claude wants to run waits for your Run). For Grasshopper: script
   components that can be debugged and stopped, V°Edit (edit Grasshopper geometry in Rhino),
   V°Text, V°Protect, and script Panels shown as code. With 17 Script Editor and 12
-  Grasshopper lessons and a manual (V°Help). Beta: it relies on internal code of Rhino 8's
+  Grasshopper lessons and a manual (V°Help). Beta: it relies on internal code of the
   Script Editor, patched at runtime (Harmony), so a Rhino update can break parts of it; every
   feature can be switched off. It runs a local MCP server for Claude.
 url: https://restweiss.de/miniVivisection

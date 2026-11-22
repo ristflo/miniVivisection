@@ -2,11 +2,17 @@ using System;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
-using Ed.Eto;
 using Rhino;
 using Rhino.Runtime.Code;
 using Rhino.Runtime.Code.Editing;
 using Rhino.Runtime.Code.Execution.Debugging;
+#if RHINO9
+using CodeEditContext = Rhino.Runtime.Code.Editing.ITextEditor;
+using MonacoView = Ed.Core.IEd;
+#else
+using CodeEditContext = Rhino.Runtime.Code.Editing.ICodeEditContext;
+using MonacoView = Ed.Eto.IEd;
+#endif
 
 namespace MiniVivisection
 {
@@ -15,8 +21,10 @@ namespace MiniVivisection
     /// script, its selection and cursor, the Terminal's text, the debugger. Internal
     /// editor UI (RhinoCode 8.36, by reflection): <c>RCE.Codes.Editors.ActiveEditContext</c>
     /// (public <see cref="ICodeEditContext"/>), its Monaco view (<c>_monaco</c>, a public
-    /// <see cref="IEd"/>), <c>RCE.Console.Terminal.TextArea.Text</c>. Call on the UI
+    /// <c>IEd</c>), <c>RCE.Console.Terminal.TextArea.Text</c>. Call on the UI
     /// thread (<see cref="OnUiThread{T}"/>).
+    /// Rhino 9: the editor's public model (<see cref="Rhino9Editor"/>): <c>Codes.Current.Editor</c>
+    /// (an <c>ITextEditor</c>), its Monaco view (<c>GetWidget</c>, an <c>Ed.Core.IEd</c>), <c>Terminal.Text</c>.
     /// </summary>
     internal sealed class ScriptEditorAccess
     {
@@ -59,6 +67,9 @@ namespace MiniVivisection
         {
             get
             {
+#if RHINO9
+                return Rhino9Editor.HoldsDebugger(Editor) ? "DebuggingCode" : "EditingCode";
+#else
                 try
                 {
                     var state = Editor?.GetType().GetProperty("ActiveState", Any)?.GetValue(Editor);
@@ -69,34 +80,50 @@ namespace MiniVivisection
                     Log.Debug(LogArea.Claude, "editor state: {0}", Log.Describe(ex));
                     return null;
                 }
+#endif
             }
         }
 
-        public ICodeEditContext EditContext
+        public CodeEditContext EditContext
         {
             get
             {
+#if RHINO9
+                return Rhino9Editor.TextEditorOf(Editor);
+#else
                 var codes = Editor.GetType().GetProperty("Codes", Any)?.GetValue(Editor);
                 var editors = codes?.GetType().GetProperty("Editors", Any)?.GetValue(codes);
                 return editors?.GetType().GetProperty("ActiveEditContext", Any)?.GetValue(editors) as ICodeEditContext;
+#endif
             }
         }
 
         public Code Code => EditContext?.Code;
 
         /// <summary>The Monaco view of the active script, when it is one.</summary>
-        public IEd Monaco
+        public MonacoView Monaco
         {
             get
             {
+#if RHINO9
+                try
+                {
+                    return EditContext?.GetWidget<Eto.Forms.Control>() as MonacoView;
+                }
+                catch (Exception)
+                {
+                    return null;
+                }
+#else
                 var context = EditContext;
                 for (var type = context?.GetType(); type != null; type = type.BaseType)
                 {
                     var field = type.GetField("_monaco", Any | BindingFlags.DeclaredOnly);
                     if (field != null)
-                        return field.GetValue(context) as IEd;
+                        return field.GetValue(context) as MonacoView;
                 }
                 return null;
+#endif
             }
         }
 
@@ -124,10 +151,14 @@ namespace MiniVivisection
         {
             try
             {
+#if RHINO9
+                Rhino9Editor.AppendTerminal(Editor, text);
+#else
                 var console = Editor.GetType().GetProperty("Console", Any)?.GetValue(Editor);
                 var tray = console?.GetType().GetProperty("Terminal", Any)?.GetValue(console);
                 if (tray?.GetType().GetProperty("TextArea", Any)?.GetValue(tray) is Eto.Forms.TextArea area)
                     area.Append(text, true);
+#endif
             }
             catch (Exception ex)
             {
@@ -140,10 +171,14 @@ namespace MiniVivisection
         {
             get
             {
+#if RHINO9
+                return Rhino9Editor.TerminalText(Editor);
+#else
                 var console = Editor.GetType().GetProperty("Console", Any)?.GetValue(Editor);
                 var tray = console?.GetType().GetProperty("Terminal", Any)?.GetValue(console);
                 var area = tray?.GetType().GetProperty("TextArea", Any)?.GetValue(tray);
                 return area?.GetType().GetProperties(Any).FirstOrDefault(p => p.Name == "Text")?.GetValue(area) as string ?? "";
+#endif
             }
         }
 
@@ -165,11 +200,19 @@ namespace MiniVivisection
         /// <summary>Replaces the selection through Monaco -- Ctrl+Z in the editor undoes it.</summary>
         public async Task<bool> ReplaceSelectionAsync(string text)
         {
+#if RHINO9
+            var context = EditContext;
+            if (context == null)
+                return false;
+            await context.ReplaceSelected(text);
+            return true;
+#else
             var monaco = Monaco;
             if (monaco == null)
                 return false;
             await monaco.ReplaceSelectedTextAsync(text);
             return true;
+#endif
         }
 
         /// <summary>Replaces the whole script text (the editor follows its model).</summary>

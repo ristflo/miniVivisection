@@ -27,10 +27,15 @@ namespace MiniVivisection
             }
             try
             {
-                var site = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".rhinocode", "py39-rh8", "Lib", "site-packages");
+#if RHINO9
+                const string runtime = "py313-rh9"; // Rhino 9's Python 3.13
+#else
+                const string runtime = "py39-rh8";
+#endif
+                var site = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".rhinocode", runtime, "Lib", "site-packages");
                 if (!Directory.Exists(site))
                 {
-                    Log.Info(LogArea.Python, "no Rhino 8 Python site-packages yet ({0}); the folder goes on sys.path when used", site);
+                    Log.Info(LogArea.Python, "no Rhino {0} Python site-packages yet ({1}); the folder goes on sys.path when used", MiniVivisectionPlugin.BuiltForRhino, site);
                     return;
                 }
                 var pth = Path.Combine(site, "minivivisection.pth");

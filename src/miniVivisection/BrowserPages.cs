@@ -97,6 +97,10 @@ namespace MiniVivisection
         /// panel, pages turned on are added (once) and shown, the others hidden (UI thread).</summary>
         public static void ApplyVisibility()
         {
+#if RHINO9
+            ApplyVisibility9();
+            return;
+#endif
             lock (s_all)
             {
                 s_all.RemoveAll(r => !r.TryGetTarget(out _));
@@ -133,6 +137,10 @@ namespace MiniVivisection
         /// <summary>Adds the pages to <paramref name="editor"/> (an RCE window) once.</summary>
         public static void TryAdd(object editor, ScriptEditorHook hook)
         {
+#if RHINO9
+            TryAdd9(editor as Window, hook);
+            return;
+#endif
             if (s_error != null)
                 return;
             try
@@ -682,5 +690,198 @@ namespace MiniVivisection
             }
             throw new MissingFieldException(type.FullName, name);
         }
+#if RHINO9
+        private sealed class Pages9
+        {
+            public Window Editor;
+            public Pages Shared;    // Editor and Hook, for Content()
+            public Panel Browsers;
+            public Panel Container;
+            public StackLayout Strip;
+            public int StripWidth;
+            public readonly Dictionary<int, TrayTabCommand> Commands = new Dictionary<int, TrayTabCommand>();
+            public readonly Dictionary<int, Control> Tabs = new Dictionary<int, Control>();
+            public readonly Dictionary<int, Panel> Hosts = new Dictionary<int, Panel>();
+        }
+
+        private static readonly ConditionalWeakTable<Window, Pages9> s_pages9 = new ConditionalWeakTable<Window, Pages9>();
+        private static readonly List<WeakReference<Pages9>> s_all9 = new List<WeakReference<Pages9>>();
+        private static string s_problem9;
+
+        /// <summary>For the health line in Rhino 9.</summary>
+        internal static string HookProblem9 => s_problem9;
+
+        // A page's BrowserTray value: Rhino 8's value, negated -- none of the editor's.
+        private static int Value9(int value) => -value;
+
+        private static void TryAdd9(Window editor, ScriptEditorHook hook)
+        {
+            if (editor == null || s_problem9 != null || s_pages9.TryGetValue(editor, out _))
+                return;
+            try
+            {
+                var browsers = Rhino9Trays.Find(editor, "EditorBrowsers");
+                if (browsers == null)
+                    return; // not built yet: the next scan
+                var tabs = Rhino9Trays.TabsOf(browsers);
+                var pages = new Pages9
+                {
+                    Editor = editor,
+                    Shared = new Pages { Editor = editor, Hook = hook },
+                    Browsers = browsers,
+                    Container = Rhino9Trays.ContainerOf(browsers),
+                    Strip = Rhino9Trays.StackOf(tabs),
+                    StripWidth = tabs.Width > 0 ? tabs.Width : 24,
+                };
+                s_pages9.Add(editor, pages);
+                lock (s_all9)
+                    s_all9.Add(new WeakReference<Pages9>(pages));
+                Ensure9(pages);
+                EditorWindows.WhenClosed(editor, () =>
+                {
+                    foreach (var command in pages.Commands.Values)
+                        command.Dispose();
+                });
+            }
+            catch (Exception ex)
+            {
+                while (ex is TargetInvocationException && ex.InnerException != null)
+                    ex = ex.InnerException;
+                s_problem9 = ex.Message;
+                UserLog.Warning("Can't add pages to the left panel: {0}", ex.Message);
+            }
+        }
+
+        private static void Ensure9(Pages9 pages)
+        {
+            var model = Rhino9Editor.ModelOf(pages.Editor) ?? throw new InvalidOperationException("no editor model");
+            var added = new List<string>();
+            foreach (var (value, title, _, draw) in Definitions)
+            {
+                var shown = Shown(value);
+                if (shown && !pages.Commands.ContainsKey(value))
+                {
+                    var text = VNames.Text(title);
+                    var content = Content(pages.Shared, value);
+                    pages.Hosts[value] = PageHost9(text, content);
+                    var v = value;
+                    var command = new TrayTabCommand(model, "CurrentBrowser", "ShowBrowser", Value9(value),
+                        "minivivisection.page." + value.ToString("x"), text,
+                        () => { if (!ReferenceEquals(pages.Container.Content, pages.Hosts[v])) pages.Container.Content = pages.Hosts[v]; },
+                        () => { (content as ClaudeChat)?.FocusInput(); (content as RhinoWatchTab)?.FocusInput(); (content as PowerShellTerminal)?.FocusInput(); });
+                    var tab = new PageTab9(pages.Browsers, command, text, draw, pages.StripWidth);
+                    pages.Strip.Items.Add(new StackLayoutItem(tab));
+                    pages.Commands[value] = command;
+                    pages.Tabs[value] = tab;
+                    added.Add(text);
+                }
+                if (pages.Tabs.TryGetValue(value, out var existing))
+                {
+                    existing.Visible = shown;
+                    if (!shown && pages.Commands[value].IsCurrent)
+                        Rhino9Trays.SetTray(model, "CurrentBrowser", Rhino9Trays.Explorer);
+                }
+            }
+            if (added.Count > 0)
+                Log.Info(LogArea.Tabs, "added {0} to the Script Editor's left panel (Rhino 9).", string.Join(", ", added));
+        }
+
+        private static void ApplyVisibility9()
+        {
+            List<Pages9> all;
+            lock (s_all9)
+            {
+                s_all9.RemoveAll(r => !r.TryGetTarget(out _));
+                all = s_all9.Select(r => r.TryGetTarget(out var p) ? p : null).Where(p => p != null).ToList();
+            }
+            foreach (var pages in all)
+            {
+                try
+                {
+                    Ensure9(pages);
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(LogArea.Tabs, "left panel pages: {0}", Log.Describe(ex));
+                }
+            }
+        }
+
+        /// <summary>For the tests: page <paramref name="title"/> ("V Watch", ...) in front.</summary>
+        internal static bool Show9(object editor, string title)
+        {
+            if (!(editor is Window window) || !s_pages9.TryGetValue(window, out var pages))
+                return false;
+            var definition = Definitions.FirstOrDefault(d => d.Title == title);
+            if (!pages.Commands.TryGetValue(definition.Value, out var command))
+                return false;
+            command.Select();
+            return true;
+        }
+
+        /// <summary>A page: its title above it (the editor's pages have a header; RhinoCodeEditor's
+        /// HeaderedPanel isn't reachable without referencing it).</summary>
+        private static Panel PageHost9(string title, Control content)
+        {
+            var layout = new TableLayout { Spacing = new Size(0, 4), Padding = new Padding(6, 6, 2, 0) };
+            layout.Rows.Add(new TableRow(new Label { Text = title }));
+            layout.Rows.Add(new TableRow(content) { ScaleHeight = true });
+            return new Panel { Content = layout };
+        }
+
+        /// <summary>A page's tab in the left panel's strip, painted as the editor's (TrayTab.DrawV):
+        /// its icon, the active fill and the marker at the right edge while its page shows, a
+        /// hover fill. A click toggles as the editor's tabs do.</summary>
+        private sealed class PageTab9 : Drawable
+        {
+            private const int Pad = 7;
+            private readonly Panel _browsers;
+            private readonly TrayTabCommand _command;
+            private readonly Icon _icon;
+            private bool _hover;
+
+            public PageTab9(Panel browsers, TrayTabCommand command, string title, Action<Graphics> draw, int width)
+            {
+                _browsers = browsers;
+                _command = command;
+                _icon = DrawnIcons.Draw(draw, new Size(16, 16));
+                Size = new Size(width, Pad + 16 + Pad);
+                ToolTip = title;
+                command.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == "Mode")
+                        Invalidate();
+                };
+                MouseEnter += (s, e) => { _hover = true; Invalidate(); };
+                MouseLeave += (s, e) => { _hover = false; Invalidate(); };
+                MouseDown += async (s, e) =>
+                {
+                    e.Handled = true;
+                    try
+                    {
+                        await _command.Toggle(System.Threading.CancellationToken.None);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Warning(LogArea.Tabs, "left panel page: {0}", Log.Describe(ex));
+                    }
+                };
+            }
+
+            protected override void OnPaint(PaintEventArgs e)
+            {
+                var g = e.Graphics;
+                var bounds = new RectangleF(0, 0, Width, Height);
+                g.FillRectangle(Rhino9Trays.ThemeColor(_browsers, "TrayBrowserTabColor", Colors.Transparent), bounds);
+                if (_command.Mode)
+                    g.FillRectangle(Rhino9Trays.ThemeColor(_browsers, "TrayBrowserActiveTabColor", Color.FromArgb(128, 128, 128, 40)), bounds);
+                if (_hover)
+                    g.FillRectangle(Rhino9Trays.ThemeColor(_browsers, "TabHoverColor", Color.FromArgb(128, 128, 128, 48)), bounds);
+                g.DrawImage(_icon, (Width - 16) / 2f, Pad, 16, 16);
+                if (_command.Mode)
+                    g.DrawLine(Rhino9Trays.ThemeColor(_browsers, "TrayTextColor", Colors.Gray), Width - 1, 0, Width - 1, Height);
+            }
+        }
+#endif
     }
 }

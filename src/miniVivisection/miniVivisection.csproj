@@ -1,9 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- Rhino 8 (net7.0) or Rhino 9 (net8.0, -p:MvRhino=9; output in bin\<Configuration>\rhino9): Rhino.props. -->
+  <Import Project="..\..\Rhino.props" />
+
   <PropertyGroup>
-    <!-- miniVivisection's Rhino plug-in: a companion to Rhino 8's Script Editor debugger.
-         See docs/Developer_Guide.md. Rhino 8 (net7.0). -->
-    <TargetFramework>net7.0</TargetFramework>
+    <!-- miniVivisection's Rhino plug-in: a companion to the Script Editor debugger of Rhino 8 and 9.
+         See docs/Developer_Guide.md. -->
+    <TargetFramework>$(MvTfm)</TargetFramework>
+    <OutputPath>bin\$(Configuration)\$(MvOut)\</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <TargetExt>.rhp</TargetExt>
     <NoWarn>NU1701</NoWarn>
@@ -13,7 +18,7 @@
     <AssemblyName>miniVivisection</AssemblyName>
     <Title>miniVivisection</Title>
     <Company>miniVivisection Authors</Company>
-    <Description>A companion to the Rhino 8 Script Editor's debugger: watched values drawn in the viewports, values in the code, conditional breakpoints, Python and PowerShell terminals, Claude Code, and Grasshopper's V Edit, V Text and script Panels.</Description>
+    <Description>A companion to the Script Editor's debugger of Rhino 8 and 9: watched values drawn in the viewports, values in the code, conditional breakpoints, Python and PowerShell terminals, Claude Code, and Grasshopper's V Edit, V Text and script Panels.</Description>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,8 +27,8 @@
     <ProjectReference Include="..\miniVivisection.GH\miniVivisection.GH.csproj" ReferenceOutputAssembly="false" SkipGetTargetFrameworkProperties="true" Private="false" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="RhinoCommon" Version="8.36.26272.13001-rc" ExcludeAssets="runtime" />
-    <PackageReference Include="Eto.Forms" Version="2.11.0" ExcludeAssets="runtime" />
+    <PackageReference Condition="'$(MvRhino)' == '8'" Include="RhinoCommon" Version="8.36.26272.13001-rc" ExcludeAssets="runtime" />
+    <PackageReference Condition="'$(MvRhino)' == '8'" Include="Eto.Forms" Version="2.11.0" ExcludeAssets="runtime" />
     <!-- Runtime patching of the Script Editor debugger's pause (FreePause.cs);
          0Harmony.dll ships next to the .rhp. -->
     <PackageReference Include="Lib.Harmony" Version="2.4.2" />
@@ -65,38 +70,65 @@
     <None Include="..\..\docs\miniVivisection_Manual.md" Link="examples\miniVivisection_Manual.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(MvRhino)' == '9'">
+    <!-- Rhino 9: RhinoCommon and Eto from the install (Rhino 8's come from NuGet). -->
+    <Reference Include="RhinoCommon">
+      <HintPath>$(MvRhinoCode)\RhinoCommon.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Eto">
+      <HintPath>$(MvRhinoSystem)\Eto.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Rhino.UI">
+      <HintPath>$(MvRhinoCode)\Rhino.UI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- Rhino 9's Script Editor model, public: IMainEditor and its aspects (Codes, Terminal,
+         Watch, ...), the DataContext of each editor window (Rhino9Editor). -->
+    <Reference Include="Rhino.Runtime.Code.Editor">
+      <HintPath>$(MvRhinoCode)\Rhino.Runtime.Code.Editor.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- Rhino 9's Monaco view interface (Ed.Core.IEd; Rhino 8's is Ed.Eto.IEd). -->
+    <Reference Include="Ed.Core">
+      <HintPath>$(MvRhinoSystem)\Ed.Core.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
   <ItemGroup>
     <!-- RhinoCode's public debugging API (IDebugControls, ExecFrame, ExecVariable).
-         No NuGet package exists: compiled against the local Rhino 8 install, never
+         No NuGet package exists: compiled against the local Rhino install, never
          copied, since Rhino has it loaded already. -->
     <Reference Include="Rhino.Runtime.Code">
-      <HintPath>C:\Program Files\Rhino 8\System\Rhino.Runtime.Code.dll</HintPath>
+      <HintPath>$(MvRhinoCode)\Rhino.Runtime.Code.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <!-- The Script Editor's Monaco view (Ed.Eto.IEd: replacing the selection, undoable
          in the editor). Same rules. -->
     <Reference Include="Ed.Eto">
-      <HintPath>C:\Program Files\Rhino 8\System\Ed.Eto.dll</HintPath>
+      <HintPath>$(MvRhinoSystem)\Ed.Eto.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <!-- Rhino's Markdig (the Script Editor's Markdown preview): MarkdownText. Same rules. -->
     <Reference Include="Markdig.Signed">
-      <HintPath>C:\Program Files\Rhino 8\System\Markdig.Signed.dll</HintPath>
+      <HintPath>$(MvRhinoCode)\Markdig.Signed.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <!-- Rhino's IronPython 2.7 (IronPythonBridge: eval and exec in a paused IronPython 2 script's
          frame): the .NET Core build in System\netcore, the same assembly identity as
          System\IronPython.dll. Same rules; its types are touched only once Rhino loaded it. -->
     <Reference Include="IronPython">
-      <HintPath>C:\Program Files\Rhino 8\System\netcore\IronPython.dll</HintPath>
+      <HintPath>$(MvIronPython)\IronPython.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="Microsoft.Scripting">
-      <HintPath>C:\Program Files\Rhino 8\System\netcore\Microsoft.Scripting.dll</HintPath>
+      <HintPath>$(MvIronPython)\Microsoft.Scripting.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="Microsoft.Dynamic">
-      <HintPath>C:\Program Files\Rhino 8\System\netcore\Microsoft.Dynamic.dll</HintPath>
+      <HintPath>$(MvIronPython)\Microsoft.Dynamic.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>

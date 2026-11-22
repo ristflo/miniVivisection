@@ -25,8 +25,15 @@ namespace MiniVivisection
         private static bool s_listening;
         private static string s_error;
 
+#if RHINO9
+        /// <summary>For the health line: null when in place; "waiting for Grasshopper" while Grasshopper
+        /// isn't loaded yet.</summary>
+        internal static string HookProblem => s_error ?? (s_harmony == null ? GrasshopperRuns.WaitingForGrasshopper :
+            s_patched == 0 ? "no ExpireSolution method found" : s_escapeProblem);
+#else
         /// <summary>For the health line (null: in place, or Grasshopper not loaded yet).</summary>
         internal static string HookProblem => s_error ?? (s_harmony != null && s_patched == 0 ? "no ExpireSolution method found" : null);
+#endif
 
         private static int s_patched;
         // Held back: the object, and whether any of its calls asked to recompute.
@@ -130,6 +137,9 @@ namespace MiniVivisection
                         Log.Debug(LogArea.Breakpoints, "pause guard: {0}.ExpireSolution not patched: {1}", type.Name, ex.Message);
                     }
                 }
+#if RHINO9
+                PatchEscape(grasshopper, harmony);
+#endif
                 s_harmony = harmony;
                 s_patched = patched;
                 Log.Info(LogArea.Breakpoints, "Grasshopper: expiring during a paused solution is held back ({0} ExpireSolution methods: {1})", patched, string.Join(", ", names));
@@ -140,6 +150,61 @@ namespace MiniVivisection
                 Log.Warning(LogArea.Breakpoints, "Grasshopper pause guard: {0}", Log.Describe(ex));
             }
         }
+
+#if RHINO9
+        private static string s_escapeProblem;
+
+        /// <summary>For the live test: Esc presses kept from cancelling a paused solution.</summary>
+        internal static int EscapesIgnored;
+
+        /// <summary>For the live test: Esc held down, as Grasshopper's watcher sees it (a test Rhino on a
+        /// desktop of its own gets no keys).</summary>
+        internal static volatile bool SimulatedEscape;
+
+        /// <summary>Grasshopper 9 watches Escape on a thread of its own during every solution
+        /// (GH_Document's "Grasshopper Escape Watcher" polls GetEscapeKeyState: Esc down, any window of
+        /// Rhino's process in front) and cancels the solution -- Rhino 8 looked only between runs. A
+        /// paused script is inside the solution: an Esc in the Script Editor (Monaco's suggestions, a
+        /// dialog) would abort the definition when the script continues ("Solution aborted by user",
+        /// outputs cleared). Not while a script is paused: Stop is the debugger's way to end it.</summary>
+        private static void PatchEscape(Assembly grasshopper, Harmony harmony)
+        {
+            try
+            {
+                var document = grasshopper.GetType("Grasshopper.Kernel.GH_Document", true);
+                var escape = document.GetMethod("GetEscapeKeyState", BindingFlags.NonPublic | BindingFlags.Static, null, Type.EmptyTypes, null)
+                    ?? throw new MissingMethodException(document.FullName, "GetEscapeKeyState");
+                harmony.Patch(escape, postfix: new HarmonyMethod(typeof(GrasshopperPauseGuard), nameof(EscapePostfix)));
+            }
+            catch (Exception ex)
+            {
+                s_escapeProblem = "Esc during a pause: " + ex.Message;
+                Log.Warning(LogArea.Breakpoints, "Grasshopper 9: an Esc while a script is paused may abort the solution: {0}", Log.Describe(ex));
+            }
+        }
+
+        // GH_Document.GetEscapeKeyState, on Grasshopper's watcher thread (a tight loop): only does
+        // anything while Esc is down.
+        private static void EscapePostfix(ref bool __result)
+        {
+            if (SimulatedEscape)
+                __result = true;
+            if (!__result)
+                return;
+            try
+            {
+                if (AnyPaused())
+                {
+                    __result = false;
+                    System.Threading.Interlocked.Increment(ref EscapesIgnored);
+                }
+            }
+            catch (Exception)
+            {
+                // as Grasshopper says
+            }
+        }
+#endif
 
         // ExpireSolution(recompute) on a Grasshopper object (__0: overrides name it differently).
         private static bool ExpireSolutionPrefix(object __instance, bool __0)

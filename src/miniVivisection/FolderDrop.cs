@@ -118,6 +118,11 @@ namespace MiniVivisection
         /// <summary>What the editor's "Explore Path" command does, for <paramref name="folder"/>.</summary>
         internal static void Explore(object editor, string folder)
         {
+#if RHINO9
+            if (!(Rhino9Editor.ModelOf(editor) is Rhino.Runtime.Code.Editor.IMainEditor main))
+                throw new InvalidOperationException("this editor has no Explorer");
+            _ = Explore9(main, new Uri(Path.GetFullPath(folder).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar));
+#else
             var state = editor.GetType().GetProperty("ActiveState", Any).GetValue(editor);
             var directory = state.GetType().GetProperty("ExplorerDirectory", Any);
             var before = (Uri)directory.GetValue(state);
@@ -142,6 +147,53 @@ namespace MiniVivisection
             {
                 Log.Debug(LogArea.Tabs, "folder drop: no undo step: {0}", Log.Describe(ex));
             }
+#endif
         }
+
+#if RHINO9
+        private static async System.Threading.Tasks.Task Explore9(Rhino.Runtime.Code.Editor.IMainEditor main, Uri after)
+        {
+            try
+            {
+                var explorer = main.Explorer;
+                var before = explorer.HasLibrary ? explorer.Library?.Base : null;
+                if (!await explorer.Open(after))
+                {
+                    UserLog.Warning("Explorer can't open {0}.", after.LocalPath);
+                    return;
+                }
+                Rhino9Trays.SetTray(main, "CurrentBrowser", Rhino9Trays.Explorer);
+                Rhino9Trays.SetBool(main, "ShowBrowser", true);
+                if (explorer.Site != null)
+                    main.Recents.Explorers.Touched(explorer.Site, after); // the Open Directory menu's recent folders
+                main.Actions.Push(new ExploreAction(main, before, after)); // Ctrl+Z: the folder before
+            }
+            catch (Exception ex)
+            {
+                UserLog.Warning("Can't open {0} in Explorer: {1}", after.LocalPath, Log.Describe(ex));
+            }
+        }
+
+        /// <summary>Undo/redo of a dropped folder, as the editor's ChangeDirectoryCommand.CommandAction.</summary>
+        private sealed class ExploreAction : Rhino.Runtime.Code.Editor.Commands.CommandAction
+        {
+            private readonly Rhino.Runtime.Code.Editor.IMainEditor _main;
+            private readonly Uri _before;
+            private readonly Uri _after;
+
+            public ExploreAction(Rhino.Runtime.Code.Editor.IMainEditor main, Uri before, Uri after)
+                : base("Open Directory (Explorer)")
+            {
+                _main = main;
+                _before = before;
+                _after = after;
+            }
+
+            public override System.Threading.Tasks.Task Redo(System.Threading.CancellationToken token) => _main.Explorer.Open(_after);
+
+            public override System.Threading.Tasks.Task Undo(System.Threading.CancellationToken token) =>
+                _before != null ? _main.Explorer.Open(_before) : _main.Explorer.Close();
+        }
+#endif
     }
 }

@@ -80,6 +80,13 @@ namespace MiniVivisection
                 Log.Info(LogArea.Startup, "RhinoAI: {0}", how);
                 if (installed || s_asked || !MiniVivisectionSettings.AiOn || !MiniVivisectionSettings.OfferRhinoAi)
                     return;
+                // MINIVIVISECTION_OFFER_RHINOAI=0: not asked (the live tests' Rhinos: a modal
+                // dialog in the middle of a test would hold its UI thread).
+                if (MiniVivisectionSettings.Environment("OFFER_RHINOAI") == "0")
+                {
+                    Log.Info(LogArea.Startup, "RhinoAI: not offered (MINIVIVISECTION_OFFER_RHINOAI=0)");
+                    return;
+                }
                 s_asked = true;
                 switch (Ask())
                 {

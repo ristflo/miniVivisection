@@ -1,10 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <!-- Rhino 8 (net7.0) or Rhino 9 (net8.0, -p:MvRhino=9; output in bin\<Configuration>\rhino9): Rhino.props. -->
+  <Import Project="..\..\Rhino.props" />
   <PropertyGroup>
     <!-- miniVivisection's Grasshopper part: V Edit and script Panels shown as code; a .gha
          next to miniVivisection.rhp, which tells Grasshopper where it is (GrasshopperLink).
          It doesn't reference the .rhp: settings and the Script Editor are reached by
-         reflection, when the .rhp is loaded. Rhino 8. -->
-    <TargetFramework>net7.0-windows</TargetFramework>
+         reflection, when the .rhp is loaded. Rhino 8 and 9. -->
+    <TargetFramework>$(MvTfm)-windows</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <TargetExt>.gha</TargetExt>
@@ -17,7 +19,9 @@
     <Company>miniVivisection Authors</Company>
     <Description>V Edit: edit Grasshopper geometry in Rhino and feed the changes back. V Text: text as Rhino text.</Description>
     <!-- Next to the .rhp, in the plug-in's own output folder. -->
-    <OutputPath>..\miniVivisection\bin\$(Configuration)\net7.0\</OutputPath>
+    <OutputPath>..\miniVivisection\bin\$(Configuration)\$(MvOut)\</OutputPath>
+    <!-- Its own intermediate folder per Rhino: the two builds don't share obj\. -->
+    <IntermediateOutputPath>obj\$(Configuration)\$(MvTfm)\</IntermediateOutputPath>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
@@ -41,15 +45,23 @@
     <EmbeddedResource Include="..\miniVivisection\styles\markdown_grasshopper.css" LogicalName="markdown_grasshopper.css" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Grasshopper" Version="8.36.26272.13001-rc" ExcludeAssets="runtime" />
+    <PackageReference Condition="'$(MvRhino)' == '8'" Include="Grasshopper" Version="8.36.26272.13001-rc" ExcludeAssets="runtime" />
     <!-- Patches for script Panels (ScriptPanels). 0Harmony.dll comes with the .rhp, in the same
          folder (and is loaded by it): not copied from here. -->
     <PackageReference Include="Lib.Harmony" Version="2.4.2" ExcludeAssets="runtime" />
   </ItemGroup>
+  <ItemGroup Condition="'$(MvRhino)' == '9'">
+    <!-- Rhino 9: RhinoCommon, Eto and Grasshopper from the install (Rhino 8's come from NuGet). -->
+    <Reference Include="RhinoCommon"><HintPath>$(MvRhinoCode)\RhinoCommon.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Rhino.UI"><HintPath>$(MvRhinoCode)\Rhino.UI.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Eto"><HintPath>$(MvRhinoSystem)\Eto.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Grasshopper"><HintPath>$(MvRhinoDir)\Plug-ins\Grasshopper\Grasshopper.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="GH_IO"><HintPath>$(MvRhinoDir)\Plug-ins\Grasshopper\GH_IO.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
   <ItemGroup>
     <!-- Rhino's Markdig (the Script Editor's Markdown preview): Markdown in Panels (MarkdownMarkdig). -->
     <Reference Include="Markdig.Signed">
-      <HintPath>C:\Program Files\Rhino 8\System\Markdig.Signed.dll</HintPath>
+      <HintPath>$(MvRhinoCode)\Markdig.Signed.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>
