@@ -339,6 +339,7 @@ namespace MiniVivisection
             if (c.Console == null)
                 return;
             var model = Rhino9Editor.ModelOf(c.Editor) ?? throw new InvalidOperationException("no editor model");
+            var changed = false;
             for (var i = 0; i < Definitions.Length; i++)
             {
                 var tab = Definitions[i];
@@ -361,14 +362,18 @@ namespace MiniVivisection
                     trayTab.BackgroundColor = Rhino9Trays.ThemeColor(c.Console, "TrayConsoleTabColor", trayTab.BackgroundColor);
                     c.Commands[name] = command;
                     c.TrayTabs[name] = trayTab;
+                    changed = true;
                 }
                 if (c.TrayTabs.TryGetValue(name, out var existing))
                 {
+                    changed |= existing.Visible != shown;
                     existing.Visible = shown;
                     if (!shown && c.Commands[name].IsCurrent)
                         Rhino9Trays.SetTray(model, "CurrentConsole", Rhino9Trays.Terminal);
                 }
             }
+            if (changed && c.TrayTabs.Count > 0)
+                Rhino9Trays.FitTabs(c.Console); // tabs added to a shown strip: the strip's height, so they paint
         }
 
         private static void ShowHost(Companion c, string name)

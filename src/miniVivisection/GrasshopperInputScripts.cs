@@ -668,8 +668,9 @@ namespace MiniVivisection
             var context = GrasshopperRuns.ContextOf(component);
             if (context == null)
                 return Skip("no script context");
-            if (context.GetType().GetProperty("IsDebugStopped", Any | BindingFlags.Static | BindingFlags.FlattenHierarchy)?.GetValue(null) as bool? == true)
-                return Skip("Stop was pressed"); // the rest of the solution runs plainly
+            if (context.GetType().GetProperty("IsDebugStopped", Any | BindingFlags.Static | BindingFlags.FlattenHierarchy)?.GetValue(null) as bool? == true ||
+                GrasshopperPauseGuard.PlainAfterStop)
+                return Skip("Stop was pressed"); // the rest of the solution (and what was held back meanwhile) runs plainly
             var prepare = context.GetType().GetMethod("PrepareContext", new[] { typeof(Rhino.Runtime.Code.Code), typeof(Rhino.Runtime.Code.Execution.BuildKind) });
             var run = prepare?.Invoke(context, new object[] { code, Rhino.Runtime.Code.Execution.BuildKind.Debug });
             var envType = ProxyEnvType();

@@ -64,7 +64,14 @@ def dashboard_commands(window):
     trays = []
     for tray in lt.member(dashboard, 'm_traysL'):
         row = []
+        # The run slot's cell holds a group (the slot, Run, Debug) in a shown tray: its items
+        cells = []
         for item in lt.member(tray, 'Items'):
+            try:
+                cells.extend(i.Control for i in item.Items)
+            except Exception:
+                cells.append(item)
+        for item in cells:
             try:
                 cmd = lt.member(item, 'Command')
             except Exception:

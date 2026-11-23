@@ -57,6 +57,49 @@ namespace MiniVivisection
         /// <summary>The strip's StackLayout (TrayTabs.m_tabs), for a tab of the plug-in's own drawing.</summary>
         public static StackLayout StackOf(Control tabs) => (StackLayout)FindField(tabs.GetType(), "m_tabs").GetValue(tabs);
 
+        /// <summary>Tabs added to a shown strip, given the strip's height: TrayTabs sets every
+        /// tab's Height to its own in RecomputeLayout, which it runs only when its size
+        /// changes. A tab added later had its place but no height of its own and painted
+        /// nothing -- the V tabs stayed blank until the window was resized. RecomputeLayout
+        /// (protected) now, and once more after the next layout pass.</summary>
+        public static void FitTabs(Panel tray)
+        {
+            void Fit()
+            {
+                var tabs = TabsOf(tray);
+                tabs?.GetType().GetMethod("RecomputeLayout", Any, null, Type.EmptyTypes, null)?.Invoke(tabs, null);
+            }
+            try
+            {
+                Fit();
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(LogArea.Tabs, "tray tabs, fitted: {0}", Log.Describe(ex));
+            }
+            Later(0.5, Fit);
+        }
+
+        /// <summary><paramref name="action"/> on the UI thread after <paramref name="seconds"/>.</summary>
+        private static void Later(double seconds, Action action)
+        {
+            var timer = new UITimer { Interval = seconds };
+            timer.Elapsed += (s, e) =>
+            {
+                timer.Stop();
+                timer.Dispose();
+                try
+                {
+                    action();
+                }
+                catch (Exception ex)
+                {
+                    Log.Debug(LogArea.Tabs, "tray tabs, fitted: {0}", Log.Describe(ex));
+                }
+            };
+            timer.Start();
+        }
+
         public static int GetTray(object model, string property) => Convert.ToInt32(Property(model, property).GetValue(model));
 
         public static void SetTray(object model, string property, int value)

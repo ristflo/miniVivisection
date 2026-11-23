@@ -227,8 +227,8 @@ namespace MiniVivisection
                     }
                     return;
                 }
-                if (stopped.GetValue(null) as bool? == true)
-                    return; // Stop was pressed: the rest of this solution runs plainly
+                if (stopped.GetValue(null) as bool? == true || GrasshopperPauseGuard.PlainAfterStop)
+                    return; // Stop was pressed: the rest of this solution, and what was held back meanwhile, runs plainly
                 if (RhinoApp.MainWindowHandle() != IntPtr.Zero && type.GetProperty("HasVisibleEditor", Any)?.GetValue(__instance) as bool? != true &&
                     !GrasshopperHiddenEditors.HasHiddenEditor(__instance))
                     return; // no editor to continue from (none open, none hidden): a pause would hold Grasshopper with no way on

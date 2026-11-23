@@ -45,7 +45,12 @@ namespace MiniVivisection
                 return;
             try
             {
+#if RHINO9
+                // Rhino 9: MainEditor.m_dashboard (MainDashboard); its RightTray ends with the same two buttons.
+                var dashboard = TabStrips.FindField(editor.GetType(), "m_dashboard")?.GetValue(editor);
+#else
                 var dashboard = editor.GetType().GetProperty("Dashboard", Any)?.GetValue(editor);
+#endif
                 var tray = dashboard?.GetType().GetProperty("RightTray", Any)?.GetValue(dashboard);
                 if (tray == null)
                     return; // not built yet: the next scan

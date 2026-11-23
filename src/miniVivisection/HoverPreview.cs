@@ -183,12 +183,47 @@ return 'ok';";
         /// wraps scripts in a function itself (Eto's own), with `return` in front.</summary>
         internal static async Task<string> Script(WebView web, string body)
         {
+#if RHINO9
+            // Not before Rhino's code view has loaded its editor page: a script run into a
+            // WebView2 that is still starting ends its loading early (Ed.Eto's EdCommon takes
+            // the first page loaded as its own and calls Monaco loaded), and a script opened
+            // into an open editor stayed an empty view. The callers try again later.
+            if (!CodeViewLoaded(web))
+                return null;
+#endif
             var expression = "(function () {" + body + "\n})()";
             var result = Decode(await web.ExecuteScriptAsync(expression));
             if (result == null)
                 result = Decode(await web.ExecuteScriptAsync("return " + expression));
             return result;
         }
+
+#if RHINO9
+        /// <summary>Whether <paramref name="web"/>'s editor page has loaded: Ed.Eto's
+        /// EdCommon.m_ed (EdProxy) .IsLoaded, set when the page fires its first Loaded (and
+        /// EditorInitialized). A WebView that isn't a code view: true.</summary>
+        internal static bool CodeViewLoaded(WebView web)
+        {
+            try
+            {
+                for (var type = web?.GetType(); type != null; type = type.BaseType)
+                {
+                    var field = type.GetField("m_ed", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.DeclaredOnly);
+                    if (field == null)
+                        continue;
+                    var proxy = field.GetValue(web);
+                    var loaded = proxy?.GetType().GetProperty("IsLoaded", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)?.GetValue(proxy);
+                    return loaded is bool b ? b : proxy != null;
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Log.Trace(LogArea.Hover, "code view loaded?: {0}", Log.Describe(ex));
+                return false;
+            }
+        }
+#endif
 
         private static string Decode(string result)
         {

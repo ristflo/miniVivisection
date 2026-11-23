@@ -113,7 +113,8 @@ error, \vn{Log} says why, and recomputing it pauses at the error as usual.
 
 While a component's script is paused, Grasshopper must not recompute anything: it would show
 \emph{Grasshopper breakpoint: … expired during a solution}. Whatever asks for that meanwhile, a slider, a save,
-an edit, is done right after the solution ends; \vn{Log} says so. With
+an edit, is done right after the solution ends; \vn{Log} says so. After \emph{Stop} it computes plainly: no
+breakpoint pauses in it. With
 \setting{While paused: compute changes downstream}, changes are computed at once instead (\cref{ch:ghpaused}).
 
 \section{async:true in a component}\label{sec:ghasync}

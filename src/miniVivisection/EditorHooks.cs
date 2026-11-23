@@ -47,9 +47,11 @@ namespace MiniVivisection
                 ("breakpoint conditions and Watch / Bake / Edit in the code view's menu", Rhino9CodeMenu.HookProblem),
                 ("editor open while debugging", KeepEditorOpen.HookProblem),
                 ("Run and Debug buttons", DebugRunButton.HookProblem),
+                ("AI and Debug switches in the top bar", MiniVivisectionSettings.TopBarFailed ? "the top bar's buttons aren't where they were" : null),
                 ("ScriptEditor Run in the debugger", ScriptRunCommand.HookProblem),
                 ("RunPythonScript Debug / Stop and record", ScriptRunCommand.RunPythonHookProblem),
                 ("pause at an uncaught error, Variables without a breakpoint", Rhino9ErrorPause.HookProblem),
+                ("Stop and the steps in a debug run Grasshopper started", Rhino9DebugButtons.HookProblem),
                 ("Grasshopper always debug", GrasshopperDebug.HookProblem),
                 ("Grasshopper runs (failing runs, Break now)", GrasshopperRuns.HookProblem),
                 ("Grasshopper pause guard", GrasshopperPauseGuard.HookProblem),
@@ -81,12 +83,13 @@ namespace MiniVivisection
                 ("Grasshopper canvas while paused", GrasshopperPauseCanvas.HookProblem),
             };
 #endif
-            // Grasshopper's hooks install when Grasshopper loads (Rhino 9 says so: "waiting for
-            // Grasshopper"): not off, said apart.
-            const string Waiting = "waiting for Grasshopper";
-            var waiting = hooks.Where(h => h.Problem == Waiting).Select(h => h.Feature).ToList();
-            var missing = hooks.Where(h => h.Problem != null && h.Problem != Waiting).ToList();
-            var later = waiting.Count == 0 ? "" : "; " + Waiting + ": " + string.Join(", ", waiting);
+            // Hooks that install later -- Grasshopper's when Grasshopper loads (Rhino 9 says so:
+            // "waiting for Grasshopper"), the Script Editor's when only a component's editor was
+            // seen: not off, said apart.
+            bool IsWaiting(string problem) => problem != null && problem.StartsWith("waiting for ", StringComparison.Ordinal);
+            var waiting = hooks.Where(h => IsWaiting(h.Problem)).ToList();
+            var missing = hooks.Where(h => h.Problem != null && !IsWaiting(h.Problem)).ToList();
+            var later = string.Concat(waiting.GroupBy(h => h.Problem).Select(g => "; " + g.Key + ": " + string.Join(", ", g.Select(h => h.Feature))));
             if (missing.Count == 0)
                 UserLog.Info("Editor hooks: all {0} in place{1}.", hooks.Count - waiting.Count, later);
             else

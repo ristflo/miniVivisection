@@ -63,6 +63,25 @@ namespace MiniVivisection
         /// <summary>Whether the held-back expiries are being done now (nothing is held then).</summary>
         internal static bool Replaying => s_replaying;
 
+        private static bool s_stoppedWhileHeld;
+
+        /// <summary>Set while the solutions of what was held back run after a Stop: they run plainly
+        /// (GrasshopperDebug, GrasshopperInputScripts) -- Stop ends the debugging, as Grasshopper runs
+        /// the rest of a stopped solution plainly; under Always debug a breakpoint paused again in
+        /// the input changed meanwhile, and Stop seemed not to work.</summary>
+        internal static bool PlainAfterStop { get; private set; }
+
+        /// <summary>The debugger stopped (ScriptEditorHook: Stop pressed): what is held back now is
+        /// done plainly when the solution ends.</summary>
+        internal static void DebugStopped()
+        {
+            lock (s_held)
+            {
+                if (s_held.Count > 0 || s_solutions.Count > 0)
+                    s_stoppedWhileHeld = true;
+            }
+        }
+
         /// <summary>A document's NewSolution asked for during a script's solution of it
         /// (GrasshopperPauseCanvas): done when that solution ends.</summary>
         internal static void HoldNewSolution(object document, bool expireAll)
@@ -284,6 +303,7 @@ namespace MiniVivisection
         {
             List<(object Item, bool Recompute)> held;
             List<(object Document, bool ExpireAll)> solutions;
+            bool plain;
             lock (s_held)
             {
                 if (AnyPaused() || GrasshopperRuns.Solving)
@@ -294,6 +314,8 @@ namespace MiniVivisection
                 s_held.Clear();
                 solutions = s_solutions.ToList();
                 s_solutions.Clear();
+                plain = s_stoppedWhileHeld;
+                s_stoppedWhileHeld = false;
             }
             RhinoApp.Idle -= Replay;
             s_idleQueued = false;
@@ -341,19 +363,30 @@ namespace MiniVivisection
             {
                 s_replaying = false;
             }
-            foreach (var (document, expireAll, modified) in documents)
+            if (plain && documents.Count > 0)
+                Log.Info(LogArea.Breakpoints, "Grasshopper: what was held back while paused computes plainly (Stop was pressed)");
+            PlainAfterStop = plain;
+            try
             {
-                try
+                foreach (var (document, expireAll, modified) in documents)
                 {
-                    if (modified)
-                        document.GetType().GetMethod("Modified", BindingFlags.Public | BindingFlags.Instance, null, Type.EmptyTypes, null)?.Invoke(document, null);
-                    // GH_Document.NewSolution(expireAllObjects: false): what ExpireSolution(true) does.
-                    document.GetType().GetMethod("NewSolution", BindingFlags.Public | BindingFlags.Instance, null, new[] { typeof(bool) }, null)?.Invoke(document, new object[] { expireAll });
+                    try
+                    {
+                        if (modified)
+                            document.GetType().GetMethod("Modified", BindingFlags.Public | BindingFlags.Instance, null, Type.EmptyTypes, null)?.Invoke(document, null);
+                        // GH_Document.NewSolution(expireAllObjects: false): what ExpireSolution(true) does
+                        // -- the solution runs now, inside this call.
+                        document.GetType().GetMethod("NewSolution", BindingFlags.Public | BindingFlags.Instance, null, new[] { typeof(bool) }, null)?.Invoke(document, new object[] { expireAll });
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Debug(LogArea.Breakpoints, "pause guard, the solution afterwards: {0}", Log.Describe(ex));
+                    }
                 }
-                catch (Exception ex)
-                {
-                    Log.Debug(LogArea.Breakpoints, "pause guard, the solution afterwards: {0}", Log.Describe(ex));
-                }
+            }
+            finally
+            {
+                PlainAfterStop = false;
             }
             Replayed?.Invoke(held.Count + solutions.Count, documents.Count);
         }

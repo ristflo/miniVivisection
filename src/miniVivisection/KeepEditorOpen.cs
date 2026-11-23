@@ -90,8 +90,10 @@ namespace MiniVivisection
         private static Harmony s_harmony;
         private static string s_error;
 
-        /// <summary>For the health line (EditorHooks): null when installed, else why not.</summary>
-        internal static string HookProblem => s_harmony != null ? null : s_error ?? "not installed";
+        /// <summary>For the health line (EditorHooks): null when installed, else why not -- "waiting
+        /// for the Script Editor" while only Grasshopper's editors were seen (it patches the
+        /// standalone editor's type).</summary>
+        internal static string HookProblem => s_harmony != null ? null : s_error ?? "waiting for the Script Editor";
 
         // Rhino 9 decides at every state change: a change of decision is logged, not each call.
         private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<object, string> s_lastDecision =

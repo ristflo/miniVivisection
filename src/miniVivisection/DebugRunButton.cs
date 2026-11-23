@@ -388,6 +388,15 @@ namespace MiniVivisection
                     if (index < 0)
                         throw new InvalidOperationException("the Run button isn't where it was");
                     var slot = items[index];
+                    // The tray is a TableLayout built once: a cell inserted now (InsertToTray) isn't
+                    // laid out -- the buttons would be there but never shown. So the slot's cell
+                    // gets a group instead (TableLayout.Add replaces a cell's control): the slot,
+                    // then Run and Debug (as PluginSwitch does in the right tray).
+                    // A tray not shown yet (the project tray) has no layout yet: there a cell
+                    // inserted now is laid out when it's built.
+                    var table = (TableLayout)TabStrips.FindField(tray.GetType(), "m_trayContainer").GetValue(tray);
+                    var built = table.Loaded;
+                    var group = built ? new StackLayout { Orientation = Orientation.Horizontal, Spacing = 0, Padding = 0, VerticalContentAlignment = VerticalAlignment.Center } : null;
                     var insert = tray.GetType().GetMethod("InsertToTray", Any) ?? throw new MissingMethodException(tray.GetType().FullName, "InsertToTray");
                     var at = index + 1;
                     foreach (var command in new[] { run, debug })
@@ -395,13 +404,31 @@ namespace MiniVivisection
                         var button = (Control)Activator.CreateInstance(slot.GetType(), new object[] { false }); // PushButton(compact: false)
                         button.GetType().GetProperty("Command", Any).SetValue(button, command);
                         CopyTheme(slot, button);
-                        insert.Invoke(tray, new object[] { at++, button, false });
+                        if (built)
+                            group.Items.Add(button);
+                        else
+                            insert.Invoke(tray, new object[] { at++, button, false });
                         buttons.Added.Add(button);
+                    }
+                    if (built)
+                    {
+                        slot.Detach();
+                        try
+                        {
+                            table.Add(group, index, 0);
+                            group.Items.Insert(0, slot);
+                        }
+                        catch
+                        {
+                            table.Add(slot, index, 0); // the slot back where it was
+                            throw;
+                        }
                     }
                     buttons.Slots.Add(slot);
                 }
                 if (buttons.Slots.Count == 0)
                     throw new InvalidOperationException("the dashboard has no Run button");
+                FollowStopClicks(trayItems);
                 s_added.Add(window, buttons);
                 lock (s_all)
                     s_all.Add(buttons);
@@ -437,6 +464,34 @@ namespace MiniVivisection
                 if (s_problem == null)
                     UserLog.Warning("Can't add the Run and Debug buttons: {0} (the editor's Run menu has both)", ex.Message);
                 s_problem = ex.Message;
+            }
+        }
+
+        /// <summary>The dashboard's Stop buttons: a click on them in the log (V°Log, detailed log),
+        /// with whether the button and its command could run then -- a user's Stop clicks
+        /// during a pause did nothing, and a click can't be sent to the editor in a test.</summary>
+        private static void FollowStopClicks(List<List<Control>> trayItems)
+        {
+            try
+            {
+                foreach (var items in trayItems)
+                {
+                    foreach (var stop in items.Where(c => c.GetType().GetProperty("Command", Any)?.GetValue(c)?.GetType().Name.StartsWith("CodeDebugStopCommand", StringComparison.Ordinal) == true))
+                    {
+                        var button = stop;
+                        string State()
+                        {
+                            var command = button.GetType().GetProperty("Command", Any)?.GetValue(button) as Rhino.Runtime.Code.Editor.Commands.ICommand;
+                            return string.Format("button enabled {0}, its command can run {1}", button.Enabled, command?.CanExecute);
+                        }
+                        button.MouseDown += (s, e) => Log.Info(LogArea.Tabs, "the dashboard's Stop: mouse down ({0})", State());
+                        button.MouseUp += (s, e) => Log.Info(LogArea.Tabs, "the dashboard's Stop: mouse up ({0})", State());
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(LogArea.Tabs, "Stop clicks: {0}", Log.Describe(ex));
             }
         }
 

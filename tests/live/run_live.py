@@ -75,6 +75,11 @@ AREA = None  # display DISPLAY's work area (main sets it)
 DESKTOP = os.environ.get('MINIVIVISECTION_TEST_DESKTOP') or ''  # 'vscode', a number, 'hidden', or '' (off)
 HIDDEN_DESKTOP_NAME = 'minivivisection-tests'
 HIDDEN_DESKTOP = None  # with --desktop hidden: the handle of that Win32 desktop (main opens it)
+# --alongside: the tests run while a Rhino of the other version is open (only one of the version
+# under test is waited for), and the test Rhino logs into a folder of its own, LOG_DIR, so the
+# other Rhino's log stays as it is.
+ALONGSIDE = False
+LOG_DIR = os.path.join(os.environ.get('TEMP', '.'), 'rhinovivisection', 'minivivisection')
 # The test Rhinos inherit this: the plug-in doesn't offer to install RhinoAI there (a modal
 # dialog in the middle of a test held its UI thread). CLOSE_AFTER still closes one, from an older build.
 os.environ['MINIVIVISECTION_OFFER_RHINOAI'] = '0'
@@ -306,7 +311,23 @@ def stacks_of(pid):
 
 def rhino_pids():
     out = subprocess.run(['tasklist', '/FI', 'IMAGENAME eq Rhino.exe', '/NH', '/FO', 'CSV'], capture_output=True, text=True).stdout
-    return {int(line.split('","')[1]) for line in out.splitlines() if line.startswith('"Rhino.exe"')}
+    pids = {int(line.split('","')[1]) for line in out.splitlines() if line.startswith('"Rhino.exe"')}
+    if ALONGSIDE:  # only the Rhinos of the version under test
+        pids = {pid for pid in pids if ('Rhino %s' % RHINO_MAJOR) in (image_of(pid) or ('Rhino %s' % RHINO_MAJOR))}
+    return pids
+
+
+def image_of(pid):
+    """The executable's path of a process (None when it can't be read)."""
+    handle = kernel32.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+    if not handle:
+        return None
+    try:
+        buffer = ctypes.create_unicode_buffer(1024)
+        size = wt.DWORD(1024)
+        return buffer.value if kernel32.QueryFullProcessImageNameW(handle, 0, buffer, ctypes.byref(size)) else None
+    finally:
+        kernel32.CloseHandle(handle)
 
 
 PLUGIN_ID = 'c198ec17-3078-46a0-8f9b-94a40e9ba298'
@@ -440,7 +461,7 @@ def run_test(path, timeout):
         if os.path.exists(progress_file):
             with open(progress_file, encoding='utf-8') as f:
                 verdict['progress'] = f.read()
-        log = os.path.join(os.environ.get('TEMP', '.'), 'rhinovivisection', 'minivivisection', 'minivivisection.log')
+        log = os.path.join(LOG_DIR, 'minivivisection.log')
         if os.path.exists(log):
             with open(log, encoding='utf-8', errors='replace') as f:
                 verdict['log'] = ''.join(f.readlines()[-25:])
@@ -461,7 +482,7 @@ def close_rhino(process):
 
 
 def main(argv):
-    global VISIBLE, DISPLAY, AREA, DESKTOP, HIDDEN_DESKTOP, RHINO, RHINO_TITLE, RHINO_MAJOR
+    global VISIBLE, DISPLAY, AREA, DESKTOP, HIDDEN_DESKTOP, RHINO, RHINO_TITLE, RHINO_MAJOR, ALONGSIDE, LOG_DIR
     # A test's notes may hold any character (☐ ☑): printed as UTF-8, also into a pipe
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     if '--visible' in argv:
@@ -482,6 +503,11 @@ def main(argv):
         at = argv.index('--display')
         DISPLAY = int(argv[at + 1])
         argv = argv[:at] + argv[at + 2:]
+    if '--alongside' in argv:
+        ALONGSIDE = True
+        argv = [a for a in argv if a != '--alongside']
+        LOG_DIR = os.path.join(os.environ.get('TEMP', '.'), 'rhinovivisection', 'minivivisection-tests')
+        os.environ['MINIVIVISECTION_LOGDIR'] = LOG_DIR  # the test Rhinos inherit it
     if '--desktop' in argv:
         at = argv.index('--desktop')
         DESKTOP = argv[at + 1]

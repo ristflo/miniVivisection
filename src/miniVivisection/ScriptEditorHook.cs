@@ -190,6 +190,7 @@ namespace MiniVivisection
                 FreePause.TryInstall();
 #if RHINO9
                 Rhino9ErrorPause.TryInstall(); // early, before the editor runs anything: an uncaught error pauses as in Rhino 8
+                Rhino9DebugButtons.TryInstall(); // Stop and the steps in a debug run the editor didn't start (Grasshopper's)
                 if (!Rhino9Editor.EditorLoaded())
                     return; // the Script Editor hasn't been opened in this Rhino yet
 #else
@@ -257,6 +258,7 @@ namespace MiniVivisection
                         HoverValues.EnsureProvider(window);      // a code view without a hover provider (IronPython 2)
                         KeepEditorOpen.TryInstall(window);       // stays open while debugging (its BeMinimized)
                         DebugRunButton.TryAdd(window);           // Run and Debug next to the dashboard's run slot
+                        PluginSwitch.TryAdd(window);             // the V°AI and V°Debug switches in the top bar (its right tray)
                         Threads.StartHeartbeat();
                         EditorHooks.ReportOnce();
 #else
@@ -526,10 +528,24 @@ namespace MiniVivisection
             controls.Paused += OnPaused;
             controls.Continued += OnContinued;
             controls.Stopped += OnEnded;
+            controls.Stopped += OnStopped;
             controls.Disconnected += OnEnded;
             controls.Resetted += OnEnded;
             controls.Detached += OnDetached;
             Log.Info(LogArea.Scan, "following a Script Editor's debugger -- its V Watch tab is drawn while paused.");
+        }
+
+        /// <summary>Stop pressed: what Grasshopper held back while paused runs plainly afterwards.</summary>
+        private static void OnStopped(IDebugControls controls)
+        {
+            try
+            {
+                GrasshopperPauseGuard.DebugStopped();
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(LogArea.Breakpoints, "Stop, the pause guard: {0}", Log.Describe(ex));
+            }
         }
 
         private void Unhook(IDebugControls controls)
@@ -537,6 +553,7 @@ namespace MiniVivisection
             controls.Paused -= OnPaused;
             controls.Continued -= OnContinued;
             controls.Stopped -= OnEnded;
+            controls.Stopped -= OnStopped;
             controls.Disconnected -= OnEnded;
             controls.Resetted -= OnEnded;
             controls.Detached -= OnDetached;
@@ -608,6 +625,9 @@ namespace MiniVivisection
                 _pausedThreads.AddOrUpdate(controls, new StrongBox<int>(Environment.CurrentManagedThreadId));
                 var frame = controls.Results?.CurrentThread?.CurrentFrame;
                 Log.Debug(LogArea.Pause, "paused: {0} line {1} ({2})", frame?.Reference?.Uri?.Segments.LastOrDefault(), frame?.Reference?.Position.LineNumber, frame?.Event);
+#if RHINO9
+                Rhino9DebugButtons.RefreshSoon(); // Stop and the steps: also in Grasshopper's debug run
+#endif
                 var reason = BreakpointConditions.TakeReason();
                 var python = IsPythonPause(controls);
                 if (!python)
@@ -724,6 +744,9 @@ namespace MiniVivisection
         {
             try
             {
+#if RHINO9
+                Rhino9DebugButtons.RefreshSoon(); // Stop and the steps off again
+#endif
                 ConsoleTabs.UpdateStatus();
                 GrasshopperScriptPauses.Resumed(controls);
                 if (_editors.TryGetValue(controls, out var editor))
@@ -942,6 +965,9 @@ namespace MiniVivisection
         private void OnEnded(IDebugControls controls)
         {
             Log.Debug(LogArea.Runs, "debugger ended");
+#if RHINO9
+            Rhino9DebugButtons.RefreshSoon(); // Stop and the steps off again
+#endif
             try
             {
                 EndedForTools?.Invoke(controls);
